@@ -8,10 +8,16 @@ const notFoundHandler = (req, res, next) => {
 };
 
 const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || err.status || 500;
-  const message = err.isOperational || statusCode < 500
+  let statusCode = err.statusCode || err.status || 500;
+  let message = err.isOperational || statusCode < 500
     ? err.message
     : 'Internal Server Error';
+
+  // Handle PostgreSQL unique constraint violation (code 23505) safely
+  if (err.code === '23505') {
+    statusCode = 409;
+    message = 'Email is already registered';
+  }
 
   res.status(statusCode).json({
     status: 'error',

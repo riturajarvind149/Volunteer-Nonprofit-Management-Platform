@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const healthRoutes = require('./routes/healthRoutes');
+const authRoutes = require('./routes/authRoutes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -18,6 +19,7 @@ app.get('/', (req, res) => {
 
 // Route registration
 app.use('/api/health', healthRoutes);
+app.use('/api/auth', authRoutes);
 
 // Fallback & Centralized error handling
 app.use(notFoundHandler);
