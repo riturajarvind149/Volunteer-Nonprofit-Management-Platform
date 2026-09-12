@@ -1,75 +1,6 @@
 /* ==========================================================================
-   Global CSS Variables / Design Tokens
-   Volunteer & Nonprofit Management Platform - ServeHub
-   ========================================================================== */
-
-:root {
-  /* Typography */
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-
-  /* Primary Brand Colors (Emerald & Forest tones) */
-  --color-primary: #059669;
-  --color-primary-hover: #047857;
-  --color-primary-light: #ecfdf5;
-  --color-primary-dark: #064e3b;
-
-  /* Secondary & Accent Colors */
-  --color-secondary: #0284c7;
-  --color-secondary-light: #f0f9ff;
-  --color-accent: #f59e0b;
-  --color-accent-light: #fffbeb;
-
-  /* Neutrals & Surfaces */
-  --color-bg: #f8fafc;
-  --color-surface: #ffffff;
-  --color-surface-hover: #f1f5f9;
-  --color-surface-muted: #f8fafc;
-
-  /* Text Colors */
-  --color-text-main: #0f172a;
-  --color-text-muted: #475569;
-  --color-text-light: #94a3b8;
-
-  /* Border Colors */
-  --color-border: #e2e8f0;
-  --color-border-hover: #cbd5e1;
-
-  /* Spacing Tokens */
-  --space-1: 0.25rem;  /* 4px */
-  --space-2: 0.5rem;   /* 8px */
-  --space-3: 0.75rem;  /* 12px */
-  --space-4: 1rem;     /* 16px */
-  --space-5: 1.25rem;  /* 20px */
-  --space-6: 1.5rem;   /* 24px */
-  --space-8: 2rem;     /* 32px */
-  --space-10: 2.5rem;  /* 40px */
-  --space-12: 3rem;    /* 48px */
-  --space-16: 4rem;    /* 64px */
-
-  /* Border Radius */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  --radius-full: 9999px;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
-  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
-
-  /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
-
-  /* Layout */
-  --container-max-width: 1200px;
-}
-
-/* ==========================================================================
-   Global Reset & Base Elements
+   Global Reset & Base Styles
+   Volunteer & Nonprofit Management Platform
    ========================================================================== */
 
 *,
@@ -82,14 +13,14 @@
 
 html {
   font-size: 16px;
-  scroll-behavior: smooth;
+  line-height: 1.5;
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: var(--color-bg);
-  color: var(--color-text-main);
-  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -101,85 +32,66 @@ body {
   flex-direction: column;
 }
 
-/* ==========================================================================
-   Typography Defaults
-   ========================================================================== */
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading);
-  color: var(--color-text-main);
-  font-weight: 700;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600;
   line-height: 1.25;
-}
-
-h1 {
-  font-size: clamp(2rem, 4vw, 3rem);
-  letter-spacing: -0.02em;
-}
-
-h2 {
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
-  letter-spacing: -0.01em;
-}
-
-h3 {
-  font-size: 1.5rem;
-}
-
-h4 {
-  font-size: 1.25rem;
+  color: #0f172a;
 }
 
 p {
-  color: var(--color-text-muted);
-  line-height: 1.7;
+  color: #475569;
 }
 
 a {
-  color: var(--color-primary);
+  color: #0284c7;
   text-decoration: none;
-  transition: color var(--transition-fast);
 }
 
 a:hover {
-  color: var(--color-primary-hover);
+  text-decoration: underline;
 }
 
 button {
-  font-family: var(--font-sans);
-  cursor: pointer;
-  border: none;
-  background: none;
+  font-family: inherit;
+  font-size: 1rem;
 }
 
-img, svg {
-  display: block;
-  max-width: 100%;
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  background-color: #ffffff;
+  color: #0f172a;
 }
 
-/* ==========================================================================
-   Reusable Utility Classes
-   ========================================================================== */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #0284c7;
+  outline-offset: 1px;
+}
 
 .container {
   width: 100%;
-  max-width: var(--container-max-width);
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
-  padding-left: var(--space-4);
-  padding-right: var(--space-4);
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 @media (min-width: 640px) {
   .container {
-    padding-left: var(--space-6);
-    padding-right: var(--space-6);
-  }
-}
-
-@media (min-width: 1024px) {
-  .container {
-    padding-left: var(--space-8);
-    padding-right: var(--space-8);
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 }

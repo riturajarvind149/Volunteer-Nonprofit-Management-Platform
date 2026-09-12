@@ -1,24 +1,28 @@
-import React from 'react';
-import Navbar from './components/Navbar';
+import { useState } from 'react';
+import Layout from './components/layout/Layout';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 import './App.css';
 
+/**
+ * Root Application Component
+ * Volunteer & Nonprofit Management Platform
+ */
 function App() {
-  return (
-    <div className="app">
-      <Navbar />
+  const [currentPage, setCurrentPage] = useState('login');
 
-      <main className="main-content">
-        <div className="container">
-          <div className="welcome-box">
-            <h1>Volunteer & Nonprofit Management Platform</h1>
-            <p>
-              Foundation ready. ServeHub connects passionate volunteers with
-              community organizations to create meaningful impact.
-            </p>
-          </div>
-        </div>
-      </main>
-    </div>
+  const handleNavigate = (page) => {
+    setCurrentPage(page);
+  };
+
+  return (
+    <Layout currentPage={currentPage} onNavigate={handleNavigate}>
+      {currentPage === 'signup' ? (
+        <SignupPage onNavigate={handleNavigate} />
+      ) : (
+        <LoginPage onNavigate={handleNavigate} />
+      )}
+    </Layout>
   );
 }
 

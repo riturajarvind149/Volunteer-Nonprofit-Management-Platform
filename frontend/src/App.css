@@ -1,35 +1,21 @@
 /* ==========================================================================
-   App Layout Styles
+   App Component Styles
    ========================================================================== */
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.app-welcome {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 2rem;
+  margin-top: 1rem;
 }
 
-.main-content {
-  flex: 1;
-  padding: var(--space-12) 0;
+.app-welcome h1 {
+  font-size: 1.75rem;
+  margin-bottom: 0.75rem;
 }
 
-.welcome-box {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-8) var(--space-6);
-  box-shadow: var(--shadow-sm);
-  max-width: 720px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.welcome-box h1 {
-  margin-bottom: var(--space-4);
-}
-
-.welcome-box p {
-  font-size: 1.1rem;
-  max-width: 600px;
-  margin: 0 auto;
+.app-welcome p {
+  font-size: 1rem;
+  line-height: 1.6;
 }
