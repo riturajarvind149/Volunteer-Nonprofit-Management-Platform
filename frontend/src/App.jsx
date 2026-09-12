@@ -1,9 +1,14 @@
+import Navbar from './components/layout/Navbar'
+import Footer from './components/layout/Footer'
+import Home from './pages/Home/Home'
 import './App.css'
 
 function App() {
   return (
     <div className="app">
-      <h1>Volunteer & Nonprofit Management Platform</h1>
+      <Navbar />
+      <Home />
+      <Footer />
     </div>
   )
 }
