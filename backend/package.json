@@ -5,7 +5,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node test_registration.js"
+    "test": "node test_registration.js && node test_login.js",
+    "test:register": "node test_registration.js",
+    "test:login": "node test_login.js"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +18,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0"
   },
   "devDependencies": {

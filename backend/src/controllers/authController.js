@@ -27,6 +27,33 @@ const register = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller for user login
+ * POST /api/auth/login
+ */
+const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const { token, user } = await authService.loginUser({
+      email,
+      password,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Login successful',
+      data: {
+        token,
+        user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
+  login,
 };
