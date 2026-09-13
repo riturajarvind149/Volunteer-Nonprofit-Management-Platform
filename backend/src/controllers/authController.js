@@ -53,7 +53,26 @@ const login = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller for retrieving authenticated user info
+ * GET /api/auth/me
+ */
+const getMe = async (req, res, next) => {
+  try {
+    res.status(200).json({
+      status: 'success',
+      message: 'Authenticated user profile retrieved',
+      data: {
+        user: req.user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
+  getMe,
 };
