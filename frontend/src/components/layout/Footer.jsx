@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import './Footer.css'
 
 function Footer() {
@@ -9,9 +10,9 @@ function Footer() {
           <p>Connecting volunteers with impactful nonprofit opportunities.</p>
         </div>
         <div className="footer-links">
-          <a href="#">Home</a>
-          <a href="#">Opportunities</a>
-          <a href="#">About Us</a>
+          <Link to="/">Home</Link>
+          <Link to="/opportunities">Opportunities</Link>
+          <a href="/#about">About Us</a>
           <a href="#">Contact</a>
         </div>
       </div>
@@ -23,3 +24,4 @@ function Footer() {
 }
 
 export default Footer
+
