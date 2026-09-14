@@ -238,8 +238,10 @@ const runTests = async () => {
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 8: Valid token exposes correct user id${colors.reset}`);
     assert(
-      data1.data?.user?.id === volunteerId,
-      'Protected route exposes expected user id from verified token',
+      data1.data?.user?.id === volunteerId &&
+      data1.data?.user?.full_name === testUser.full_name &&
+      data1.data?.user?.email === testUser.email,
+      'Protected route exposes expected user id, full_name, and email from database',
       `Expected: ${volunteerId}, Received: ${data1.data?.user?.id}`
     );
 

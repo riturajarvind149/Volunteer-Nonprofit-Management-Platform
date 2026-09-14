@@ -59,11 +59,13 @@ const login = async (req, res, next) => {
  */
 const getMe = async (req, res, next) => {
   try {
+    const user = await authService.getUserProfile(req.user.id);
+
     res.status(200).json({
       status: 'success',
       message: 'Authenticated user profile retrieved',
       data: {
-        user: req.user,
+        user,
       },
     });
   } catch (error) {

@@ -1,22 +1,27 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { registerApi } from '../../services/api'
 import './Register.css'
 
 function Register() {
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    role: 'volunteer',
+    role: 'VOLUNTEER',
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   })
 
   const [errors, setErrors] = useState({})
+  const [serverError, setServerError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleRoleChange = (role) => {
     setFormData((prev) => ({ ...prev, role }))
     setErrors({})
+    setServerError('')
     setSuccessMessage('')
   }
 
@@ -26,25 +31,30 @@ function Register() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }))
     }
+    if (serverError) {
+      setServerError('')
+    }
   }
 
   const validate = () => {
     const newErrors = {}
 
     if (!formData.name.trim()) {
-      newErrors.name = formData.role === 'organization' ? 'Organization name is required' : 'Full name is required'
+      newErrors.name = formData.role === 'COORDINATOR' ? 'Coordinator name is required' : 'Full name is required'
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters'
     }
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email address is required'
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = 'Please enter a valid email address'
     }
 
     if (!formData.password) {
       newErrors.password = 'Password is required'
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
     }
 
     if (!formData.confirmPassword) {
@@ -56,15 +66,37 @@ function Register() {
     return newErrors
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setServerError('')
+    setSuccessMessage('')
+
     const validationErrors = validate()
     setErrors(validationErrors)
 
-    if (Object.keys(validationErrors).length === 0) {
-      setSuccessMessage('Registration form validated successfully!')
-    } else {
-      setSuccessMessage('')
+    if (Object.keys(validationErrors).length > 0) {
+      return
+    }
+
+    setLoading(true)
+    try {
+      await registerApi({
+        full_name: formData.name.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        role: formData.role,
+      })
+
+      setSuccessMessage('Registration successful! Redirecting to login...')
+      setTimeout(() => {
+        navigate('/login', {
+          state: { message: 'Registration successful! Please login with your credentials.' },
+        })
+      }, 1500)
+    } catch (err) {
+      setServerError(err.message || 'Registration failed. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -82,40 +114,38 @@ function Register() {
         <div className="role-selector">
           <button
             type="button"
-            className={`role-btn ${formData.role === 'volunteer' ? 'active' : ''}`}
-            onClick={() => handleRoleChange('volunteer')}
+            className={`role-btn ${formData.role === 'VOLUNTEER' ? 'active' : ''}`}
+            onClick={() => handleRoleChange('VOLUNTEER')}
           >
             Volunteer
           </button>
           <button
             type="button"
-            className={`role-btn ${formData.role === 'organization' ? 'active' : ''}`}
-            onClick={() => handleRoleChange('organization')}
+            className={`role-btn ${formData.role === 'COORDINATOR' ? 'active' : ''}`}
+            onClick={() => handleRoleChange('COORDINATOR')}
           >
-            Nonprofit Organization
+            NGO Coordinator
           </button>
         </div>
 
-        {successMessage && (
-          <div className="alert-success">
-            {successMessage}
-          </div>
-        )}
+        {serverError && <div className="alert-error">{serverError}</div>}
+        {successMessage && <div className="alert-success">{successMessage}</div>}
 
         <form className="register-form" onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label htmlFor="name">
-              {formData.role === 'organization' ? 'Organization Name' : 'Full Name'}
+              {formData.role === 'COORDINATOR' ? 'Coordinator / Contact Name' : 'Full Name'}
             </label>
             <input
               type="text"
               id="name"
               name="name"
-              placeholder={formData.role === 'organization' ? 'e.g. Green Earth Foundation' : 'e.g. Sarah Jenkins'}
+              placeholder={formData.role === 'COORDINATOR' ? 'e.g. Sarah Jenkins' : 'e.g. John Doe'}
               value={formData.name}
               onChange={handleChange}
               className={errors.name ? 'input-error' : ''}
               required
+              disabled={loading}
             />
             {errors.name && <span className="error-text">{errors.name}</span>}
           </div>
@@ -131,6 +161,7 @@ function Register() {
               onChange={handleChange}
               className={errors.email ? 'input-error' : ''}
               required
+              disabled={loading}
             />
             {errors.email && <span className="error-text">{errors.email}</span>}
           </div>
@@ -141,11 +172,12 @@ function Register() {
               type="password"
               id="password"
               name="password"
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters"
               value={formData.password}
               onChange={handleChange}
               className={errors.password ? 'input-error' : ''}
               required
+              disabled={loading}
             />
             {errors.password && <span className="error-text">{errors.password}</span>}
           </div>
@@ -161,12 +193,13 @@ function Register() {
               onChange={handleChange}
               className={errors.confirmPassword ? 'input-error' : ''}
               required
+              disabled={loading}
             />
             {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
           </div>
 
-          <button type="submit" className="btn btn-primary register-btn">
-            Create Account
+          <button type="submit" className="btn btn-primary register-btn" disabled={loading}>
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 

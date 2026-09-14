@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import './Navbar.css'
 
 function Navbar({ theme, onToggleTheme }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { isAuthenticated, logout } = useAuth()
+  const navigate = useNavigate()
 
   const toggleMenu = () => {
     setIsMenuOpen((prev) => !prev)
@@ -11,6 +14,12 @@ function Navbar({ theme, onToggleTheme }) {
 
   const closeMenu = () => {
     setIsMenuOpen(false)
+  }
+
+  const handleLogout = () => {
+    closeMenu()
+    logout()
+    navigate('/login')
   }
 
   return (
@@ -32,16 +41,34 @@ function Navbar({ theme, onToggleTheme }) {
                 Opportunities
               </Link>
             </li>
-            <li>
-              <Link to="/login" className="nav-link" onClick={closeMenu}>
-                Login
-              </Link>
-            </li>
-            <li>
-              <Link to="/register" className="nav-link nav-btn-primary" onClick={closeMenu}>
-                Register
-              </Link>
-            </li>
+
+            {!isAuthenticated ? (
+              <>
+                <li>
+                  <Link to="/login" className="nav-link" onClick={closeMenu}>
+                    Login
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/register" className="nav-link nav-btn-primary" onClick={closeMenu}>
+                    Register
+                  </Link>
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <Link to="/profile" className="nav-link nav-btn-primary" onClick={closeMenu}>
+                    Profile
+                  </Link>
+                </li>
+                <li>
+                  <button type="button" className="nav-btn-logout" onClick={handleLogout}>
+                    Logout
+                  </button>
+                </li>
+              </>
+            )}
           </ul>
         </nav>
 
@@ -74,4 +101,3 @@ function Navbar({ theme, onToggleTheme }) {
 }
 
 export default Navbar
-

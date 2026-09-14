@@ -1,24 +1,59 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { loginApi } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 import './Login.css'
 
 function Login() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { login } = useAuth()
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    rememberMe: false
+    rememberMe: false,
   })
+
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [infoMessage, setInfoMessage] = useState(location.state?.message || '')
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     }))
+    if (error) setError('')
+    if (infoMessage) setInfoMessage('')
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
+    setInfoMessage('')
+
+    if (!formData.email.trim() || !formData.password) {
+      setError('Please provide both email and password.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await loginApi({
+        email: formData.email.trim(),
+        password: formData.password,
+      })
+
+      const { token, user } = response.data
+      login(token, user)
+      navigate('/profile')
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check your credentials.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -32,6 +67,9 @@ function Login() {
           <p>Sign in to continue connecting with community causes.</p>
         </div>
 
+        {infoMessage && <div className="alert-success">{infoMessage}</div>}
+        {error && <div className="alert-error">{error}</div>}
+
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email Address</label>
@@ -43,6 +81,7 @@ function Login() {
               value={formData.email}
               onChange={handleChange}
               required
+              disabled={loading}
             />
           </div>
 
@@ -61,6 +100,7 @@ function Login() {
               value={formData.password}
               onChange={handleChange}
               required
+              disabled={loading}
             />
           </div>
 
@@ -71,13 +111,14 @@ function Login() {
                 name="rememberMe"
                 checked={formData.rememberMe}
                 onChange={handleChange}
+                disabled={loading}
               />
               <span>Remember me</span>
             </label>
           </div>
 
-          <button type="submit" className="btn btn-primary login-btn">
-            Login
+          <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
