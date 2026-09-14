@@ -11,12 +11,12 @@
 
 .section-header h2 {
   font-size: 2rem;
-  color: #0f172a;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .section-header p {
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 1.05rem;
 }
 
@@ -33,34 +33,34 @@
 }
 
 .btn-primary {
-  background-color: #2563eb;
+  background-color: var(--color-primary);
   color: #ffffff;
 }
 
 .btn-primary:hover {
-  background-color: #1d4ed8;
+  background-color: var(--color-primary-hover);
 }
 
 .btn-secondary {
-  background-color: #ffffff;
-  color: #1e293b;
-  border-color: #cbd5e1;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-color);
 }
 
 .btn-secondary:hover {
-  background-color: #f1f5f9;
+  background-color: var(--bg-secondary);
 }
 
 .btn-outline {
   width: 100%;
   background-color: transparent;
-  color: #2563eb;
-  border-color: #2563eb;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
   margin-top: 1.25rem;
 }
 
 .btn-outline:hover {
-  background-color: #2563eb;
+  background-color: var(--color-primary);
   color: #ffffff;
 }
 
@@ -71,10 +71,11 @@
 
 /* Hero */
 .hero {
-  background-color: #f8fafc;
+  background-color: var(--bg-secondary);
   padding: 5rem 0;
   text-align: center;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .hero-content {
@@ -84,7 +85,7 @@
 .hero-content h1 {
   font-size: 2.75rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   line-height: 1.2;
   letter-spacing: -0.02em;
   margin-bottom: 1.25rem;
@@ -92,7 +93,7 @@
 
 .hero-content p {
   font-size: 1.15rem;
-  color: #475569;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 2rem;
 }
@@ -108,12 +109,13 @@
 .about {
   padding: 4.5rem 0;
   text-align: center;
-  background-color: #ffffff;
+  background-color: var(--bg-primary);
+  transition: background-color 0.2s ease;
 }
 
 .about h2 {
   font-size: 2rem;
-  color: #0f172a;
+  color: var(--text-primary);
   margin-bottom: 1rem;
 }
 
@@ -122,15 +124,16 @@
   margin: 0 auto;
   font-size: 1.1rem;
   line-height: 1.7;
-  color: #475569;
+  color: var(--text-secondary);
 }
 
 /* Featured Opportunities */
 .featured {
   padding: 4.5rem 0;
-  background-color: #f8fafc;
-  border-top: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .card-grid {
@@ -140,18 +143,19 @@
 }
 
 .opportunity-card {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .opportunity-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
@@ -165,25 +169,25 @@
   font-size: 0.8rem;
   font-weight: 600;
   color: #16a34a;
-  background-color: #f0fdf4;
+  background-color: rgba(34, 197, 94, 0.12);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
 }
 
 .card-org {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
 .opportunity-card h3 {
   font-size: 1.2rem;
-  color: #0f172a;
+  color: var(--text-primary);
   margin-bottom: 1rem;
 }
 
 .card-details {
   font-size: 0.9rem;
-  color: #475569;
+  color: var(--text-secondary);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -193,7 +197,8 @@
 /* How It Works */
 .how-it-works {
   padding: 4.5rem 0;
-  background-color: #ffffff;
+  background-color: var(--bg-primary);
+  transition: background-color 0.2s ease;
 }
 
 .steps-grid {
@@ -214,8 +219,8 @@
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  background-color: #eff6ff;
-  color: #2563eb;
+  background-color: rgba(37, 99, 235, 0.12);
+  color: var(--color-primary);
   font-weight: 700;
   font-size: 1.25rem;
   margin-bottom: 1rem;
@@ -223,12 +228,12 @@
 
 .step-card h3 {
   font-size: 1.2rem;
-  color: #0f172a;
+  color: var(--text-primary);
   margin-bottom: 0.75rem;
 }
 
 .step-card p {
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 0.95rem;
   line-height: 1.6;
 }
@@ -243,6 +248,7 @@
 
 .cta-banner h2 {
   font-size: 2.2rem;
+  color: #ffffff;
   margin-bottom: 0.75rem;
 }
 
@@ -268,3 +274,4 @@
     font-size: 1.6rem;
   }
 }
+
