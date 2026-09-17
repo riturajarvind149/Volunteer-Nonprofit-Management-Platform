@@ -34,18 +34,17 @@ function Login() {
     setError('')
     setInfoMessage('')
 
-    if (!formData.email.trim() || !formData.password) {
+    const email = formData.email.trim()
+    const { password } = formData
+
+    if (!email || !password) {
       setError('Please provide both email and password.')
       return
     }
 
     setLoading(true)
     try {
-      const response = await loginApi({
-        email: formData.email.trim(),
-        password: formData.password,
-      })
-
+      const response = await loginApi({ email, password })
       const { token, user } = response.data
       login(token, user)
       navigate('/profile')

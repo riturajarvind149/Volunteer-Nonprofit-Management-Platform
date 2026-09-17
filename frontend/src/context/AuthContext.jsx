@@ -10,16 +10,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize and verify user session on mount or token change
+  // Initialize and verify user session on mount
   useEffect(() => {
     let isMounted = true;
 
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
       if (!storedToken) {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
         return;
       }
 
@@ -27,9 +25,8 @@ export function AuthProvider({ children }) {
         const response = await getMeApi(storedToken);
         if (isMounted && response?.data?.user) {
           setUser(response.data.user);
-          setToken(storedToken);
         }
-      } catch (err) {
+      } catch {
         // Token is invalid or expired; gracefully clean up
         localStorage.removeItem(TOKEN_STORAGE_KEY);
         if (isMounted) {
@@ -37,9 +34,7 @@ export function AuthProvider({ children }) {
           setUser(null);
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 

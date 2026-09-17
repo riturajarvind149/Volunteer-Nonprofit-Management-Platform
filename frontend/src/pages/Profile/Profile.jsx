@@ -26,14 +26,11 @@ function Profile() {
     navigate('/login')
   }
 
-  // Format role for display: VOLUNTEER -> Volunteer, COORDINATOR -> NGO Coordinator
-  const displayRole = user.role === 'COORDINATOR' ? 'NGO Coordinator' : 'Volunteer'
-  const roleClass = user.role === 'COORDINATOR' ? 'coordinator' : 'volunteer'
+  const isCoordinator = user.role === 'COORDINATOR'
+  const displayRole = isCoordinator ? 'NGO Coordinator' : 'Volunteer'
+  const roleClass = isCoordinator ? 'coordinator' : 'volunteer'
+  const initial = (user.full_name?.[0] || 'U').toUpperCase()
 
-  // Get initial for avatar badge
-  const initial = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'
-
-  // Format date if available
   const formattedDate = user.created_at
     ? new Date(user.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -41,6 +38,25 @@ function Profile() {
         day: 'numeric',
       })
     : 'Active Member'
+
+  const details = [
+    { label: 'Full Name', value: user.full_name },
+    { label: 'Email Address', value: user.email },
+    {
+      label: 'Platform Role',
+      value: <span className={`role-badge ${roleClass}`}>{displayRole}</span>,
+    },
+    {
+      label: 'Account Status',
+      value: (
+        <span className="status-badge">
+          <span className="status-dot" />
+          Active
+        </span>
+      ),
+    },
+    { label: 'Member Since', value: formattedDate },
+  ]
 
   return (
     <div className="profile-page">
@@ -52,37 +68,12 @@ function Profile() {
         </div>
 
         <div className="profile-details">
-          <div className="profile-row">
-            <span className="profile-row-label">Full Name</span>
-            <span className="profile-row-value">{user.full_name}</span>
-          </div>
-
-          <div className="profile-row">
-            <span className="profile-row-label">Email Address</span>
-            <span className="profile-row-value">{user.email}</span>
-          </div>
-
-          <div className="profile-row">
-            <span className="profile-row-label">Platform Role</span>
-            <span className="profile-row-value">
-              <span className={`role-badge ${roleClass}`}>{displayRole}</span>
-            </span>
-          </div>
-
-          <div className="profile-row">
-            <span className="profile-row-label">Account Status</span>
-            <span className="profile-row-value">
-              <span className="status-badge">
-                <span className="status-dot" />
-                Active
-              </span>
-            </span>
-          </div>
-
-          <div className="profile-row">
-            <span className="profile-row-label">Member Since</span>
-            <span className="profile-row-value">{formattedDate}</span>
-          </div>
+          {details.map(({ label, value }) => (
+            <div key={label} className="profile-row">
+              <span className="profile-row-label">{label}</span>
+              <span className="profile-row-value">{value}</span>
+            </div>
+          ))}
         </div>
 
         <div className="profile-actions">

@@ -13,41 +13,26 @@ const handleResponse = async (response) => {
   return data;
 };
 
-/**
- * Register a new user (VOLUNTEER or COORDINATOR)
- */
-export const registerApi = async ({ full_name, email, password, role }) => {
-  const response = await fetch(`${API_BASE_URL}/auth/register`, {
+const postJson = async (endpoint, payload) => {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      full_name,
-      email,
-      password,
-      role,
-    }),
+    body: JSON.stringify(payload),
   });
   return handleResponse(response);
 };
 
 /**
+ * Register a new user (VOLUNTEER or COORDINATOR)
+ */
+export const registerApi = (payload) => postJson('/auth/register', payload);
+
+/**
  * Login user and receive JWT + profile
  */
-export const loginApi = async ({ email, password }) => {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      email,
-      password,
-    }),
-  });
-  return handleResponse(response);
-};
+export const loginApi = (payload) => postJson('/auth/login', payload);
 
 /**
  * Retrieve authenticated user profile using JWT Bearer token
@@ -61,10 +46,4 @@ export const getMeApi = async (token) => {
     },
   });
   return handleResponse(response);
-};
-
-export default {
-  registerApi,
-  loginApi,
-  getMeApi,
 };
