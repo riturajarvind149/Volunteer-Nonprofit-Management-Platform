@@ -99,7 +99,6 @@
   margin-bottom: 1.25rem;
 }
 
-
 .register-form {
   display: flex;
   flex-direction: column;
@@ -167,7 +166,6 @@
   opacity: 0.7;
   cursor: not-allowed;
 }
-
 
 .register-footer {
   margin-top: 2rem;

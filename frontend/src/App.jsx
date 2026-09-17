@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import Home from './pages/Home/Home'
 import Opportunities from './pages/Opportunities/Opportunities'
 import Login from './pages/Login/Login'
 import Register from './pages/Register/Register'
+import Profile from './pages/Profile/Profile'
 import './App.css'
 
 function App() {
@@ -23,19 +25,20 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <Navbar theme={theme} onToggleTheme={toggleTheme} />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/opportunities" element={<Opportunities />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-      </Routes>
-      <Footer />
-    </div>
+    <AuthProvider>
+      <div className="app">
+        <Navbar theme={theme} onToggleTheme={toggleTheme} />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/opportunities" element={<Opportunities />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/profile" element={<Profile />} />
+        </Routes>
+        <Footer />
+      </div>
+    </AuthProvider>
   )
 }
 
 export default App
-
-

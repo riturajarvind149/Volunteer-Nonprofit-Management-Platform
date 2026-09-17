@@ -91,8 +91,21 @@ const loginUser = async ({ email, password }) => {
   };
 };
 
+/**
+ * Service to retrieve authenticated user profile by ID
+ */
+const getUserProfile = async (id) => {
+  const user = await userRepository.findById(id);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+  return user;
+};
+
 module.exports = {
   registerUser,
   loginUser,
   generateToken,
+  getUserProfile,
 };
+
