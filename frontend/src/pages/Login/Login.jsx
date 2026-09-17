@@ -80,8 +80,8 @@ function Login() {
               placeholder="you@example.com"
               value={formData.email}
               onChange={handleChange}
-              required
               disabled={loading}
+              required
             />
           </div>
 
@@ -99,8 +99,8 @@ function Login() {
               placeholder="••••••••"
               value={formData.password}
               onChange={handleChange}
-              required
               disabled={loading}
+              required
             />
           </div>
 

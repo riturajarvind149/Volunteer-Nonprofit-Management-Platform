@@ -31,16 +31,15 @@ function Register() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }))
     }
-    if (serverError) {
-      setServerError('')
-    }
+    if (serverError) setServerError('')
   }
 
   const validate = () => {
     const newErrors = {}
 
     if (!formData.name.trim()) {
-      newErrors.name = formData.role === 'COORDINATOR' ? 'Coordinator name is required' : 'Full name is required'
+      newErrors.name =
+        formData.role === 'COORDINATOR' ? 'Coordinator name is required' : 'Full name is required'
     } else if (formData.name.trim().length < 2) {
       newErrors.name = 'Name must be at least 2 characters'
     }
@@ -116,6 +115,7 @@ function Register() {
             type="button"
             className={`role-btn ${formData.role === 'VOLUNTEER' ? 'active' : ''}`}
             onClick={() => handleRoleChange('VOLUNTEER')}
+            disabled={loading}
           >
             Volunteer
           </button>
@@ -123,6 +123,7 @@ function Register() {
             type="button"
             className={`role-btn ${formData.role === 'COORDINATOR' ? 'active' : ''}`}
             onClick={() => handleRoleChange('COORDINATOR')}
+            disabled={loading}
           >
             NGO Coordinator
           </button>
@@ -144,8 +145,8 @@ function Register() {
               value={formData.name}
               onChange={handleChange}
               className={errors.name ? 'input-error' : ''}
-              required
               disabled={loading}
+              required
             />
             {errors.name && <span className="error-text">{errors.name}</span>}
           </div>
@@ -160,8 +161,8 @@ function Register() {
               value={formData.email}
               onChange={handleChange}
               className={errors.email ? 'input-error' : ''}
-              required
               disabled={loading}
+              required
             />
             {errors.email && <span className="error-text">{errors.email}</span>}
           </div>
@@ -176,8 +177,8 @@ function Register() {
               value={formData.password}
               onChange={handleChange}
               className={errors.password ? 'input-error' : ''}
-              required
               disabled={loading}
+              required
             />
             {errors.password && <span className="error-text">{errors.password}</span>}
           </div>
@@ -192,8 +193,8 @@ function Register() {
               value={formData.confirmPassword}
               onChange={handleChange}
               className={errors.confirmPassword ? 'input-error' : ''}
-              required
               disabled={loading}
+              required
             />
             {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
           </div>
