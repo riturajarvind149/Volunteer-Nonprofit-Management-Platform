@@ -1,66 +1,56 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { loginApi } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 import './Login.css'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { login } = useAuth()
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    rememberMe: false
+    rememberMe: false,
   })
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [infoMessage, setInfoMessage] = useState(location.state?.message || '')
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     }))
     if (error) setError('')
+    if (infoMessage) setInfoMessage('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    setSuccess('')
-    setLoading(true)
+    setInfoMessage('')
 
+    if (!formData.email.trim() || !formData.password) {
+      setError('Please provide both email and password.')
+      return
+    }
+
+    setLoading(true)
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password
-        })
+      const response = await loginApi({
+        email: formData.email.trim(),
+        password: formData.password,
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed')
-      }
-
-      if (data.data?.token) {
-        localStorage.setItem('token', data.data.token)
-      }
-      if (data.data?.user) {
-        localStorage.setItem('user', JSON.stringify(data.data.user))
-      }
-
-      setSuccess('Login successful! Redirecting...')
-      setTimeout(() => {
-        navigate('/opportunities')
-      }, 1000)
+      const { token, user } = response.data
+      login(token, user)
+      navigate('/profile')
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.')
+      setError(err.message || 'Login failed. Please check your credentials.')
     } finally {
       setLoading(false)
     }
@@ -77,8 +67,8 @@ function Login() {
           <p>Sign in to continue connecting with community causes.</p>
         </div>
 
+        {infoMessage && <div className="alert-success">{infoMessage}</div>}
         {error && <div className="alert-error">{error}</div>}
-        {success && <div className="alert-success">{success}</div>}
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">

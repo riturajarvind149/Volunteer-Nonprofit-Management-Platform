@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { registerApi } from '../../services/api'
 import './Register.css'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 function Register() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    role: 'volunteer',
+    role: 'VOLUNTEER',
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   })
 
   const [errors, setErrors] = useState({})
@@ -39,21 +38,22 @@ function Register() {
     const newErrors = {}
 
     if (!formData.name.trim()) {
-      newErrors.name = formData.role === 'organization' ? 'Organization name is required' : 'Full name is required'
+      newErrors.name =
+        formData.role === 'COORDINATOR' ? 'Coordinator name is required' : 'Full name is required'
     } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters long'
+      newErrors.name = 'Name must be at least 2 characters'
     }
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email address is required'
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = 'Please enter a valid email address'
     }
 
     if (!formData.password) {
       newErrors.password = 'Password is required'
     } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters long'
+      newErrors.password = 'Password must be at least 8 characters'
     }
 
     if (!formData.confirmPassword) {
@@ -78,35 +78,22 @@ function Register() {
     }
 
     setLoading(true)
-
     try {
-      const backendRole = formData.role === 'organization' ? 'COORDINATOR' : 'VOLUNTEER'
-
-      const response = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          full_name: formData.name.trim(),
-          email: formData.email.trim(),
-          password: formData.password,
-          role: backendRole
-        })
+      await registerApi({
+        full_name: formData.name.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        role: formData.role,
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed')
-      }
 
       setSuccessMessage('Registration successful! Redirecting to login...')
       setTimeout(() => {
-        navigate('/login')
+        navigate('/login', {
+          state: { message: 'Registration successful! Please login with your credentials.' },
+        })
       }, 1500)
     } catch (err) {
-      setServerError(err.message || 'Something went wrong. Please try again.')
+      setServerError(err.message || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -126,19 +113,19 @@ function Register() {
         <div className="role-selector">
           <button
             type="button"
-            className={`role-btn ${formData.role === 'volunteer' ? 'active' : ''}`}
-            onClick={() => handleRoleChange('volunteer')}
+            className={`role-btn ${formData.role === 'VOLUNTEER' ? 'active' : ''}`}
+            onClick={() => handleRoleChange('VOLUNTEER')}
             disabled={loading}
           >
             Volunteer
           </button>
           <button
             type="button"
-            className={`role-btn ${formData.role === 'organization' ? 'active' : ''}`}
-            onClick={() => handleRoleChange('organization')}
+            className={`role-btn ${formData.role === 'COORDINATOR' ? 'active' : ''}`}
+            onClick={() => handleRoleChange('COORDINATOR')}
             disabled={loading}
           >
-            Nonprofit Organization
+            NGO Coordinator
           </button>
         </div>
 
@@ -148,13 +135,13 @@ function Register() {
         <form className="register-form" onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label htmlFor="name">
-              {formData.role === 'organization' ? 'Organization Name' : 'Full Name'}
+              {formData.role === 'COORDINATOR' ? 'Coordinator / Contact Name' : 'Full Name'}
             </label>
             <input
               type="text"
               id="name"
               name="name"
-              placeholder={formData.role === 'organization' ? 'e.g. Green Earth Foundation' : 'e.g. Sarah Jenkins'}
+              placeholder={formData.role === 'COORDINATOR' ? 'e.g. Sarah Jenkins' : 'e.g. John Doe'}
               value={formData.name}
               onChange={handleChange}
               className={errors.name ? 'input-error' : ''}
