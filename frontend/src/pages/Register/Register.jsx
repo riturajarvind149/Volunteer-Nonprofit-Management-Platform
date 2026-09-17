@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { registerApi } from '../../services/api'
 import './Register.css'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 function Register() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    role: 'volunteer',
+    role: 'VOLUNTEER',
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   })
 
   const [errors, setErrors] = useState({})
@@ -35,25 +34,29 @@ function Register() {
     if (serverError) setServerError('')
   }
 
+  const isCoordinator = formData.role === 'COORDINATOR'
+
   const validate = () => {
     const newErrors = {}
+    const trimmedName = formData.name.trim()
+    const trimmedEmail = formData.email.trim()
 
-    if (!formData.name.trim()) {
-      newErrors.name = formData.role === 'organization' ? 'Organization name is required' : 'Full name is required'
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters long'
+    if (!trimmedName) {
+      newErrors.name = isCoordinator ? 'Coordinator name is required' : 'Full name is required'
+    } else if (trimmedName.length < 2) {
+      newErrors.name = 'Name must be at least 2 characters'
     }
 
-    if (!formData.email.trim()) {
+    if (!trimmedEmail) {
       newErrors.email = 'Email address is required'
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       newErrors.email = 'Please enter a valid email address'
     }
 
     if (!formData.password) {
       newErrors.password = 'Password is required'
     } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters long'
+      newErrors.password = 'Password must be at least 8 characters'
     }
 
     if (!formData.confirmPassword) {
@@ -78,39 +81,53 @@ function Register() {
     }
 
     setLoading(true)
-
     try {
-      const backendRole = formData.role === 'organization' ? 'COORDINATOR' : 'VOLUNTEER'
-
-      const response = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          full_name: formData.name.trim(),
-          email: formData.email.trim(),
-          password: formData.password,
-          role: backendRole
-        })
+      await registerApi({
+        full_name: formData.name.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        role: formData.role,
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed')
-      }
 
       setSuccessMessage('Registration successful! Redirecting to login...')
       setTimeout(() => {
-        navigate('/login')
+        navigate('/login', {
+          state: { message: 'Registration successful! Please login with your credentials.' },
+        })
       }, 1500)
     } catch (err) {
-      setServerError(err.message || 'Something went wrong. Please try again.')
+      setServerError(err.message || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }
   }
+
+  const fields = [
+    {
+      id: 'name',
+      label: isCoordinator ? 'Coordinator / Contact Name' : 'Full Name',
+      type: 'text',
+      placeholder: isCoordinator ? 'e.g. Sarah Jenkins' : 'e.g. John Doe',
+    },
+    {
+      id: 'email',
+      label: 'Email Address',
+      type: 'email',
+      placeholder: 'you@example.com',
+    },
+    {
+      id: 'password',
+      label: 'Password',
+      type: 'password',
+      placeholder: 'At least 8 characters',
+    },
+    {
+      id: 'confirmPassword',
+      label: 'Confirm Password',
+      type: 'password',
+      placeholder: 'Repeat your password',
+    },
+  ]
 
   return (
     <div className="register-page">
@@ -126,19 +143,19 @@ function Register() {
         <div className="role-selector">
           <button
             type="button"
-            className={`role-btn ${formData.role === 'volunteer' ? 'active' : ''}`}
-            onClick={() => handleRoleChange('volunteer')}
+            className={`role-btn ${!isCoordinator ? 'active' : ''}`}
+            onClick={() => handleRoleChange('VOLUNTEER')}
             disabled={loading}
           >
             Volunteer
           </button>
           <button
             type="button"
-            className={`role-btn ${formData.role === 'organization' ? 'active' : ''}`}
-            onClick={() => handleRoleChange('organization')}
+            className={`role-btn ${isCoordinator ? 'active' : ''}`}
+            onClick={() => handleRoleChange('COORDINATOR')}
             disabled={loading}
           >
-            Nonprofit Organization
+            NGO Coordinator
           </button>
         </div>
 
@@ -146,71 +163,23 @@ function Register() {
         {successMessage && <div className="alert-success">{successMessage}</div>}
 
         <form className="register-form" onSubmit={handleSubmit} noValidate>
-          <div className="form-group">
-            <label htmlFor="name">
-              {formData.role === 'organization' ? 'Organization Name' : 'Full Name'}
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              placeholder={formData.role === 'organization' ? 'e.g. Green Earth Foundation' : 'e.g. Sarah Jenkins'}
-              value={formData.name}
-              onChange={handleChange}
-              className={errors.name ? 'input-error' : ''}
-              disabled={loading}
-              required
-            />
-            {errors.name && <span className="error-text">{errors.name}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              placeholder="you@example.com"
-              value={formData.email}
-              onChange={handleChange}
-              className={errors.email ? 'input-error' : ''}
-              disabled={loading}
-              required
-            />
-            {errors.email && <span className="error-text">{errors.email}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              placeholder="At least 8 characters"
-              value={formData.password}
-              onChange={handleChange}
-              className={errors.password ? 'input-error' : ''}
-              disabled={loading}
-              required
-            />
-            {errors.password && <span className="error-text">{errors.password}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              placeholder="Repeat your password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className={errors.confirmPassword ? 'input-error' : ''}
-              disabled={loading}
-              required
-            />
-            {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-          </div>
+          {fields.map(({ id, label, type, placeholder }) => (
+            <div key={id} className="form-group">
+              <label htmlFor={id}>{label}</label>
+              <input
+                type={type}
+                id={id}
+                name={id}
+                placeholder={placeholder}
+                value={formData[id]}
+                onChange={handleChange}
+                className={errors[id] ? 'input-error' : ''}
+                disabled={loading}
+                required
+              />
+              {errors[id] && <span className="error-text">{errors[id]}</span>}
+            </div>
+          ))}
 
           <button type="submit" className="btn btn-primary register-btn" disabled={loading}>
             {loading ? 'Creating Account...' : 'Create Account'}
