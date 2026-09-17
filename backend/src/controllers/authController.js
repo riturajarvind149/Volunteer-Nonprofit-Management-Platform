@@ -73,8 +73,46 @@ const getMe = async (req, res, next) => {
   }
 };
 
+/**
+ * Demonstration controller for coordinator-only access
+ * GET /api/auth/coordinator-test
+ */
+const coordinatorTest = async (req, res, next) => {
+  try {
+    res.status(200).json({
+      status: 'success',
+      message: 'Coordinator authorization successful',
+      data: {
+        user: req.user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Demonstration controller for volunteer-only access
+ * GET /api/auth/volunteer-test
+ */
+const volunteerTest = async (req, res, next) => {
+  try {
+    res.status(200).json({
+      status: 'success',
+      message: 'Volunteer authorization successful',
+      data: {
+        user: req.user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   getMe,
+  coordinatorTest,
+  volunteerTest,
 };
