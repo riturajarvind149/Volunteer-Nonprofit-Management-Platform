@@ -5,12 +5,13 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node test_registration.js && node test_login.js && node test_auth_middleware.js && node test_auth_rbac.js && node test_organization.js",
+    "test": "node test_registration.js && node test_login.js && node test_auth_middleware.js && node test_auth_rbac.js && node test_organization.js && node test_opportunity.js",
     "test:register": "node test_registration.js",
     "test:login": "node test_login.js",
     "test:middleware": "node test_auth_middleware.js",
     "test:rbac": "node test_auth_rbac.js",
-    "test:org": "node test_organization.js"
+    "test:org": "node test_organization.js",
+    "test:opportunity": "node test_opportunity.js"
   },
   "keywords": [],
   "author": "",
