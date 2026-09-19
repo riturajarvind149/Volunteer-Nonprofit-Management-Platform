@@ -4,6 +4,7 @@ const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
 const organizationRoutes = require('./routes/organizationRoutes');
 const opportunityRoutes = require('./routes/opportunityRoutes');
+const signupRoutes = require('./routes/signupRoutes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -24,6 +25,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/opportunities', opportunityRoutes);
+app.use('/api/signups', signupRoutes);
 
 // Fallback & Centralized error handling
 app.use(notFoundHandler);

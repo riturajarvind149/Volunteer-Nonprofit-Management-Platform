@@ -1,11 +1,15 @@
 const express = require('express');
 const opportunityController = require('../controllers/opportunityController');
+const signupController = require('../controllers/signupController');
 const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
 const {
   validateCreateOpportunity,
   validateOpportunityId,
 } = require('../middleware/validateOpportunity');
+const {
+  validateSignupOpportunityId,
+} = require('../middleware/validateSignup');
 
 const router = express.Router();
 
@@ -44,6 +48,19 @@ router.get(
   authenticate,
   validateOpportunityId,
   opportunityController.getById
+);
+
+/**
+ * @route   POST /api/opportunities/:opportunityId/signup
+ * @desc    Sign up for an opportunity (Volunteer only)
+ * @access  Protected (VOLUNTEER)
+ */
+router.post(
+  '/:opportunityId/signup',
+  authenticate,
+  authorizeRoles('VOLUNTEER'),
+  validateSignupOpportunityId,
+  signupController.createSignup
 );
 
 module.exports = router;
