@@ -720,6 +720,208 @@ const runTests = async () => {
       'Test 34: Already cancelled signup cannot be cancelled again (400 Bad Request)'
     );
 
+    // ================================================================
+    // Group 9: Coordinator Attendee Management (GET /api/opportunities/:id/signups)
+    // ================================================================
+    console.log(`\n${colors.bold}Group 9: Coordinator Attendee Management${colors.reset}`);
+
+    // Setup: Create a second coordinator and their organization/opportunity
+    const coordinator2 = {
+      full_name: 'Second Coordinator',
+      email: `coord2.signup.${timestamp}@test.org`,
+      password: 'Password123!',
+      role: 'COORDINATOR',
+    };
+    await registerUser(coordinator2);
+    testEmails.push(coordinator2.email);
+
+    const coord2Login = await loginUser(coordinator2.email, coordinator2.password);
+    const tokenCoord2 = coord2Login.data.token;
+
+    const org2Res = await fetch(`${baseUrl}/api/organizations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenCoord2}`,
+      },
+      body: JSON.stringify({
+        name: `Org of Coord 2 ${timestamp}`,
+        description: 'Second organization for isolation tests',
+      }),
+    });
+    const org2Data = await org2Res.json();
+    const org2Id = org2Data.data.organization.id;
+
+    const opp2Res = await fetch(`${baseUrl}/api/opportunities`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenCoord2}`,
+      },
+      body: JSON.stringify({
+        organization_id: org2Id,
+        title: 'Coord 2 Private Opportunity',
+        event_date: '2026-11-15',
+        start_time: '10:00:00',
+        end_time: '14:00:00',
+        location: 'Downtown Center',
+        capacity: 10,
+        status: 'PUBLISHED',
+      }),
+    });
+    const opp2Data = await opp2Res.json();
+    const coord2OppId = opp2Data.data.opportunity.id;
+
+    // Create a dedicated opportunity for Coordinator 1 with 2 volunteer signups
+    const attendeeOppId = await createOpp('Food Drive Gala', 'PUBLISHED', 20);
+    const emptyOppId = await createOpp('Zero Signups Workshop', 'PUBLISHED', 15);
+
+    // Volunteer 1 and Volunteer 2 sign up for attendeeOppId
+    await fetch(`${baseUrl}/api/opportunities/${attendeeOppId}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol1}`,
+      },
+    });
+    await fetch(`${baseUrl}/api/opportunities/${attendeeOppId}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol2}`,
+      },
+    });
+
+    // Test 35: Missing JWT returns 401 Unauthorized
+    const unauthAttendeesRes = await fetch(`${baseUrl}/api/opportunities/${attendeeOppId}/signups`);
+    assert(
+      unauthAttendeesRes.status === 401,
+      'Test 35: Missing JWT returns 401 Unauthorized'
+    );
+
+    // Test 36: Invalid JWT returns 401 Unauthorized
+    const invalidJwtRes = await fetch(`${baseUrl}/api/opportunities/${attendeeOppId}/signups`, {
+      headers: { Authorization: 'Bearer this.is.invalid.jwt' },
+    });
+    assert(
+      invalidJwtRes.status === 401,
+      'Test 36: Invalid JWT returns 401 Unauthorized'
+    );
+
+    // Test 37: Volunteer role attempting access returns 403 Forbidden
+    const volAttemptRes = await fetch(`${baseUrl}/api/opportunities/${attendeeOppId}/signups`, {
+      headers: { Authorization: `Bearer ${tokenVol1}` },
+    });
+    assert(
+      volAttemptRes.status === 403,
+      'Test 37: Volunteer accessing attendee endpoint returns 403 Forbidden (RBAC enforced)'
+    );
+
+    // Test 38: Invalid opportunity UUID returns 400 Bad Request
+    const invalidUuidAttendeeRes = await fetch(`${baseUrl}/api/opportunities/invalid-uuid/signups`, {
+      headers: { Authorization: `Bearer ${tokenCoord}` },
+    });
+    assert(
+      invalidUuidAttendeeRes.status === 400,
+      'Test 38: Invalid opportunity UUID returns 400 Bad Request'
+    );
+
+    // Test 39: Non-existent opportunity UUID returns 404 Not Found
+    const nonExistentOppRes = await fetch(`${baseUrl}/api/opportunities/${nonExistentOppId}/signups`, {
+      headers: { Authorization: `Bearer ${tokenCoord}` },
+    });
+    assert(
+      nonExistentOppRes.status === 404,
+      'Test 39: Non-existent opportunity returns 404 Not Found'
+    );
+
+    // Test 40: Coordinator can access their own opportunity attendees (200 OK)
+    const ownAttendeesRes = await fetch(`${baseUrl}/api/opportunities/${attendeeOppId}/signups`, {
+      headers: { Authorization: `Bearer ${tokenCoord}` },
+    });
+    const ownAttendeesData = await ownAttendeesRes.json();
+    assert(
+      ownAttendeesRes.status === 200 &&
+        ownAttendeesData.status === 'success' &&
+        Array.isArray(ownAttendeesData.data?.signups),
+      'Test 40: Coordinator retrieves own opportunity attendees with status 200 OK'
+    );
+
+    // Test 41: Correct attendee count returned
+    const attendeesList = ownAttendeesData.data?.signups || [];
+    assert(
+      attendeesList.length === 2,
+      'Test 41: Correct attendee count (2) returned'
+    );
+
+    // Test 42: Correct volunteer name returned
+    const firstAttendee = attendeesList[0];
+    assert(
+      firstAttendee.volunteer_name === volunteer1.full_name,
+      `Test 42: Correct volunteer name returned (${firstAttendee.volunteer_name})`
+    );
+
+    // Test 43: Correct volunteer email returned
+    assert(
+      firstAttendee.volunteer_email === volunteer1.email,
+      `Test 43: Correct volunteer email returned (${firstAttendee.volunteer_email})`
+    );
+
+    // Test 44: Correct signup status returned
+    assert(
+      firstAttendee.signup_status === 'REGISTERED' || firstAttendee.status === 'REGISTERED',
+      'Test 44: Correct signup status (REGISTERED) returned'
+    );
+
+    // Test 45: Password hash or credentials are not exposed
+    assert(
+      firstAttendee.password_hash === undefined &&
+        firstAttendee.password === undefined,
+      'Test 45: Sensitive credentials (password_hash) are NOT exposed in response'
+    );
+
+    // Test 46: Coordinator cannot access another coordinator's opportunity attendees (Ownership Isolation)
+    const crossCoordRes = await fetch(`${baseUrl}/api/opportunities/${coord2OppId}/signups`, {
+      headers: { Authorization: `Bearer ${tokenCoord}` },
+    });
+    assert(
+      crossCoordRes.status === 403,
+      'Test 46: Coordinator cannot access another coordinator opportunity attendees (403 Forbidden)'
+    );
+
+    // Test 47: Coordinator 2 can access their own opportunity attendees
+    const coord2OwnRes = await fetch(`${baseUrl}/api/opportunities/${coord2OppId}/signups`, {
+      headers: { Authorization: `Bearer ${tokenCoord2}` },
+    });
+    assert(
+      coord2OwnRes.status === 200,
+      'Test 47: Coordinator 2 can access their own opportunity attendees (200 OK)'
+    );
+
+    // Test 48: Opportunity with zero signups returns empty array []
+    const emptyAttendeesRes = await fetch(`${baseUrl}/api/opportunities/${emptyOppId}/signups`, {
+      headers: { Authorization: `Bearer ${tokenCoord}` },
+    });
+    const emptyAttendeesData = await emptyAttendeesRes.json();
+    assert(
+      emptyAttendeesRes.status === 200 &&
+        Array.isArray(emptyAttendeesData.data?.signups) &&
+        emptyAttendeesData.data.signups.length === 0,
+      'Test 48: Opportunity with zero attendees correctly returns empty array []'
+    );
+
+    // Test 49: Request with spoofed query coordinator_id has no effect
+    const spoofQueryRes = await fetch(
+      `${baseUrl}/api/opportunities/${coord2OppId}/signups?coordinator_id=${coord2Login.data.user.id}`,
+      {
+        headers: { Authorization: `Bearer ${tokenCoord}` },
+      }
+    );
+    assert(
+      spoofQueryRes.status === 403,
+      'Test 49: Spoofed query coordinator_id rejected; identity derived strictly from req.user.id'
+    );
+
   } catch (error) {
     console.error('Unexpected test error:', error);
     failed++;
@@ -732,7 +934,7 @@ const runTests = async () => {
   }
 
   console.log(`\n=============================================================`);
-  console.log(`  DAY 17 & 18 RESULTS: ${passed} PASSED | ${failed} FAILED`);
+  console.log(`  DAY 17, 18 & 19 RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log(`=============================================================\n`);
 
   if (failed > 0) {

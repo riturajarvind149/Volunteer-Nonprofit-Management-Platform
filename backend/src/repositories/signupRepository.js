@@ -161,9 +161,45 @@ const updateStatus = async (id, status) => {
   return rows[0] || null;
 };
 
+/**
+ * Retrieve all attendee signups for an opportunity, joining users, opportunities, and organizations
+ * @param {string} opportunityId - Opportunity UUID
+ * @returns {Promise<Array>} List of attendees with volunteer and opportunity details
+ */
+const findAttendeesByOpportunityId = async (opportunityId) => {
+  const query = `
+    SELECT 
+      s.id,
+      s.id AS signup_id,
+      s.volunteer_id,
+      u.full_name AS volunteer_name,
+      u.full_name AS volunteer_full_name,
+      u.email AS volunteer_email,
+      s.status,
+      s.status AS signup_status,
+      s.created_at,
+      s.created_at AS signup_created_at,
+      s.updated_at,
+      s.updated_at AS signup_updated_at,
+      o.id AS opportunity_id,
+      o.title AS opportunity_title,
+      org.id AS organization_id,
+      org.name AS organization_name
+    FROM signups s
+    JOIN users u ON s.volunteer_id = u.id
+    JOIN opportunities o ON s.opportunity_id = o.id
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE s.opportunity_id = $1
+    ORDER BY s.created_at ASC
+  `;
+  const { rows } = await pool.query(query, [opportunityId]);
+  return rows;
+};
+
 module.exports = {
   createSignupTransaction,
   findByVolunteerId,
   findById,
   updateStatus,
+  findAttendeesByOpportunityId,
 };

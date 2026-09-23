@@ -94,9 +94,38 @@ const cancelSignup = async (req, res, next) => {
   }
 };
 
+/**
+ * Retrieve attendees for an opportunity (Coordinator owner only)
+ * GET /api/opportunities/:id/signups
+ */
+const getOpportunityAttendees = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const coordinatorId = req.user.id;
+
+    const result = await signupService.getOpportunityAttendees(id, coordinatorId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Opportunity attendees retrieved successfully',
+      data: {
+        opportunity: {
+          id: result.opportunity.id,
+          title: result.opportunity.title,
+        },
+        signups: result.attendees,
+        attendees: result.attendees,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createSignup,
   getMySignups,
   getSignupById,
   cancelSignup,
+  getOpportunityAttendees,
 };

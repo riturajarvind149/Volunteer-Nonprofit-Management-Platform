@@ -51,6 +51,19 @@ router.get(
 );
 
 /**
+ * @route   GET /api/opportunities/:id/signups
+ * @desc    Get all attendees who signed up for an opportunity (Coordinator owner only)
+ * @access  Protected (COORDINATOR)
+ */
+router.get(
+  '/:id/signups',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  validateOpportunityId,
+  signupController.getOpportunityAttendees
+);
+
+/**
  * @route   POST /api/opportunities/:opportunityId/signup
  * @desc    Sign up for an opportunity (Volunteer only)
  * @access  Protected (VOLUNTEER)

@@ -1,4 +1,6 @@
 const signupRepository = require('../repositories/signupRepository');
+const opportunityRepository = require('../repositories/opportunityRepository');
+const organizationRepository = require('../repositories/organizationRepository');
 const AppError = require('../utils/AppError');
 
 /**
@@ -66,9 +68,46 @@ const cancelSignup = async (signupId, volunteerId) => {
   return await signupRepository.updateStatus(signupId, 'CANCELLED');
 };
 
+/**
+ * Retrieves attendee signups for an opportunity ensuring coordinator ownership of the organization
+ * @param {string} opportunityId - Opportunity UUID
+ * @param {string} coordinatorId - Authenticated coordinator UUID
+ * @returns {Promise<Object>} Object containing opportunity and list of attendees
+ * @throws {AppError} 404 if opportunity not found
+ * @throws {AppError} 403 if coordinator does not own the organization
+ */
+const getOpportunityAttendees = async (opportunityId, coordinatorId) => {
+  // 1. Verify opportunity exists
+  const opportunity = await opportunityRepository.findOpportunityById(opportunityId);
+  if (!opportunity) {
+    throw new AppError('Opportunity not found', 404);
+  }
+
+  // 2. Verify coordinator owns the organization that created this opportunity
+  const organization = await organizationRepository.findByIdAndCoordinatorId(
+    opportunity.organization_id,
+    coordinatorId
+  );
+  if (!organization) {
+    throw new AppError(
+      'You do not have permission to view attendees for this opportunity',
+      403
+    );
+  }
+
+  // 3. Fetch attendees joined with user, opportunity, and organization details
+  const attendees = await signupRepository.findAttendeesByOpportunityId(opportunityId);
+
+  return {
+    opportunity,
+    attendees,
+  };
+};
+
 module.exports = {
   createSignup,
   getMySignups,
   getSignupById,
   cancelSignup,
+  getOpportunityAttendees,
 };
