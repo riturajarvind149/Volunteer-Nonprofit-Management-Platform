@@ -30,4 +30,17 @@ router.get(
   signupController.getSignupById
 );
 
+/**
+ * @route   PATCH /api/signups/:id/cancel
+ * @desc    Cancel a volunteer signup (Owner only)
+ * @access  Protected (VOLUNTEER only)
+ */
+router.patch(
+  '/:id/cancel',
+  authenticate,
+  authorizeRoles('VOLUNTEER'),
+  validateSignupId,
+  signupController.cancelSignup
+);
+
 module.exports = router;

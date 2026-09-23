@@ -35,6 +35,11 @@ const validateSignupId = (req, res, next) => {
     );
   }
 
+  // Prevent client from attempting to spoof volunteer_id via request body
+  if (req.body && req.body.volunteer_id !== undefined) {
+    delete req.body.volunteer_id;
+  }
+
   next();
 };
 

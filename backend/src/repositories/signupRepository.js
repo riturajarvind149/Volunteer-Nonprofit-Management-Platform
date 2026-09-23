@@ -144,8 +144,26 @@ const findById = async (id) => {
   return rows[0] || null;
 };
 
+/**
+ * Update the status of a signup record
+ * @param {string} id - Signup UUID
+ * @param {string} status - New status (e.g. 'CANCELLED')
+ * @returns {Promise<Object|null>} Updated signup record or null
+ */
+const updateStatus = async (id, status) => {
+  const query = `
+    UPDATE signups
+    SET status = $2, updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    RETURNING id, volunteer_id, opportunity_id, status, created_at, updated_at
+  `;
+  const { rows } = await pool.query(query, [id, status]);
+  return rows[0] || null;
+};
+
 module.exports = {
   createSignupTransaction,
   findByVolunteerId,
   findById,
+  updateStatus,
 };

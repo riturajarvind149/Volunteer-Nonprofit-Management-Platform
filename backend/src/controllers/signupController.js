@@ -71,8 +71,32 @@ const getSignupById = async (req, res, next) => {
   }
 };
 
+/**
+ * Cancel a volunteer signup
+ * PATCH /api/signups/:id/cancel
+ */
+const cancelSignup = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const volunteerId = req.user.id;
+
+    const signup = await signupService.cancelSignup(id, volunteerId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Signup cancelled successfully',
+      data: {
+        signup,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createSignup,
   getMySignups,
   getSignupById,
+  cancelSignup,
 };

@@ -599,6 +599,127 @@ const runTests = async () => {
       'Test 25: Database integrity verified: exactly 1 signup stored for raceOppId'
     );
 
+    // ================================================================
+    // Group 8: Volunteer Signup Cancellation (PATCH /api/signups/:id/cancel)
+    // ================================================================
+    console.log(`\n${colors.bold}Group 8: Volunteer Signup Cancellation / Withdrawal${colors.reset}`);
+
+    // Test 26: Missing JWT returns 401 Unauthorized
+    const unauthCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    assert(
+      unauthCancelRes.status === 401,
+      'Test 26: Missing JWT on cancel request returns 401 Unauthorized'
+    );
+
+    // Test 27: Coordinator role rejected with 403 Forbidden
+    const coordCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenCoord}`,
+      },
+    });
+    assert(
+      coordCancelRes.status === 403,
+      'Test 27: Coordinator cancellation attempt rejected with 403 Forbidden (RBAC enforced)'
+    );
+
+    // Test 28: Invalid signup UUID returns 400 Bad Request
+    const invalidCancelIdRes = await fetch(`${baseUrl}/api/signups/not-a-valid-uuid/cancel`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol1}`,
+      },
+    });
+    const invalidCancelIdData = await invalidCancelIdRes.json();
+    assert(
+      invalidCancelIdRes.status === 400 &&
+        invalidCancelIdData.message.includes('valid UUID'),
+      'Test 28: Invalid signup UUID on cancel returns 400 Bad Request'
+    );
+
+    // Test 29: Non-existent signup UUID returns 404 Not Found
+    const nonExistentCancelRes = await fetch(`${baseUrl}/api/signups/${nonExistentSignupId}/cancel`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol1}`,
+      },
+    });
+    assert(
+      nonExistentCancelRes.status === 404,
+      'Test 29: Non-existent signup UUID on cancel returns 404 Not Found'
+    );
+
+    // Test 30: Volunteer attempts to cancel another volunteer's signup returns 404 (Ownership Isolation)
+    const crossCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol2}`,
+      },
+    });
+    assert(
+      crossCancelRes.status === 404,
+      'Test 30: Volunteer attempting to cancel another volunteer signup returns 404 Not Found'
+    );
+
+    // Test 31: Volunteer successfully cancels own signup (200 OK)
+    const validCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol1}`,
+      },
+      body: JSON.stringify({
+        volunteer_id: vol2Id, // Attempt to spoof volunteer_id (must be ignored)
+      }),
+    });
+    const validCancelData = await validCancelRes.json();
+    assert(
+      validCancelRes.status === 200 &&
+        validCancelData.status === 'success' &&
+        validCancelData.message.includes('cancelled successfully'),
+      'Test 31: Volunteer successfully cancels own signup (200 OK)'
+    );
+
+    // Test 32: Returned signup status is CANCELLED
+    assert(
+      validCancelData.data?.signup?.status === 'CANCELLED',
+      'Test 32: Returned signup record status is CANCELLED'
+    );
+
+    // Test 33: Database confirms status is CANCELLED and updated_at modified
+    const dbCheckRes = await pool.query(
+      `SELECT status, updated_at, created_at FROM signups WHERE id = $1`,
+      [aliceSignupId]
+    );
+    assert(
+      dbCheckRes.rows.length === 1 &&
+        dbCheckRes.rows[0].status === 'CANCELLED' &&
+        new Date(dbCheckRes.rows[0].updated_at) >= new Date(dbCheckRes.rows[0].created_at),
+      'Test 33: Database row confirms status is CANCELLED and updated_at reflects timestamp'
+    );
+
+    // Test 34: Already cancelled signup cannot be cancelled again (returns 400 Bad Request)
+    const repeatCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol1}`,
+      },
+    });
+    const repeatCancelData = await repeatCancelRes.json();
+    assert(
+      repeatCancelRes.status === 400 &&
+        repeatCancelData.message.includes('already cancelled'),
+      'Test 34: Already cancelled signup cannot be cancelled again (400 Bad Request)'
+    );
+
   } catch (error) {
     console.error('Unexpected test error:', error);
     failed++;
@@ -611,7 +732,7 @@ const runTests = async () => {
   }
 
   console.log(`\n=============================================================`);
-  console.log(`  DAY 17 RESULTS: ${passed} PASSED | ${failed} FAILED`);
+  console.log(`  DAY 17 & 18 RESULTS: ${passed} PASSED | ${failed} FAILED`);
   console.log(`=============================================================\n`);
 
   if (failed > 0) {

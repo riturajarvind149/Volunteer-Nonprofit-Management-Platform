@@ -42,8 +42,33 @@ const getSignupById = async (id, userId) => {
   return signup;
 };
 
+/**
+ * Cancels a volunteer signup ensuring ownership and active status
+ * @param {string} signupId - Signup UUID
+ * @param {string} volunteerId - Authenticated volunteer UUID
+ * @returns {Promise<Object>} Updated signup record
+ * @throws {AppError} 404 if signup not found or belongs to another user
+ * @throws {AppError} 400 if signup is already cancelled
+ */
+const cancelSignup = async (signupId, volunteerId) => {
+  const signup = await signupRepository.findById(signupId);
+
+  // Return 404 if not found OR if not owned by the requesting volunteer (prevents data enumeration)
+  if (!signup || signup.volunteer_id !== volunteerId) {
+    throw new AppError('Signup not found', 404);
+  }
+
+  // Validate that signup is not already CANCELLED
+  if (signup.status === 'CANCELLED') {
+    throw new AppError('Signup is already cancelled', 400);
+  }
+
+  return await signupRepository.updateStatus(signupId, 'CANCELLED');
+};
+
 module.exports = {
   createSignup,
   getMySignups,
   getSignupById,
+  cancelSignup,
 };
