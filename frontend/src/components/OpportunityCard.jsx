@@ -1,5 +1,8 @@
+import { Link } from 'react-router-dom'
+import './OpportunityCard.css'
+
 function OpportunityCard({ opportunity }) {
-  const { title, organization, category, date, location, spots } = opportunity
+  const { id, title, organization, category, date, location, spots } = opportunity
 
   return (
     <article className="opportunity-card">
@@ -13,9 +16,9 @@ function OpportunityCard({ opportunity }) {
         <p><strong>Date:</strong> {date}</p>
         <p><strong>Location:</strong> {location}</p>
       </div>
-      <button type="button" className="btn btn-outline card-btn">
+      <Link to={`/opportunities/${id}`} className="btn btn-outline card-btn">
         View Details
-      </button>
+      </Link>
     </article>
   )
 }

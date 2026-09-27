@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { registerApi } from '../../services/api'
-import './Register.css'
+import '../Auth.css'
+
+const FIELDS = [
+  { id: 'name', label: 'Full Name', type: 'text', placeholder: 'e.g. John Doe' },
+  { id: 'email', label: 'Email Address', type: 'email', placeholder: 'you@example.com' },
+  { id: 'password', label: 'Password', type: 'password', placeholder: 'At least 8 characters' },
+  { id: 'confirmPassword', label: 'Confirm Password', type: 'password', placeholder: 'Repeat your password' },
+]
 
 function Register() {
   const navigate = useNavigate()
@@ -12,7 +19,6 @@ function Register() {
     password: '',
     confirmPassword: '',
   })
-
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -22,63 +28,42 @@ function Register() {
     setFormData((prev) => ({ ...prev, role }))
     setErrors({})
     setServerError('')
-    setSuccessMessage('')
   }
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }))
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
     if (serverError) setServerError('')
   }
 
-  const isCoordinator = formData.role === 'COORDINATOR'
-
   const validate = () => {
-    const newErrors = {}
-    const trimmedName = formData.name.trim()
-    const trimmedEmail = formData.email.trim()
+    const errs = {}
+    const name = formData.name.trim()
+    const email = formData.email.trim()
 
-    if (!trimmedName) {
-      newErrors.name = isCoordinator ? 'Coordinator name is required' : 'Full name is required'
-    } else if (trimmedName.length < 2) {
-      newErrors.name = 'Name must be at least 2 characters'
+    if (!name || name.length < 2) {
+      errs.name = 'Name must be at least 2 characters'
     }
-
-    if (!trimmedEmail) {
-      newErrors.email = 'Email address is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      newErrors.email = 'Please enter a valid email address'
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errs.email = 'Please enter a valid email address'
     }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required'
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
+    if (!formData.password || formData.password.length < 8) {
+      errs.password = 'Password must be at least 8 characters'
     }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Confirm password is required'
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
+    if (formData.password !== formData.confirmPassword) {
+      errs.confirmPassword = 'Passwords do not match'
     }
-
-    return newErrors
+    return errs
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setServerError('')
-    setSuccessMessage('')
 
     const validationErrors = validate()
     setErrors(validationErrors)
-
-    if (Object.keys(validationErrors).length > 0) {
-      return
-    }
+    if (Object.keys(validationErrors).length > 0) return
 
     setLoading(true)
     try {
@@ -102,38 +87,13 @@ function Register() {
     }
   }
 
-  const fields = [
-    {
-      id: 'name',
-      label: isCoordinator ? 'Coordinator / Contact Name' : 'Full Name',
-      type: 'text',
-      placeholder: isCoordinator ? 'e.g. Sarah Jenkins' : 'e.g. John Doe',
-    },
-    {
-      id: 'email',
-      label: 'Email Address',
-      type: 'email',
-      placeholder: 'you@example.com',
-    },
-    {
-      id: 'password',
-      label: 'Password',
-      type: 'password',
-      placeholder: 'At least 8 characters',
-    },
-    {
-      id: 'confirmPassword',
-      label: 'Confirm Password',
-      type: 'password',
-      placeholder: 'Repeat your password',
-    },
-  ]
+  const isCoordinator = formData.role === 'COORDINATOR'
 
   return (
-    <div className="register-page">
-      <div className="register-card">
-        <div className="register-header">
-          <Link to="/" className="register-brand">
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <Link to="/" className="auth-brand">
             ServeHub
           </Link>
           <h1>Create an Account</h1>
@@ -162,10 +122,12 @@ function Register() {
         {serverError && <div className="alert-error">{serverError}</div>}
         {successMessage && <div className="alert-success">{successMessage}</div>}
 
-        <form className="register-form" onSubmit={handleSubmit} noValidate>
-          {fields.map(({ id, label, type, placeholder }) => (
+        <form className="auth-form" onSubmit={handleSubmit} noValidate>
+          {FIELDS.map(({ id, label, type, placeholder }) => (
             <div key={id} className="form-group">
-              <label htmlFor={id}>{label}</label>
+              <label htmlFor={id}>
+                {id === 'name' && isCoordinator ? 'Coordinator / Contact Name' : label}
+              </label>
               <input
                 type={type}
                 id={id}
@@ -181,17 +143,14 @@ function Register() {
             </div>
           ))}
 
-          <button type="submit" className="btn btn-primary register-btn" disabled={loading}>
+          <button type="submit" className="btn btn-primary auth-btn" disabled={loading}>
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
-        <div className="register-footer">
+        <div className="auth-footer">
           <p>
-            Already have an account?{' '}
-            <Link to="/login" className="login-link">
-              Login
-            </Link>
+            Already have an account? <Link to="/login">Login</Link>
           </p>
         </div>
       </div>

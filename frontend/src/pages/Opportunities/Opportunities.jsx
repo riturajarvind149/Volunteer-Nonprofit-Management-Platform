@@ -1,63 +1,7 @@
 import { useState } from 'react'
 import OpportunityCard from '../../components/OpportunityCard'
+import { MOCK_OPPORTUNITIES } from './mockOpportunities'
 import './Opportunities.css'
-
-const MOCK_OPPORTUNITIES = [
-  {
-    id: 1,
-    title: 'Community Food Drive',
-    organization: 'City Food Bank',
-    category: 'Hunger & Food',
-    date: 'Oct 15, 2026',
-    location: 'Downtown Center',
-    spots: 8,
-  },
-  {
-    id: 2,
-    title: 'Youth Mentorship Program',
-    organization: 'Bright Future Foundation',
-    category: 'Education',
-    date: 'Oct 18, 2026',
-    location: 'Community Library',
-    spots: 4,
-  },
-  {
-    id: 3,
-    title: 'Park Clean-Up & Tree Planting',
-    organization: 'Green Earth Initiative',
-    category: 'Environment',
-    date: 'Oct 22, 2026',
-    location: 'Riverside Park',
-    spots: 12,
-  },
-  {
-    id: 4,
-    title: 'Animal Shelter Assistant',
-    organization: 'Happy Paws Rescue',
-    category: 'Animal Welfare',
-    date: 'Oct 25, 2026',
-    location: 'Westside Shelter',
-    spots: 6,
-  },
-  {
-    id: 5,
-    title: 'Senior Care Companion',
-    organization: 'Silver Care Network',
-    category: 'Community Support',
-    date: 'Nov 02, 2026',
-    location: 'Sunset Senior Home',
-    spots: 5,
-  },
-  {
-    id: 6,
-    title: 'Tech Literacy Workshop',
-    organization: 'Code For All',
-    category: 'Education',
-    date: 'Nov 05, 2026',
-    location: 'Downtown Center',
-    spots: 10,
-  },
-]
 
 const CATEGORIES = ['All', 'Hunger & Food', 'Education', 'Environment', 'Animal Welfare', 'Community Support']
 const LOCATIONS = ['All', 'Downtown Center', 'Community Library', 'Riverside Park', 'Westside Shelter', 'Sunset Senior Home']
