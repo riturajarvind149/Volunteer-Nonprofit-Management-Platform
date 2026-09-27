@@ -8,6 +8,7 @@ import Opportunities from './pages/Opportunities/Opportunities'
 import Login from './pages/Login/Login'
 import Register from './pages/Register/Register'
 import Profile from './pages/Profile/Profile'
+import OpportunityDetails from './pages/OpportunityDetails/OpportunityDetails'
 import './App.css'
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/opportunities" element={<Opportunities />} />
+          <Route path="/opportunities/:id" element={<OpportunityDetails />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />

@@ -20,55 +20,6 @@
   font-size: 1.05rem;
 }
 
-.btn {
-  display: inline-block;
-  padding: 0.65rem 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 500;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  text-align: center;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.btn-primary {
-  background-color: var(--color-primary);
-  color: #ffffff;
-}
-
-.btn-primary:hover {
-  background-color: var(--color-primary-hover);
-}
-
-.btn-secondary {
-  background-color: var(--bg-card);
-  color: var(--text-primary);
-  border-color: var(--border-color);
-}
-
-.btn-secondary:hover {
-  background-color: var(--bg-secondary);
-}
-
-.btn-outline {
-  width: 100%;
-  background-color: transparent;
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-  margin-top: 1.25rem;
-}
-
-.btn-outline:hover {
-  background-color: var(--color-primary);
-  color: #ffffff;
-}
-
-.btn-large {
-  padding: 0.85rem 2rem;
-  font-size: 1.05rem;
-}
-
 /* Hero */
 .hero {
   background-color: var(--bg-secondary);
@@ -142,58 +93,6 @@
   gap: 1.5rem;
 }
 
-.opportunity-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--card-shadow);
-  transition: box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.opportunity-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.card-spots {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #16a34a;
-  background-color: rgba(34, 197, 94, 0.12);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
-
-.card-org {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.opportunity-card h3 {
-  font-size: 1.2rem;
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-}
-
-.card-details {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-top: auto;
-}
-
 /* How It Works */
 .how-it-works {
   padding: 4.5rem 0;
@@ -258,7 +157,6 @@
   margin-bottom: 1.75rem;
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
   .hero-content h1 {
     font-size: 2rem;
@@ -274,4 +172,3 @@
     font-size: 1.6rem;
   }
 }
-

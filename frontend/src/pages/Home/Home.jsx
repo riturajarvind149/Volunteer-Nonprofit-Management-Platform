@@ -1,33 +1,11 @@
+import { Link } from 'react-router-dom'
+import OpportunityCard from '../../components/OpportunityCard'
+import { MOCK_OPPORTUNITIES } from '../Opportunities/mockOpportunities'
 import './Home.css'
 
-const opportunities = [
-  {
-    id: 1,
-    title: 'Community Food Drive',
-    organization: 'City Food Bank',
-    date: 'Oct 15, 2026',
-    location: 'Downtown Center',
-    spots: '8 spots left'
-  },
-  {
-    id: 2,
-    title: 'Youth Mentorship Program',
-    organization: 'Bright Future Foundation',
-    date: 'Oct 18, 2026',
-    location: 'Community Library',
-    spots: '4 spots left'
-  },
-  {
-    id: 3,
-    title: 'Park Clean-Up & Tree Planting',
-    organization: 'Green Earth Initiative',
-    date: 'Oct 22, 2026',
-    location: 'Riverside Park',
-    spots: '12 spots left'
-  }
-]
-
 function Home() {
+  const featuredOpportunities = MOCK_OPPORTUNITIES.slice(0, 3)
+
   return (
     <main className="home">
       <section className="hero">
@@ -35,7 +13,7 @@ function Home() {
           <h1>Connect with Meaningful Volunteer Opportunities</h1>
           <p>ServeHub bridges the gap between passionate volunteers and nonprofits creating real impact in our communities.</p>
           <div className="hero-actions">
-            <a href="#opportunities" className="btn btn-primary">Explore Opportunities</a>
+            <Link to="/opportunities" className="btn btn-primary">Explore Opportunities</Link>
             <a href="#about" className="btn btn-secondary">Get Started</a>
           </div>
         </div>
@@ -57,19 +35,8 @@ function Home() {
             <p>Explore upcoming events looking for volunteers right now.</p>
           </div>
           <div className="card-grid">
-            {opportunities.map((item) => (
-              <article key={item.id} className="opportunity-card">
-                <div className="card-header">
-                  <span className="card-spots">{item.spots}</span>
-                  <span className="card-org">{item.organization}</span>
-                </div>
-                <h3>{item.title}</h3>
-                <div className="card-details">
-                  <p><strong>Date:</strong> {item.date}</p>
-                  <p><strong>Location:</strong> {item.location}</p>
-                </div>
-                <button type="button" className="btn btn-outline">View Details</button>
-              </article>
+            {featuredOpportunities.map((item) => (
+              <OpportunityCard key={item.id} opportunity={item} />
             ))}
           </div>
         </div>
@@ -105,7 +72,7 @@ function Home() {
         <div className="section-container">
           <h2>Ready to Make an Impact?</h2>
           <p>Join volunteers and organizations creating positive change today.</p>
-          <a href="#opportunities" className="btn btn-primary btn-large">Join ServeHub Now</a>
+          <Link to="/register" className="btn btn-primary btn-large">Join ServeHub Now</Link>
         </div>
       </section>
     </main>

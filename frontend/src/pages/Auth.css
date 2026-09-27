@@ -1,4 +1,4 @@
-.login-page {
+.auth-page {
   flex: 1;
   display: flex;
   align-items: center;
@@ -8,9 +8,9 @@
   transition: background-color 0.2s ease;
 }
 
-.login-card {
+.auth-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -19,12 +19,12 @@
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.login-header {
+.auth-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
 
-.login-brand {
+.auth-brand {
   display: inline-block;
   font-size: 1.4rem;
   font-weight: 700;
@@ -33,45 +33,54 @@
   letter-spacing: -0.02em;
 }
 
-.login-header h1 {
+.auth-header h1 {
   font-size: 1.75rem;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
   font-weight: 700;
 }
 
-.login-header p {
+.auth-header p {
   color: var(--text-secondary);
   font-size: 0.95rem;
   line-height: 1.5;
 }
 
-.alert-success {
-  background-color: rgba(34, 197, 94, 0.12);
-  color: #16a34a;
-  border: 1px solid rgba(34, 197, 94, 0.25);
-  padding: 0.75rem 1rem;
+.role-selector {
+  display: flex;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  font-size: 0.9rem;
-  text-align: center;
-  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  margin-bottom: 1.5rem;
+  gap: 0.25rem;
 }
 
-.alert-error {
-  background-color: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
+.role-btn {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
   font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
   text-align: center;
-  margin-bottom: 1.25rem;
 }
 
-.login-form {
+.role-btn.active {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.auth-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.15rem;
 }
 
 .form-group {
@@ -92,20 +101,7 @@
   color: var(--text-primary);
 }
 
-.forgot-password {
-  font-size: 0.85rem;
-  color: var(--color-primary);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.forgot-password:hover {
-  color: var(--color-primary-hover);
-  text-decoration: underline;
-}
-
-.form-group input[type="email"],
-.form-group input[type="password"] {
+.form-group input {
   width: 100%;
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
@@ -116,17 +112,36 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
 }
 
-.form-group input[type="email"]:focus,
-.form-group input[type="password"]:focus {
+.form-group input:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-.form-options {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.form-group input.input-error {
+  border-color: #ef4444;
+}
+
+.form-group input.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.error-text {
+  font-size: 0.8rem;
+  color: #ef4444;
+  margin-top: 0.15rem;
+}
+
+.forgot-password {
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.forgot-password:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
 }
 
 .checkbox-label {
@@ -146,51 +161,50 @@
   cursor: pointer;
 }
 
-.login-btn {
+.auth-btn {
   width: 100%;
   padding: 0.75rem 1rem;
   font-size: 1rem;
   font-weight: 600;
   border-radius: 8px;
   margin-top: 0.5rem;
-  cursor: pointer;
 }
 
-.login-btn:disabled {
+.auth-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.login-footer {
+.auth-footer {
   margin-top: 2rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--border-color);
   text-align: center;
 }
 
-.login-footer p {
+.auth-footer p {
   font-size: 0.9rem;
   color: var(--text-secondary);
 }
 
-.register-link {
+.auth-footer a {
   color: var(--color-primary);
   font-weight: 600;
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
-.register-link:hover {
+.auth-footer a:hover {
   color: var(--color-primary-hover);
   text-decoration: underline;
 }
 
 @media (max-width: 480px) {
-  .login-card {
+  .auth-card {
     padding: 2rem 1.25rem;
   }
 
-  .login-header h1 {
+  .auth-header h1 {
     font-size: 1.5rem;
   }
 }
