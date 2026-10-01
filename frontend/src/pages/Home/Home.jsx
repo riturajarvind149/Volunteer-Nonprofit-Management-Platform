@@ -14,7 +14,6 @@ function Home() {
   const [heroScrollOffset, setHeroScrollOffset] = useState(0)
 
   useEffect(() => {
-    // Scroll reveal observer using IntersectionObserver
     const revealElements = document.querySelectorAll('.reveal, .reveal-left, .reveal-right')
     const revealObserver = new IntersectionObserver(
       (entries) => {
@@ -28,7 +27,6 @@ function Home() {
     )
     revealElements.forEach((el) => revealObserver.observe(el))
 
-    // Step observer for Vertical How It Works sequence
     const stepItems = document.querySelectorAll('.editorial-step-item')
     const stepObserver = new IntersectionObserver(
       (entries) => {
@@ -45,24 +43,19 @@ function Home() {
     )
     stepItems.forEach((el) => stepObserver.observe(el))
 
-    // Handle subtle Hero scroll movement and Journey timeline progress
     const handleScroll = () => {
       const scrollY = window.scrollY
       if (scrollY < 800) {
         setHeroScrollOffset(scrollY * 0.12)
       }
 
-      // Journey section progress trigger
       const journeySec = document.getElementById('journey-section')
       if (journeySec) {
         const rect = journeySec.getBoundingClientRect()
         const windowHeight = window.innerHeight
         if (rect.top < windowHeight && rect.bottom > 0) {
-          const totalDist = windowHeight + rect.height
-          const currentDist = windowHeight - rect.top
-          const pct = Math.min(Math.max(currentDist / totalDist, 0), 1)
-          const stage = Math.min(Math.floor(pct * 4) + 1, 4)
-          setJourneyProgress(stage)
+          const pct = Math.min(Math.max((windowHeight - rect.top) / (windowHeight + rect.height), 0), 1)
+          setJourneyProgress(Math.min(Math.floor(pct * 4) + 1, 4))
         }
       }
     }

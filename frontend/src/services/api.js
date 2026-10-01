@@ -31,6 +31,3 @@ export const testVolunteerApi = (token) => authFetch('/auth/volunteer-test', { t
 export const getOrganizationsApi = (token) => authFetch('/organizations', { token })
 export const getOrganizationByIdApi = (id, token) => authFetch(`/organizations/${id}`, { token })
 export const createOrganizationApi = (payload, token) => authFetch('/organizations', { method: 'POST', body: payload, token })
-
-export const getHealthApi = () => authFetch('/health')
-

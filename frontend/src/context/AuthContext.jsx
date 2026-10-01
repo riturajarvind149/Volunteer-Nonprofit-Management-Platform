@@ -1,61 +1,57 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { getMeApi } from '../services/api';
+import { createContext, useContext, useState, useEffect } from 'react'
+import { getMeApi } from '../services/api'
 
-const AuthContext = createContext(null);
-
-const TOKEN_STORAGE_KEY = 'servehub_token';
+const AuthContext = createContext(null)
+const TOKEN_STORAGE_KEY = 'servehub_token'
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_STORAGE_KEY) || null);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_STORAGE_KEY) || null)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  // Initialize and verify user session on mount
   useEffect(() => {
-    let isMounted = true;
+    let isMounted = true
+
+    if (!token) {
+      setLoading(false)
+      return
+    }
 
     const initializeAuth = async () => {
-      const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-      if (!storedToken) {
-        if (isMounted) setLoading(false);
-        return;
-      }
-
       try {
-        const response = await getMeApi(storedToken);
+        const response = await getMeApi(token)
         if (isMounted && response?.data?.user) {
-          setUser(response.data.user);
+          setUser(response.data.user)
         }
       } catch {
-        // Token is invalid or expired; gracefully clean up
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        localStorage.removeItem(TOKEN_STORAGE_KEY)
         if (isMounted) {
-          setToken(null);
-          setUser(null);
+          setToken(null)
+          setUser(null)
         }
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) setLoading(false)
       }
-    };
+    }
 
-    initializeAuth();
+    initializeAuth()
 
     return () => {
-      isMounted = false;
-    };
-  }, []);
+      isMounted = false
+    }
+  }, [token])
 
   const login = (newToken, userData) => {
-    localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
-    setToken(newToken);
-    setUser(userData);
-  };
+    localStorage.setItem(TOKEN_STORAGE_KEY, newToken)
+    setToken(newToken)
+    setUser(userData)
+  }
 
   const logout = () => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    setToken(null);
-    setUser(null);
-  };
+    localStorage.removeItem(TOKEN_STORAGE_KEY)
+    setToken(null)
+    setUser(null)
+  }
 
   const value = {
     user,
@@ -64,15 +60,16 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(token && user),
     login,
     logout,
-  };
+  }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
+  const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider')
   }
-  return context;
+  return context
 }
+
