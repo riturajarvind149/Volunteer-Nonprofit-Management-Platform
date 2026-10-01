@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getOrganizationsApi, createOrganizationApi } from '../../services/api'
@@ -11,7 +11,6 @@ function Organizations() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Coordinator creation form state
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [formName, setFormName] = useState('')
   const [formDesc, setFormDesc] = useState('')
@@ -19,26 +18,23 @@ function Organizations() {
   const [createError, setCreateError] = useState('')
   const [createSuccess, setCreateSuccess] = useState('')
 
-  const loadOrganizations = useCallback(async () => {
+  const fetchOrganizations = async () => {
     if (!token) return
     setError('')
     try {
       const res = await getOrganizationsApi(token)
-      if (res?.data?.organizations) {
-        setOrganizations(res.data.organizations)
-      } else {
-        setOrganizations([])
-      }
+      setOrganizations(res?.data?.organizations || [])
     } catch (err) {
       setError(err.message || 'Failed to load organizations. Please try again.')
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }
 
   useEffect(() => {
-    loadOrganizations()
-  }, [loadOrganizations])
+    fetchOrganizations()
+  }, [token])
+
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault()
@@ -60,7 +56,7 @@ function Organizations() {
       setFormName('')
       setFormDesc('')
       setShowCreateForm(false)
-      loadOrganizations()
+      fetchOrganizations()
     } catch (err) {
       setCreateError(err.message || 'Failed to create organization.')
     } finally {

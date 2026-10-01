@@ -12,9 +12,7 @@ function OrganizationDetails() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!token) {
-      return
-    }
+    if (!token) return
 
     const fetchOrg = async () => {
       setError('')
