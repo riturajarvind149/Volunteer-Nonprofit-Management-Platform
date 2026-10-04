@@ -2,7 +2,10 @@ const express = require('express');
 const volunteerHoursController = require('../controllers/volunteerHoursController');
 const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
-const { validateUpdateHoursStatus } = require('../middleware/validateVolunteerHours');
+const {
+  validateUpdateHoursStatus,
+  validateDateRangeFilter,
+} = require('../middleware/validateVolunteerHours');
 
 const router = express.Router();
 
@@ -63,6 +66,7 @@ router.get(
   '/organization/opportunities',
   authenticate,
   authorizeRoles('COORDINATOR'),
+  validateDateRangeFilter,
   volunteerHoursController.getOrganizationOpportunitiesSummary
 );
 

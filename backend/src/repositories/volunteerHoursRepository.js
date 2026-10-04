@@ -233,9 +233,10 @@ const getSummaryByCoordinatorId = async (coordinatorId) => {
 /**
  * Calculate aggregate volunteer hours summary per opportunity for organizations owned by a coordinator
  * @param {string} coordinatorId - Coordinator UUID
+ * @param {Object} [filters] - Optional date filters { from_date, to_date }
  * @returns {Promise<Array>} List of opportunity summaries
  */
-const getOpportunitySummaryByCoordinatorId = async (coordinatorId) => {
+const getOpportunitySummaryByCoordinatorId = async (coordinatorId, { from_date, to_date } = {}) => {
   const query = `
     SELECT 
       o.id AS opportunity_id,
@@ -250,12 +251,16 @@ const getOpportunitySummaryByCoordinatorId = async (coordinatorId) => {
     FROM opportunities o
     JOIN organizations org ON o.organization_id = org.id
     LEFT JOIN signups s ON s.opportunity_id = o.id
-    LEFT JOIN volunteer_hours vh ON vh.signup_id = s.id
+    LEFT JOIN volunteer_hours vh 
+      ON vh.signup_id = s.id
+      AND ($2::text IS NULL OR vh.created_at >= ($2 || ' 00:00:00Z')::timestamptz)
+      AND ($3::text IS NULL OR vh.created_at < (($3 || ' 00:00:00Z')::timestamptz + INTERVAL '1 day'))
     WHERE org.coordinator_id = $1
     GROUP BY o.id, o.title, org.id, org.name, o.created_at
     ORDER BY o.created_at DESC, o.id DESC
   `;
-  const { rows } = await pool.query(query, [coordinatorId]);
+  const values = [coordinatorId, from_date || null, to_date || null];
+  const { rows } = await pool.query(query, values);
   return rows.map((row) => ({
     opportunity_id: row.opportunity_id,
     opportunity_title: row.opportunity_title,
@@ -268,6 +273,7 @@ const getOpportunitySummaryByCoordinatorId = async (coordinatorId) => {
     pending_hours: parseFloat(Number(row.pending_hours || 0).toFixed(2)),
   }));
 };
+
 
 module.exports = {
   create,

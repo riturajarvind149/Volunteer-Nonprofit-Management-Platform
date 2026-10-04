@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node test_registration.js && node test_login.js && node test_auth_middleware.js && node test_auth_rbac.js && node test_organization.js && node test_opportunity.js && node test_signup.js && node test_volunteer_hours.js && node test_volunteer_hours_retrieval.js && node test_volunteer_hours_status.js && node test_volunteer_hours_summary.js && node test_volunteer_hours_opportunity.js",
+    "test": "node test_registration.js && node test_login.js && node test_auth_middleware.js && node test_auth_rbac.js && node test_organization.js && node test_opportunity.js && node test_signup.js && node test_volunteer_hours.js && node test_volunteer_hours_retrieval.js && node test_volunteer_hours_status.js && node test_volunteer_hours_summary.js && node test_volunteer_hours_opportunity.js && node test_volunteer_hours_date.js",
     "test:register": "node test_registration.js",
     "test:login": "node test_login.js",
     "test:middleware": "node test_auth_middleware.js",
@@ -17,7 +17,8 @@
     "test:hours:retrieval": "node test_volunteer_hours_retrieval.js",
     "test:hours:status": "node test_volunteer_hours_status.js",
     "test:hours:summary": "node test_volunteer_hours_summary.js",
-    "test:hours:opportunity": "node test_volunteer_hours_opportunity.js"
+    "test:hours:opportunity": "node test_volunteer_hours_opportunity.js",
+    "test:hours:date": "node test_volunteer_hours_date.js"
   },
   "keywords": [],
   "author": "",

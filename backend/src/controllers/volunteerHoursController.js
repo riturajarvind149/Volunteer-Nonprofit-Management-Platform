@@ -154,7 +154,11 @@ const getOrganizationHoursSummary = async (req, res, next) => {
 const getOrganizationOpportunitiesSummary = async (req, res, next) => {
   try {
     const coordinatorId = req.user.id;
-    const opportunities = await volunteerHoursService.getOpportunityHoursSummary(coordinatorId);
+    const { from_date, to_date } = req.query;
+    const opportunities = await volunteerHoursService.getOpportunityHoursSummary(coordinatorId, {
+      from_date,
+      to_date,
+    });
 
     res.status(200).json({
       status: 'success',

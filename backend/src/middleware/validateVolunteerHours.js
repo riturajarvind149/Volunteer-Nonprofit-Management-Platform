@@ -112,8 +112,65 @@ const validateUpdateHoursStatus = (req, res, next) => {
   next();
 };
 
+/**
+ * Helper to validate exact YYYY-MM-DD calendar date
+ * Rejects impossible dates without auto-correcting
+ */
+const isValidDateString = (dateStr) => {
+  if (typeof dateStr !== 'string') return false;
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateStr)) return false;
+
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+
+  const dateObj = new Date(Date.UTC(year, month - 1, day));
+  return (
+    dateObj.getUTCFullYear() === year &&
+    dateObj.getUTCMonth() === month - 1 &&
+    dateObj.getUTCDate() === day
+  );
+};
+
+/**
+ * Middleware to validate optional date range filters (from_date, to_date)
+ * For GET /api/hours/organization/opportunities
+ */
+const validateDateRangeFilter = (req, res, next) => {
+  const { from_date, to_date } = req.query;
+
+  if (from_date !== undefined) {
+    if (!isValidDateString(from_date)) {
+      return next(
+        new AppError('Invalid from_date format. Expected a valid YYYY-MM-DD date', 400)
+      );
+    }
+  }
+
+  if (to_date !== undefined) {
+    if (!isValidDateString(to_date)) {
+      return next(
+        new AppError('Invalid to_date format. Expected a valid YYYY-MM-DD date', 400)
+      );
+    }
+  }
+
+  if (from_date && to_date && from_date > to_date) {
+    return next(new AppError('from_date cannot be after to_date', 400));
+  }
+
+  next();
+};
+
 module.exports = {
   validateRecordHours,
   validateUpdateHoursStatus,
+  validateDateRangeFilter,
 };
+
 

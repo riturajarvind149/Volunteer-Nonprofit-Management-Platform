@@ -121,10 +121,11 @@ const getOrganizationHoursSummary = async (coordinatorId) => {
 /**
  * Retrieve volunteer hours aggregate summary per opportunity for organizations owned by the authenticated coordinator
  * @param {string} coordinatorId - Coordinator UUID
+ * @param {Object} [filters] - Optional date filters { from_date, to_date }
  * @returns {Promise<Array>} List of opportunity summaries
  */
-const getOpportunityHoursSummary = async (coordinatorId) => {
-  return await volunteerHoursRepository.getOpportunitySummaryByCoordinatorId(coordinatorId);
+const getOpportunityHoursSummary = async (coordinatorId, filters = {}) => {
+  return await volunteerHoursRepository.getOpportunitySummaryByCoordinatorId(coordinatorId, filters);
 };
 
 module.exports = {
