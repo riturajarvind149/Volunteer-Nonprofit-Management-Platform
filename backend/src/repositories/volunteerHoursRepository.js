@@ -62,8 +62,75 @@ const findById = async (id) => {
   return rows[0] || null;
 };
 
+/**
+ * Retrieve all volunteer hours for a specific volunteer across all their signups
+ * @param {string} volunteerId - Volunteer UUID
+ * @returns {Promise<Array>} List of volunteer_hours records with joined details
+ */
+const findByVolunteerId = async (volunteerId) => {
+  const query = `
+    SELECT 
+      vh.id,
+      vh.signup_id,
+      s.opportunity_id,
+      o.title AS opportunity_title,
+      org.id AS organization_id,
+      org.name AS organization_name,
+      vh.hours,
+      vh.status,
+      vh.recorded_by,
+      vh.created_at,
+      vh.updated_at
+    FROM volunteer_hours vh
+    JOIN signups s ON vh.signup_id = s.id
+    JOIN opportunities o ON s.opportunity_id = o.id
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE s.volunteer_id = $1
+    ORDER BY vh.created_at DESC
+  `;
+  const { rows } = await pool.query(query, [volunteerId]);
+  return rows;
+};
+
+/**
+ * Retrieve all volunteer hours for opportunities belonging to organizations owned by the coordinator
+ * @param {string} coordinatorId - Coordinator UUID
+ * @returns {Promise<Array>} List of volunteer_hours records with joined details
+ */
+const findByCoordinatorId = async (coordinatorId) => {
+  const query = `
+    SELECT 
+      vh.id,
+      vh.signup_id,
+      s.opportunity_id,
+      o.title AS opportunity_title,
+      org.id AS organization_id,
+      org.name AS organization_name,
+      s.volunteer_id,
+      u.full_name AS volunteer_name,
+      u.email AS volunteer_email,
+      vh.hours,
+      vh.status,
+      vh.recorded_by,
+      vh.created_at,
+      vh.updated_at
+    FROM volunteer_hours vh
+    JOIN signups s ON vh.signup_id = s.id
+    JOIN users u ON s.volunteer_id = u.id
+    JOIN opportunities o ON s.opportunity_id = o.id
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE org.coordinator_id = $1
+    ORDER BY vh.created_at DESC
+  `;
+  const { rows } = await pool.query(query, [coordinatorId]);
+  return rows;
+};
+
 module.exports = {
   create,
   findBySignupId,
   findById,
+  findByVolunteerId,
+  findByCoordinatorId,
 };
+

@@ -54,6 +54,27 @@ const recordHours = async ({ signupId, hours, status }, coordinatorId) => {
   return volunteerHours;
 };
 
+/**
+ * Retrieve all volunteer hours for the authenticated volunteer
+ * @param {string} volunteerId - Volunteer UUID
+ * @returns {Promise<Array>} List of volunteer hours with joined details
+ */
+const getMyHours = async (volunteerId) => {
+  return await volunteerHoursRepository.findByVolunteerId(volunteerId);
+};
+
+/**
+ * Retrieve all volunteer hours for organizations owned by the authenticated coordinator
+ * @param {string} coordinatorId - Coordinator UUID
+ * @returns {Promise<Array>} List of organization volunteer hours with joined details
+ */
+const getOrganizationHours = async (coordinatorId) => {
+  return await volunteerHoursRepository.findByCoordinatorId(coordinatorId);
+};
+
 module.exports = {
   recordHours,
+  getMyHours,
+  getOrganizationHours,
 };
+
