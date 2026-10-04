@@ -230,6 +230,45 @@ const getSummaryByCoordinatorId = async (coordinatorId) => {
   };
 };
 
+/**
+ * Calculate aggregate volunteer hours summary per opportunity for organizations owned by a coordinator
+ * @param {string} coordinatorId - Coordinator UUID
+ * @returns {Promise<Array>} List of opportunity summaries
+ */
+const getOpportunitySummaryByCoordinatorId = async (coordinatorId) => {
+  const query = `
+    SELECT 
+      o.id AS opportunity_id,
+      o.title AS opportunity_title,
+      org.id AS organization_id,
+      org.name AS organization_name,
+      COUNT(DISTINCT CASE WHEN vh.id IS NOT NULL THEN s.volunteer_id ELSE NULL END)::int AS total_volunteers,
+      COALESCE(SUM(vh.hours), 0) AS total_hours,
+      COALESCE(SUM(CASE WHEN vh.status = 'VERIFIED' THEN vh.hours ELSE 0 END), 0) AS verified_hours,
+      COALESCE(SUM(CASE WHEN vh.status = 'RECORDED' THEN vh.hours ELSE 0 END), 0) AS recorded_hours,
+      COALESCE(SUM(CASE WHEN vh.status = 'PENDING' THEN vh.hours ELSE 0 END), 0) AS pending_hours
+    FROM opportunities o
+    JOIN organizations org ON o.organization_id = org.id
+    LEFT JOIN signups s ON s.opportunity_id = o.id
+    LEFT JOIN volunteer_hours vh ON vh.signup_id = s.id
+    WHERE org.coordinator_id = $1
+    GROUP BY o.id, o.title, org.id, org.name, o.created_at
+    ORDER BY o.created_at DESC, o.id DESC
+  `;
+  const { rows } = await pool.query(query, [coordinatorId]);
+  return rows.map((row) => ({
+    opportunity_id: row.opportunity_id,
+    opportunity_title: row.opportunity_title,
+    organization_id: row.organization_id,
+    organization_name: row.organization_name,
+    total_volunteers: parseInt(row.total_volunteers || 0, 10),
+    total_hours: parseFloat(Number(row.total_hours || 0).toFixed(2)),
+    verified_hours: parseFloat(Number(row.verified_hours || 0).toFixed(2)),
+    recorded_hours: parseFloat(Number(row.recorded_hours || 0).toFixed(2)),
+    pending_hours: parseFloat(Number(row.pending_hours || 0).toFixed(2)),
+  }));
+};
+
 module.exports = {
   create,
   findBySignupId,
@@ -240,7 +279,9 @@ module.exports = {
   updateStatus,
   getSummaryByVolunteerId,
   getSummaryByCoordinatorId,
+  getOpportunitySummaryByCoordinatorId,
 };
+
 
 
 

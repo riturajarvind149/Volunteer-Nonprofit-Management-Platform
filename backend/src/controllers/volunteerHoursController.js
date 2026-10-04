@@ -147,6 +147,28 @@ const getOrganizationHoursSummary = async (req, res, next) => {
   }
 };
 
+/**
+ * Retrieve volunteer hours aggregate summary per opportunity for organizations owned by authenticated coordinator
+ * GET /api/hours/organization/opportunities
+ */
+const getOrganizationOpportunitiesSummary = async (req, res, next) => {
+  try {
+    const coordinatorId = req.user.id;
+    const opportunities = await volunteerHoursService.getOpportunityHoursSummary(coordinatorId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Opportunity volunteer hours summary retrieved successfully',
+      data: {
+        opportunities,
+        opportunity_hours: opportunities,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   recordHours,
   getMyHours,
@@ -154,7 +176,9 @@ module.exports = {
   updateStatus,
   getMyHoursSummary,
   getOrganizationHoursSummary,
+  getOrganizationOpportunitiesSummary,
 };
+
 
 
 

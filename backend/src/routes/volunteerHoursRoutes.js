@@ -54,6 +54,19 @@ router.get(
   volunteerHoursController.getOrganizationHoursSummary
 );
 
+/**
+ * @route   GET /api/hours/organization/opportunities
+ * @desc    Get aggregate volunteer hours summary per opportunity for organizations owned by authenticated coordinator
+ * @access  Protected (COORDINATOR only)
+ */
+router.get(
+  '/organization/opportunities',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  volunteerHoursController.getOrganizationOpportunitiesSummary
+);
+
+
 
 /**
  * @route   PATCH /api/hours/:id/status
