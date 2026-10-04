@@ -43,7 +43,62 @@ const validateSignupId = (req, res, next) => {
   next();
 };
 
+const ALLOWED_SIGNUP_STATUSES = ['REGISTERED', 'CANCELLED'];
+
+/**
+ * Middleware to validate updating signup status by coordinator
+ */
+const validateUpdateSignupStatus = (req, res, next) => {
+  const { id } = req.params;
+
+  // 1. Validate signup ID format (UUID)
+  if (!id || !UUID_REGEX.test(id.trim())) {
+    return next(
+      new AppError('Invalid signup ID format. Expected a valid UUID', 400)
+    );
+  }
+
+  const { status } = req.body || {};
+
+  // 2. Require status in request body
+  if (status === undefined || status === null) {
+    return next(new AppError('Status is required', 400));
+  }
+
+  if (typeof status !== 'string' || status.trim() === '') {
+    return next(new AppError('Status must be a valid non-empty string', 400));
+  }
+
+  // 3. Normalize status to uppercase
+  const normalizedStatus = status.trim().toUpperCase();
+
+  // 4. Reject unsupported statuses with HTTP 400
+  if (!ALLOWED_SIGNUP_STATUSES.includes(normalizedStatus)) {
+    return next(
+      new AppError(
+        'Invalid status. Status must be one of: REGISTERED, CANCELLED',
+        400
+      )
+    );
+  }
+
+  // 5. Ignore/strip attempts to modify ownership or immutable fields
+  if (req.body.volunteer_id !== undefined) delete req.body.volunteer_id;
+  if (req.body.opportunity_id !== undefined) delete req.body.opportunity_id;
+  if (req.body.coordinator_id !== undefined) delete req.body.coordinator_id;
+  if (req.body.organization_id !== undefined) delete req.body.organization_id;
+  if (req.body.hours !== undefined) delete req.body.hours;
+  if (req.body.created_at !== undefined) delete req.body.created_at;
+  if (req.body.updated_at !== undefined) delete req.body.updated_at;
+  if (req.body.id !== undefined) delete req.body.id;
+
+  req.body.status = normalizedStatus;
+
+  next();
+};
+
 module.exports = {
   validateSignupOpportunityId,
   validateSignupId,
+  validateUpdateSignupStatus,
 };

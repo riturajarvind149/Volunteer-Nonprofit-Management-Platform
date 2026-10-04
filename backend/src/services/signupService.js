@@ -104,10 +104,58 @@ const getOpportunityAttendees = async (opportunityId, coordinatorId) => {
   };
 };
 
+/**
+ * Update the status of a volunteer signup (Coordinator only, ownership verified)
+ * @param {string} id - Signup UUID
+ * @param {string} status - New status (REGISTERED, CANCELLED)
+ * @param {string} coordinatorId - Authenticated coordinator UUID
+ * @returns {Promise<Object>} Updated signup record
+ * @throws {AppError} 404 if signup not found
+ * @throws {AppError} 403 if coordinator does not own the opportunity's organization
+ * @throws {AppError} 400 if opportunity is not published when reactivating
+ * @throws {AppError} 409 if opportunity capacity is reached when reactivating
+ */
+const updateSignupStatus = async (id, status, coordinatorId) => {
+  // 1. Verify signup exists and retrieve ownership & opportunity metadata
+  const signup = await signupRepository.findByIdWithCoordinator(id);
+  if (!signup) {
+    throw new AppError('Signup not found', 404);
+  }
+
+  // 2. Enforce ownership chain: coordinator owns the organization that created the opportunity
+  if (signup.coordinator_id !== coordinatorId) {
+    throw new AppError('You do not have permission to update this signup', 403);
+  }
+
+  // 3. Reactivation capacity protection: if moving from CANCELLED to REGISTERED
+  if (status === 'REGISTERED' && signup.status !== 'REGISTERED') {
+    if (signup.opportunity_status !== 'PUBLISHED') {
+      throw new AppError(
+        'Cannot register for an opportunity that is not published',
+        400
+      );
+    }
+
+    const currentCount = await signupRepository.countActiveSignupsByOpportunityId(
+      signup.opportunity_id
+    );
+    if (currentCount >= signup.opportunity_capacity) {
+      throw new AppError(
+        'This opportunity has reached its maximum capacity',
+        409
+      );
+    }
+  }
+
+  // 4. Update status in database
+  return await signupRepository.updateStatus(id, status);
+};
+
 module.exports = {
   createSignup,
   getMySignups,
   getSignupById,
   cancelSignup,
   getOpportunityAttendees,
+  updateSignupStatus,
 };

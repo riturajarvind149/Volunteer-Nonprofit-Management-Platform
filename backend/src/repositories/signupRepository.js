@@ -196,10 +196,54 @@ const findAttendeesByOpportunityId = async (opportunityId) => {
   return rows;
 };
 
+/**
+ * Retrieve a signup record along with opportunity, organization, and owning coordinator ID
+ * @param {string} id - Signup UUID
+ * @returns {Promise<Object|null>} Record with coordinator_id or null if not found
+ */
+const findByIdWithCoordinator = async (id) => {
+  const query = `
+    SELECT 
+      s.id,
+      s.volunteer_id,
+      s.opportunity_id,
+      s.status,
+      s.created_at,
+      s.updated_at,
+      o.capacity AS opportunity_capacity,
+      o.status AS opportunity_status,
+      org.id AS organization_id,
+      org.coordinator_id
+    FROM signups s
+    JOIN opportunities o ON s.opportunity_id = o.id
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE s.id = $1
+  `;
+  const { rows } = await pool.query(query, [id]);
+  return rows[0] || null;
+};
+
+/**
+ * Count active (non-cancelled) signups for an opportunity
+ * @param {string} opportunityId - Opportunity UUID
+ * @returns {Promise<number>} Active signup count
+ */
+const countActiveSignupsByOpportunityId = async (opportunityId) => {
+  const query = `
+    SELECT COUNT(*)::int AS current_count
+    FROM signups
+    WHERE opportunity_id = $1 AND status != 'CANCELLED'
+  `;
+  const { rows } = await pool.query(query, [opportunityId]);
+  return rows[0]?.current_count || 0;
+};
+
 module.exports = {
   createSignupTransaction,
   findByVolunteerId,
   findById,
+  findByIdWithCoordinator,
+  countActiveSignupsByOpportunityId,
   updateStatus,
   findAttendeesByOpportunityId,
 };

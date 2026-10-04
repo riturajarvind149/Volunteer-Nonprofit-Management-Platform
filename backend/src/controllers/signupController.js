@@ -122,10 +122,39 @@ const getOpportunityAttendees = async (req, res, next) => {
   }
 };
 
+/**
+ * Update a volunteer signup status
+ * PATCH /api/signups/:id/status
+ */
+const updateSignupStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const coordinatorId = req.user.id;
+
+    const signup = await signupService.updateSignupStatus(
+      id,
+      status,
+      coordinatorId
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Signup status updated successfully',
+      data: {
+        signup,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createSignup,
   getMySignups,
   getSignupById,
   cancelSignup,
   getOpportunityAttendees,
+  updateSignupStatus,
 };

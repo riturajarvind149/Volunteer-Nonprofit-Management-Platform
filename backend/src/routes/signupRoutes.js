@@ -3,7 +3,10 @@ const signupController = require('../controllers/signupController');
 const volunteerHoursController = require('../controllers/volunteerHoursController');
 const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
-const { validateSignupId } = require('../middleware/validateSignup');
+const {
+  validateSignupId,
+  validateUpdateSignupStatus,
+} = require('../middleware/validateSignup');
 const { validateRecordHours } = require('../middleware/validateVolunteerHours');
 
 const router = express.Router();
@@ -43,6 +46,19 @@ router.patch(
   authorizeRoles('VOLUNTEER'),
   validateSignupId,
   signupController.cancelSignup
+);
+
+/**
+ * @route   PATCH /api/signups/:id/status
+ * @desc    Update volunteer signup status (Coordinator owner only)
+ * @access  Protected (COORDINATOR only)
+ */
+router.patch(
+  '/:id/status',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  validateUpdateSignupStatus,
+  signupController.updateSignupStatus
 );
 
 /**
