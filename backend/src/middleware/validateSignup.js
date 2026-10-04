@@ -35,9 +35,24 @@ const validateSignupId = (req, res, next) => {
     );
   }
 
-  // Prevent client from attempting to spoof volunteer_id via request body
-  if (req.body && req.body.volunteer_id !== undefined) {
-    delete req.body.volunteer_id;
+  // Prevent client from attempting to spoof ownership identifiers via request body or query params
+  const sensitiveParams = [
+    'volunteer_id',
+    'coordinator_id',
+    'organization_id',
+    'opportunity_id',
+  ];
+
+  if (req.body) {
+    sensitiveParams.forEach((param) => {
+      if (req.body[param] !== undefined) delete req.body[param];
+    });
+  }
+
+  if (req.query) {
+    sensitiveParams.forEach((param) => {
+      if (req.query[param] !== undefined) delete req.query[param];
+    });
   }
 
   next();

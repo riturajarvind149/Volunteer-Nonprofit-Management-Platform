@@ -55,9 +55,9 @@ const getMySignups = async (req, res, next) => {
 const getSignupById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const user = req.user;
 
-    const signup = await signupService.getSignupById(id, userId);
+    const signup = await signupService.getSignupById(id, user);
 
     res.status(200).json({
       status: 'success',

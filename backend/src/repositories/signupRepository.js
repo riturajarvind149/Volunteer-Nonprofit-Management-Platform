@@ -123,21 +123,38 @@ const findByVolunteerId = async (volunteerId) => {
 };
 
 /**
- * Retrieve a single signup by ID joined with opportunity details
+ * Retrieve a single signup by ID joined with volunteer, opportunity, and organization details
  * @param {string} id - Signup UUID
  * @returns {Promise<Object|null>} Signup record or null if not found
  */
 const findById = async (id) => {
   const query = `
-    SELECT s.id, s.volunteer_id, s.opportunity_id, s.status, s.created_at, s.updated_at,
-           o.title AS opportunity_title,
-           o.event_date AS opportunity_event_date,
-           o.start_time AS opportunity_start_time,
-           o.end_time AS opportunity_end_time,
-           o.location AS opportunity_location,
-           o.organization_id AS opportunity_organization_id
+    SELECT 
+      s.id,
+      s.volunteer_id,
+      u.full_name AS volunteer_name,
+      u.email AS volunteer_email,
+      s.opportunity_id,
+      o.title AS opportunity_title,
+      o.description AS opportunity_description,
+      o.event_date AS opportunity_event_date,
+      o.start_time AS opportunity_start_time,
+      o.end_time AS opportunity_end_time,
+      o.location AS opportunity_location,
+      o.address AS opportunity_address,
+      o.capacity AS opportunity_capacity,
+      o.status AS opportunity_status,
+      o.organization_id AS opportunity_organization_id,
+      org.id AS organization_id,
+      org.name AS organization_name,
+      org.coordinator_id,
+      s.status,
+      s.created_at,
+      s.updated_at
     FROM signups s
+    JOIN users u ON s.volunteer_id = u.id
     JOIN opportunities o ON s.opportunity_id = o.id
+    JOIN organizations org ON o.organization_id = org.id
     WHERE s.id = $1
   `;
   const { rows } = await pool.query(query, [id]);

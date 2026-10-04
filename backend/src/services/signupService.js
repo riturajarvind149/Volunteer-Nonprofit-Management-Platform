@@ -27,18 +27,40 @@ const getMySignups = async (volunteerId) => {
 };
 
 /**
- * Retrieves a single signup by ID ensuring volunteer ownership
+ * Retrieves a single signup by ID ensuring role-based ownership:
+ * - VOLUNTEER: Can only retrieve their own signup (returns 404 if not found or not owned, preventing ID enumeration).
+ * - COORDINATOR: Can retrieve signups belonging to opportunities owned by their organization
+ *                (returns 404 if signup does not exist, 403 if belonging to another coordinator's organization).
  * @param {string} id - Signup UUID
- * @param {string} userId - Authenticated user UUID
- * @returns {Promise<Object>} Signup record with opportunity details
- * @throws {AppError} 404 if signup not found or belongs to another user
+ * @param {Object|string} user - Authenticated user object { id, role } or userId string
+ * @returns {Promise<Object>} Signup record with opportunity and organization details
+ * @throws {AppError} 404 if signup not found or if volunteer does not own it
+ * @throws {AppError} 403 if coordinator does not own the opportunity's organization
  */
-const getSignupById = async (id, userId) => {
+const getSignupById = async (id, user) => {
+  const userId = typeof user === 'object' ? user.id : user;
+  const role = typeof user === 'object' ? user.role : 'VOLUNTEER';
+
   const signup = await signupRepository.findById(id);
 
-  // Return 404 if not found OR if not owned by the requesting volunteer (prevents data enumeration)
-  if (!signup || signup.volunteer_id !== userId) {
+  // If signup does not exist: return 404 according to existing convention
+  if (!signup) {
     throw new AppError('Signup not found', 404);
+  }
+
+  // Role-specific ownership checks
+  if (role === 'COORDINATOR') {
+    if (signup.coordinator_id !== userId) {
+      throw new AppError(
+        'You do not have permission to view this signup',
+        403
+      );
+    }
+  } else {
+    // Preserve strict 404 anti-enumeration behavior for volunteers
+    if (signup.volunteer_id !== userId) {
+      throw new AppError('Signup not found', 404);
+    }
   }
 
   return signup;
