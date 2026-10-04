@@ -57,10 +57,11 @@ const recordHours = async ({ signupId, hours, status }, coordinatorId) => {
 /**
  * Retrieve all volunteer hours for the authenticated volunteer
  * @param {string} volunteerId - Volunteer UUID
+ * @param {Object} [filters] - Optional date filters { from_date, to_date }
  * @returns {Promise<Array>} List of volunteer hours with joined details
  */
-const getMyHours = async (volunteerId) => {
-  return await volunteerHoursRepository.findByVolunteerId(volunteerId);
+const getMyHours = async (volunteerId, filters = {}) => {
+  return await volunteerHoursRepository.findByVolunteerId(volunteerId, filters);
 };
 
 /**

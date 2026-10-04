@@ -18,6 +18,7 @@ router.get(
   '/my',
   authenticate,
   authorizeRoles('VOLUNTEER'),
+  validateDateRangeFilter,
   volunteerHoursController.getMyHours
 );
 

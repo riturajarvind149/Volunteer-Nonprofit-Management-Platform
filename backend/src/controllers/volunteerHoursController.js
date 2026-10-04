@@ -38,7 +38,11 @@ const recordHours = async (req, res, next) => {
 const getMyHours = async (req, res, next) => {
   try {
     const volunteerId = req.user.id;
-    const hours = await volunteerHoursService.getMyHours(volunteerId);
+    const { from_date, to_date } = req.query;
+    const hours = await volunteerHoursService.getMyHours(volunteerId, {
+      from_date,
+      to_date,
+    });
 
     res.status(200).json({
       status: 'success',

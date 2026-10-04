@@ -65,9 +65,10 @@ const findById = async (id) => {
 /**
  * Retrieve all volunteer hours for a specific volunteer across all their signups
  * @param {string} volunteerId - Volunteer UUID
+ * @param {Object} [filters] - Optional date filters { from_date, to_date }
  * @returns {Promise<Array>} List of volunteer_hours records with joined details
  */
-const findByVolunteerId = async (volunteerId) => {
+const findByVolunteerId = async (volunteerId, { from_date, to_date } = {}) => {
   const query = `
     SELECT 
       vh.id,
@@ -86,9 +87,12 @@ const findByVolunteerId = async (volunteerId) => {
     JOIN opportunities o ON s.opportunity_id = o.id
     JOIN organizations org ON o.organization_id = org.id
     WHERE s.volunteer_id = $1
+      AND ($2::text IS NULL OR vh.created_at >= ($2 || ' 00:00:00Z')::timestamptz)
+      AND ($3::text IS NULL OR vh.created_at < (($3 || ' 00:00:00Z')::timestamptz + INTERVAL '1 day'))
     ORDER BY vh.created_at DESC
   `;
-  const { rows } = await pool.query(query, [volunteerId]);
+  const values = [volunteerId, from_date || null, to_date || null];
+  const { rows } = await pool.query(query, values);
   return rows;
 };
 
