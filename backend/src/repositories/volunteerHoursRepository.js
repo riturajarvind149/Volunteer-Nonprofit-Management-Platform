@@ -170,6 +170,66 @@ const updateStatus = async (id, status) => {
   return rows[0];
 };
 
+/**
+ * Calculate aggregate volunteer hours summary for a specific volunteer
+ * @param {string} volunteerId - Volunteer UUID
+ * @returns {Promise<Object>} Aggregated summary
+ */
+const getSummaryByVolunteerId = async (volunteerId) => {
+  const query = `
+    SELECT 
+      COALESCE(SUM(vh.hours), 0) AS total_hours,
+      COUNT(vh.id)::int AS total_records,
+      COALESCE(SUM(CASE WHEN vh.status = 'VERIFIED' THEN vh.hours ELSE 0 END), 0) AS verified_hours,
+      COALESCE(SUM(CASE WHEN vh.status = 'RECORDED' THEN vh.hours ELSE 0 END), 0) AS recorded_hours,
+      COALESCE(SUM(CASE WHEN vh.status = 'PENDING' THEN vh.hours ELSE 0 END), 0) AS pending_hours
+    FROM volunteer_hours vh
+    JOIN signups s ON vh.signup_id = s.id
+    WHERE s.volunteer_id = $1
+  `;
+  const { rows } = await pool.query(query, [volunteerId]);
+  const row = rows[0] || {};
+  return {
+    total_hours: parseFloat(Number(row.total_hours || 0).toFixed(2)),
+    total_records: parseInt(row.total_records || 0, 10),
+    verified_hours: parseFloat(Number(row.verified_hours || 0).toFixed(2)),
+    recorded_hours: parseFloat(Number(row.recorded_hours || 0).toFixed(2)),
+    pending_hours: parseFloat(Number(row.pending_hours || 0).toFixed(2)),
+  };
+};
+
+/**
+ * Calculate aggregate volunteer hours summary for organizations owned by a coordinator
+ * @param {string} coordinatorId - Coordinator UUID
+ * @returns {Promise<Object>} Aggregated summary
+ */
+const getSummaryByCoordinatorId = async (coordinatorId) => {
+  const query = `
+    SELECT 
+      COALESCE(SUM(vh.hours), 0) AS total_hours,
+      COUNT(vh.id)::int AS total_records,
+      COALESCE(SUM(CASE WHEN vh.status = 'VERIFIED' THEN vh.hours ELSE 0 END), 0) AS verified_hours,
+      COALESCE(SUM(CASE WHEN vh.status = 'RECORDED' THEN vh.hours ELSE 0 END), 0) AS recorded_hours,
+      COALESCE(SUM(CASE WHEN vh.status = 'PENDING' THEN vh.hours ELSE 0 END), 0) AS pending_hours,
+      COUNT(DISTINCT s.volunteer_id)::int AS total_volunteers
+    FROM volunteer_hours vh
+    JOIN signups s ON vh.signup_id = s.id
+    JOIN opportunities o ON s.opportunity_id = o.id
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE org.coordinator_id = $1
+  `;
+  const { rows } = await pool.query(query, [coordinatorId]);
+  const row = rows[0] || {};
+  return {
+    total_hours: parseFloat(Number(row.total_hours || 0).toFixed(2)),
+    total_records: parseInt(row.total_records || 0, 10),
+    verified_hours: parseFloat(Number(row.verified_hours || 0).toFixed(2)),
+    recorded_hours: parseFloat(Number(row.recorded_hours || 0).toFixed(2)),
+    pending_hours: parseFloat(Number(row.pending_hours || 0).toFixed(2)),
+    total_volunteers: parseInt(row.total_volunteers || 0, 10),
+  };
+};
+
 module.exports = {
   create,
   findBySignupId,
@@ -178,6 +238,9 @@ module.exports = {
   findByCoordinatorId,
   findByIdWithCoordinator,
   updateStatus,
+  getSummaryByVolunteerId,
+  getSummaryByCoordinatorId,
 };
+
 
 

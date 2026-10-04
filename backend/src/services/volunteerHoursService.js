@@ -100,11 +100,32 @@ const updateStatus = async (id, status, coordinatorId) => {
   return await volunteerHoursRepository.updateStatus(id, status);
 };
 
+/**
+ * Retrieve volunteer hours aggregate summary for the authenticated volunteer
+ * @param {string} volunteerId - Volunteer UUID
+ * @returns {Promise<Object>} Summary object
+ */
+const getMyHoursSummary = async (volunteerId) => {
+  return await volunteerHoursRepository.getSummaryByVolunteerId(volunteerId);
+};
+
+/**
+ * Retrieve volunteer hours aggregate summary for organizations owned by the authenticated coordinator
+ * @param {string} coordinatorId - Coordinator UUID
+ * @returns {Promise<Object>} Summary object
+ */
+const getOrganizationHoursSummary = async (coordinatorId) => {
+  return await volunteerHoursRepository.getSummaryByCoordinatorId(coordinatorId);
+};
+
 module.exports = {
   recordHours,
   getMyHours,
   getOrganizationHours,
   updateStatus,
+  getMyHoursSummary,
+  getOrganizationHoursSummary,
 };
+
 
 

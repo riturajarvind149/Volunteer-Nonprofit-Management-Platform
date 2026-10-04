@@ -19,6 +19,18 @@ router.get(
 );
 
 /**
+ * @route   GET /api/hours/my/summary
+ * @desc    Get aggregate volunteer hours summary for the authenticated volunteer
+ * @access  Protected (VOLUNTEER only)
+ */
+router.get(
+  '/my/summary',
+  authenticate,
+  authorizeRoles('VOLUNTEER'),
+  volunteerHoursController.getMyHoursSummary
+);
+
+/**
  * @route   GET /api/hours/organization
  * @desc    Get all volunteer hours for organizations owned by authenticated coordinator
  * @access  Protected (COORDINATOR only)
@@ -29,6 +41,19 @@ router.get(
   authorizeRoles('COORDINATOR'),
   volunteerHoursController.getOrganizationHours
 );
+
+/**
+ * @route   GET /api/hours/organization/summary
+ * @desc    Get aggregate volunteer hours summary for organizations owned by authenticated coordinator
+ * @access  Protected (COORDINATOR only)
+ */
+router.get(
+  '/organization/summary',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  volunteerHoursController.getOrganizationHoursSummary
+);
+
 
 /**
  * @route   PATCH /api/hours/:id/status

@@ -103,11 +103,58 @@ const updateStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * Retrieve volunteer hours aggregate summary for the authenticated volunteer
+ * GET /api/hours/my/summary
+ */
+const getMyHoursSummary = async (req, res, next) => {
+  try {
+    const volunteerId = req.user.id;
+    const summary = await volunteerHoursService.getMyHoursSummary(volunteerId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Volunteer hours summary retrieved successfully',
+      data: {
+        summary,
+        ...summary,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Retrieve volunteer hours aggregate summary for organizations owned by authenticated coordinator
+ * GET /api/hours/organization/summary
+ */
+const getOrganizationHoursSummary = async (req, res, next) => {
+  try {
+    const coordinatorId = req.user.id;
+    const summary = await volunteerHoursService.getOrganizationHoursSummary(coordinatorId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Organization volunteer hours summary retrieved successfully',
+      data: {
+        summary,
+        ...summary,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   recordHours,
   getMyHours,
   getOrganizationHours,
   updateStatus,
+  getMyHoursSummary,
+  getOrganizationHoursSummary,
 };
+
 
 
