@@ -2,6 +2,7 @@ const express = require('express');
 const volunteerHoursController = require('../controllers/volunteerHoursController');
 const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
+const { validateUpdateHoursStatus } = require('../middleware/validateVolunteerHours');
 
 const router = express.Router();
 
@@ -29,4 +30,18 @@ router.get(
   volunteerHoursController.getOrganizationHours
 );
 
+/**
+ * @route   PATCH /api/hours/:id/status
+ * @desc    Update status of a volunteer-hour record (Coordinator only)
+ * @access  Protected (COORDINATOR only)
+ */
+router.patch(
+  '/:id/status',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  validateUpdateHoursStatus,
+  volunteerHoursController.updateStatus
+);
+
 module.exports = router;
+

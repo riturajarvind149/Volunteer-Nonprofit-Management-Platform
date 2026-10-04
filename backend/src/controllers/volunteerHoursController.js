@@ -75,9 +75,39 @@ const getOrganizationHours = async (req, res, next) => {
   }
 };
 
+/**
+ * Update status of a volunteer-hour record
+ * PATCH /api/hours/:id/status
+ */
+const updateStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const coordinatorId = req.user.id;
+    const { status } = req.body;
+
+    const updatedHours = await volunteerHoursService.updateStatus(
+      id,
+      status,
+      coordinatorId
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Volunteer hours status updated successfully',
+      data: {
+        volunteer_hours: updatedHours,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   recordHours,
   getMyHours,
   getOrganizationHours,
+  updateStatus,
 };
+
 

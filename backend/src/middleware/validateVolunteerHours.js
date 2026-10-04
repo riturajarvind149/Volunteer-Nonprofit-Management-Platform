@@ -67,6 +67,53 @@ const validateRecordHours = (req, res, next) => {
   next();
 };
 
+/**
+ * Middleware to validate updating volunteer hours status
+ */
+const validateUpdateHoursStatus = (req, res, next) => {
+  const { id } = req.params;
+
+  // 1. Validate ID UUID format
+  if (!id || !UUID_REGEX.test(id.trim())) {
+    return next(new AppError('Invalid volunteer hours ID format. Expected a valid UUID', 400));
+  }
+
+  const { status } = req.body;
+
+  // 2. Validate status existence and type
+  if (status === undefined || status === null) {
+    return next(new AppError('Status is required', 400));
+  }
+
+  if (typeof status !== 'string' || status.trim() === '') {
+    return next(new AppError('Status must be a valid non-empty string', 400));
+  }
+
+  const normalizedStatus = status.trim().toUpperCase();
+  if (!ALLOWED_STATUSES.includes(normalizedStatus)) {
+    return next(
+      new AppError(
+        'Invalid status. Status must be one of: PENDING, RECORDED, VERIFIED',
+        400
+      )
+    );
+  }
+
+  // 3. Sanitize req.body to prevent tampering with other fields
+  if (req.body.recorded_by !== undefined) delete req.body.recorded_by;
+  if (req.body.coordinator_id !== undefined) delete req.body.coordinator_id;
+  if (req.body.volunteer_id !== undefined) delete req.body.volunteer_id;
+  if (req.body.signup_id !== undefined) delete req.body.signup_id;
+  if (req.body.hours !== undefined) delete req.body.hours;
+  if (req.body.id !== undefined) delete req.body.id;
+
+  req.body.status = normalizedStatus;
+
+  next();
+};
+
 module.exports = {
   validateRecordHours,
+  validateUpdateHoursStatus,
 };
+

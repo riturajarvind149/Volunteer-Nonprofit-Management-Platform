@@ -72,9 +72,39 @@ const getOrganizationHours = async (coordinatorId) => {
   return await volunteerHoursRepository.findByCoordinatorId(coordinatorId);
 };
 
+/**
+ * Update the status of a volunteer hours record (Coordinator only, ownership verified)
+ * @param {string} id - Volunteer hours UUID
+ * @param {string} status - New status (PENDING, RECORDED, VERIFIED)
+ * @param {string} coordinatorId - Authenticated coordinator UUID
+ * @returns {Promise<Object>} Updated volunteer_hours record
+ * @throws {AppError} 404 if volunteer hours record does not exist
+ * @throws {AppError} 403 if coordinator does not own the organization
+ */
+const updateStatus = async (id, status, coordinatorId) => {
+  // 1. Verify volunteer hours record exists and get owning coordinator
+  const record = await volunteerHoursRepository.findByIdWithCoordinator(id);
+  if (!record) {
+    throw new AppError('Volunteer hours record not found', 404);
+  }
+
+  // 2. Enforce ownership chain: coordinator owns the organization
+  if (record.coordinator_id !== coordinatorId) {
+    throw new AppError(
+      'You do not have permission to update status for this volunteer hours record',
+      403
+    );
+  }
+
+  // 3. Delegate update to repository
+  return await volunteerHoursRepository.updateStatus(id, status);
+};
+
 module.exports = {
   recordHours,
   getMyHours,
   getOrganizationHours,
+  updateStatus,
 };
+
 

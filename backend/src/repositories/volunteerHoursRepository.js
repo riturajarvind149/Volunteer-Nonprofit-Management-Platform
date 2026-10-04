@@ -126,11 +126,58 @@ const findByCoordinatorId = async (coordinatorId) => {
   return rows;
 };
 
+/**
+ * Retrieve a volunteer_hours record along with the owning coordinator ID
+ * @param {string} id - Volunteer hours UUID
+ * @returns {Promise<Object|null>} Record with coordinator_id or null if not found
+ */
+const findByIdWithCoordinator = async (id) => {
+  const query = `
+    SELECT 
+      vh.id,
+      vh.signup_id,
+      vh.hours,
+      vh.status,
+      vh.recorded_by,
+      vh.created_at,
+      vh.updated_at,
+      org.coordinator_id,
+      org.id AS organization_id
+    FROM volunteer_hours vh
+    JOIN signups s ON vh.signup_id = s.id
+    JOIN opportunities o ON s.opportunity_id = o.id
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE vh.id = $1
+  `;
+  const { rows } = await pool.query(query, [id]);
+  return rows[0] || null;
+};
+
+/**
+ * Update the status of a volunteer_hours record
+ * @param {string} id - Volunteer hours UUID
+ * @param {string} status - New status (PENDING, RECORDED, VERIFIED)
+ * @returns {Promise<Object>} Updated volunteer_hours record
+ */
+const updateStatus = async (id, status) => {
+  const query = `
+    UPDATE volunteer_hours
+    SET status = $1, updated_at = CURRENT_TIMESTAMP
+    WHERE id = $2
+    RETURNING id, signup_id, hours, status, recorded_by, created_at, updated_at
+  `;
+  const { rows } = await pool.query(query, [status, id]);
+  return rows[0];
+};
+
 module.exports = {
   create,
   findBySignupId,
   findById,
   findByVolunteerId,
   findByCoordinatorId,
+  findByIdWithCoordinator,
+  updateStatus,
 };
+
 
