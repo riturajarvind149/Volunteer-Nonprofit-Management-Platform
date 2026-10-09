@@ -5,6 +5,7 @@ const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
 const {
   validateCreateOpportunity,
+  validateUpdateOpportunity,
   validateOpportunityId,
 } = require('../middleware/validateOpportunity');
 const {
@@ -48,6 +49,20 @@ router.get(
   authenticate,
   validateOpportunityId,
   opportunityController.getById
+);
+
+/**
+ * @route   PATCH /api/opportunities/:id
+ * @desc    Partially update an opportunity (Coordinator owner only)
+ * @access  Protected (COORDINATOR)
+ */
+router.patch(
+  '/:id',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  validateOpportunityId,
+  validateUpdateOpportunity,
+  opportunityController.update
 );
 
 /**

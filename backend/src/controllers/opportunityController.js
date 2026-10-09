@@ -66,8 +66,36 @@ const getById = async (req, res, next) => {
   }
 };
 
+/**
+ * Update an opportunity partially (Coordinator owner only)
+ * PATCH /api/opportunities/:id
+ */
+const update = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const coordinatorId = req.user.id;
+
+    const opportunity = await opportunityService.updateOpportunity(
+      id,
+      req.body,
+      coordinatorId
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Opportunity updated successfully',
+      data: {
+        opportunity,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   create,
   getAll,
   getById,
+  update,
 };

@@ -94,8 +94,77 @@ const findOpportunityById = async (id) => {
   return rows[0] || null;
 };
 
+/**
+ * Retrieve a single opportunity along with its organization's coordinator_id
+ * @param {string} id - Opportunity UUID
+ * @returns {Promise<Object|null>} Opportunity record with coordinator_id or null
+ */
+const findOpportunityByIdWithCoordinator = async (id) => {
+  const query = `
+    SELECT o.id, o.organization_id, o.title, o.description, o.category, o.event_date,
+           o.start_time, o.end_time, o.location, o.address, o.capacity, o.status,
+           o.created_at, o.updated_at,
+           org.coordinator_id
+    FROM opportunities o
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE o.id = $1
+  `;
+  const { rows } = await pool.query(query, [id]);
+  return rows[0] || null;
+};
+
+/**
+ * Update an existing opportunity record with provided partial fields
+ * @param {string} id - Opportunity UUID
+ * @param {Object} updateFields - Fields to update
+ * @returns {Promise<Object|null>} Updated opportunity record
+ */
+const updateOpportunity = async (id, updateFields) => {
+  const allowedKeys = [
+    'title',
+    'description',
+    'category',
+    'event_date',
+    'start_time',
+    'end_time',
+    'location',
+    'address',
+    'capacity',
+    'status',
+  ];
+
+  const setClauses = [];
+  const values = [];
+  let paramIndex = 1;
+
+  for (const key of allowedKeys) {
+    if (updateFields[key] !== undefined) {
+      setClauses.push(`${key} = $${paramIndex}`);
+      values.push(updateFields[key]);
+      paramIndex++;
+    }
+  }
+
+  setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
+
+  values.push(id);
+  const query = `
+    UPDATE opportunities
+    SET ${setClauses.join(', ')}
+    WHERE id = $${paramIndex}
+    RETURNING id, organization_id, title, description, category, event_date,
+              start_time, end_time, location, address, capacity, status,
+              created_at, updated_at
+  `;
+
+  const { rows } = await pool.query(query, values);
+  return rows[0] || null;
+};
+
 module.exports = {
   createOpportunity,
   findAllOpportunities,
   findOpportunityById,
+  findOpportunityByIdWithCoordinator,
+  updateOpportunity,
 };
