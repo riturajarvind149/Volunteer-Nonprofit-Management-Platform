@@ -1,22 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { useOpportunities } from '../../context/OpportunityContext'
 import { getOrganizationByIdApi } from '../../services/api'
-import OpportunityCard from '../../components/OpportunityCard'
 import './OrganizationDetails.css'
 
 function OrganizationDetails() {
   const { id } = useParams()
-  const { token, isAuthenticated, user } = useAuth()
-  const { opportunities } = useOpportunities()
+  const { token, isAuthenticated } = useAuth()
   const [organization, setOrganization] = useState(null)
   const [loading, setLoading] = useState(Boolean(token))
   const [error, setError] = useState('')
-
-  const orgOpportunities = opportunities.filter(
-    (o) => o.organization_id === id || o.organization_name === organization?.name
-  )
 
   useEffect(() => {
     if (!token) return
@@ -80,7 +73,6 @@ function OrganizationDetails() {
   }
 
   const { name, description, coordinator_id, created_at } = organization
-  const isOwner = user?.id === coordinator_id
 
   return (
     <main className="org-details-page">
@@ -98,17 +90,15 @@ function OrganizationDetails() {
 
           <section className="org-details-meta">
             <div className="meta-box">
+              <span className="meta-box-label">Manager ID</span>
+              <span className="meta-box-value">{coordinator_id || 'N/A'}</span>
+            </div>
+            <div className="meta-box">
               <span className="meta-box-label">Registered Date</span>
               <span className="meta-box-value">
                 {created_at ? new Date(created_at).toLocaleDateString() : 'N/A'}
               </span>
             </div>
-            {isOwner && (
-              <div className="meta-box">
-                <span className="meta-box-label">Your Organization</span>
-                <span className="meta-box-value" style={{ color: 'var(--color-primary)' }}>You manage this org</span>
-              </div>
-            )}
           </section>
 
           <section className="org-details-body">
@@ -116,22 +106,10 @@ function OrganizationDetails() {
             <p>{description || 'No description available for this organization.'}</p>
           </section>
 
-          {orgOpportunities.length > 0 && (
-            <section className="org-opportunities-section">
-              <h2>Opportunities from this Organization</h2>
-              <div className="org-opportunities-grid">
-                {orgOpportunities.map((opp) => (
-                  <OpportunityCard key={opp.id} opportunity={opp} />
-                ))}
-              </div>
-            </section>
-          )}
-
           <footer className="org-details-footer">
-            <Link to="/organizations" className="btn btn-secondary">Back to List</Link>
-            {isOwner && (
-              <Link to="/opportunities/new" className="btn btn-primary">Post Opportunity</Link>
-            )}
+            <Link to="/organizations" className="btn btn-secondary">
+              Back to List
+            </Link>
           </footer>
         </article>
       </div>

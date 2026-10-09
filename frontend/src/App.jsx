@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { OpportunityProvider } from './context/OpportunityContext'
@@ -13,10 +13,6 @@ import Register from './pages/Register/Register'
 import Profile from './pages/Profile/Profile'
 import Dashboard from './pages/Dashboard/Dashboard'
 import OpportunityDetails from './pages/OpportunityDetails/OpportunityDetails'
-import CreateOpportunity from './pages/CreateOpportunity/CreateOpportunity'
-import MySignups from './pages/MySignups/MySignups'
-import VolunteerHours from './pages/VolunteerHours/VolunteerHours'
-import NotFound from './pages/NotFound/NotFound'
 import './App.css'
 
 function App() {
@@ -44,14 +40,10 @@ function App() {
             <Route path="/organizations" element={<Organizations />} />
             <Route path="/organizations/:id" element={<OrganizationDetails />} />
             <Route path="/opportunities" element={<Opportunities />} />
-            <Route path="/opportunities/new" element={<CreateOpportunity />} />
             <Route path="/opportunities/:id" element={<OpportunityDetails />} />
-            <Route path="/my-signups" element={<MySignups />} />
-            <Route path="/hours" element={<VolunteerHours />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="*" element={<NotFound />} />
           </Routes>
           <Footer />
         </div>
