@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { loginApi } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
-import './Login.css'
+import '../Auth.css'
 
 function Login() {
   const navigate = useNavigate()
@@ -14,7 +14,6 @@ function Login() {
     password: '',
     rememberMe: false,
   })
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [infoMessage, setInfoMessage] = useState(location.state?.message || '')
@@ -34,18 +33,17 @@ function Login() {
     setError('')
     setInfoMessage('')
 
-    if (!formData.email.trim() || !formData.password) {
+    const email = formData.email.trim()
+    const { password } = formData
+
+    if (!email || !password) {
       setError('Please provide both email and password.')
       return
     }
 
     setLoading(true)
     try {
-      const response = await loginApi({
-        email: formData.email.trim(),
-        password: formData.password,
-      })
-
+      const response = await loginApi({ email, password })
       const { token, user } = response.data
       login(token, user)
       navigate('/profile')
@@ -57,10 +55,10 @@ function Login() {
   }
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-header">
-          <Link to="/" className="login-brand">
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <Link to="/" className="auth-brand">
             ServeHub
           </Link>
           <h1>Welcome Back</h1>
@@ -70,7 +68,7 @@ function Login() {
         {infoMessage && <div className="alert-success">{infoMessage}</div>}
         {error && <div className="alert-error">{error}</div>}
 
-        <form className="login-form" onSubmit={handleSubmit}>
+        <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email Address</label>
             <input
@@ -104,30 +102,25 @@ function Login() {
             />
           </div>
 
-          <div className="form-options">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                name="rememberMe"
-                checked={formData.rememberMe}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <span>Remember me</span>
-            </label>
-          </div>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              name="rememberMe"
+              checked={formData.rememberMe}
+              onChange={handleChange}
+              disabled={loading}
+            />
+            <span>Remember me</span>
+          </label>
 
-          <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
+          <button type="submit" className="btn btn-primary auth-btn" disabled={loading}>
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <div className="login-footer">
+        <div className="auth-footer">
           <p>
-            Don't have an account?{' '}
-            <Link to="/register" className="register-link">
-              Register
-            </Link>
+            Don't have an account? <Link to="/register">Register</Link>
           </p>
         </div>
       </div>

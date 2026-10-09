@@ -1,10 +1,15 @@
-import { Navigate, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Navigate, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { testCoordinatorApi, testVolunteerApi } from '../../services/api'
 import './Profile.css'
 
 function Profile() {
-  const { user, loading, isAuthenticated, logout } = useAuth()
+  const { user, token, loading, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
+  const [testResult, setTestResult] = useState(null)
+  const [testingRole, setTestingRole] = useState(false)
+  const [testError, setTestError] = useState('')
 
   if (loading) {
     return (
@@ -26,14 +31,30 @@ function Profile() {
     navigate('/login')
   }
 
-  // Format role for display: VOLUNTEER -> Volunteer, COORDINATOR -> NGO Coordinator
-  const displayRole = user.role === 'COORDINATOR' ? 'NGO Coordinator' : 'Volunteer'
-  const roleClass = user.role === 'COORDINATOR' ? 'coordinator' : 'volunteer'
+  const handleTestRole = async () => {
+    setTestingRole(true)
+    setTestResult(null)
+    setTestError('')
+    try {
+      let res
+      if (user.role === 'COORDINATOR') {
+        res = await testCoordinatorApi(token)
+      } else {
+        res = await testVolunteerApi(token)
+      }
+      setTestResult(res?.message || 'Authorization verified successfully!')
+    } catch (err) {
+      setTestError(err.message || 'Authorization test failed.')
+    } finally {
+      setTestingRole(false)
+    }
+  }
 
-  // Get initial for avatar badge
-  const initial = user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'
+  const isCoordinator = user.role === 'COORDINATOR'
+  const displayRole = isCoordinator ? 'NGO Coordinator' : 'Volunteer'
+  const roleClass = isCoordinator ? 'coordinator' : 'volunteer'
+  const initial = (user.full_name?.[0] || 'U').toUpperCase()
 
-  // Format date if available
   const formattedDate = user.created_at
     ? new Date(user.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -42,46 +63,64 @@ function Profile() {
       })
     : 'Active Member'
 
+  const details = [
+    { label: 'Full Name', value: user.full_name },
+    { label: 'Email Address', value: user.email },
+    {
+      label: 'Platform Role',
+      value: <span className={`role-badge ${roleClass}`}>{displayRole}</span>,
+    },
+    {
+      label: 'Account Status',
+      value: (
+        <span className="status-badge">
+          <span className="status-dot" />
+          Active
+        </span>
+      ),
+    },
+    { label: 'Member Since', value: formattedDate },
+  ]
+
   return (
     <div className="profile-page">
       <div className="profile-card">
         <div className="profile-header">
           <div className="profile-avatar">{initial}</div>
           <h1>My Profile</h1>
-          <p>Manage your account details and platform preferences.</p>
+          <p>Manage your account details and platform permissions.</p>
         </div>
 
         <div className="profile-details">
-          <div className="profile-row">
-            <span className="profile-row-label">Full Name</span>
-            <span className="profile-row-value">{user.full_name}</span>
-          </div>
+          {details.map(({ label, value }) => (
+            <div key={label} className="profile-row">
+              <span className="profile-row-label">{label}</span>
+              <span className="profile-row-value">{value}</span>
+            </div>
+          ))}
+        </div>
 
-          <div className="profile-row">
-            <span className="profile-row-label">Email Address</span>
-            <span className="profile-row-value">{user.email}</span>
-          </div>
+        <div className="role-test-section">
+          <h3>Role Access Verification</h3>
+          <p className="role-test-desc">
+            Test backend RBAC access control for your <strong>{displayRole}</strong> role.
+          </p>
 
-          <div className="profile-row">
-            <span className="profile-row-label">Platform Role</span>
-            <span className="profile-row-value">
-              <span className={`role-badge ${roleClass}`}>{displayRole}</span>
-            </span>
-          </div>
+          {testResult && <div className="alert-success">{testResult}</div>}
+          {testError && <div className="alert-error">{testError}</div>}
 
-          <div className="profile-row">
-            <span className="profile-row-label">Account Status</span>
-            <span className="profile-row-value">
-              <span className="status-badge">
-                <span className="status-dot" />
-                Active
-              </span>
-            </span>
-          </div>
-
-          <div className="profile-row">
-            <span className="profile-row-label">Member Since</span>
-            <span className="profile-row-value">{formattedDate}</span>
+          <div className="role-test-actions">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={handleTestRole}
+              disabled={testingRole}
+            >
+              {testingRole ? 'Verifying...' : `Verify ${displayRole} Access`}
+            </button>
+            <Link to="/organizations" className="btn btn-secondary">
+              {isCoordinator ? 'Manage Organizations' : 'Browse Organizations'}
+            </Link>
           </div>
         </div>
 

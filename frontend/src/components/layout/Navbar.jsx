@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import './Navbar.css'
 
@@ -22,45 +22,63 @@ function Navbar({ theme, onToggleTheme }) {
     navigate('/login')
   }
 
+  const getNavLinkClass = ({ isActive }) =>
+    isActive ? 'nav-link active' : 'nav-link'
+
   return (
-    <header className="navbar">
+    <header className="navbar-sticky">
       <div className="navbar-container">
         <Link to="/" className="navbar-brand" onClick={closeMenu}>
-          ServeHub
+          <div className="brand-emblem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </div>
+          <span className="brand-title">ServeHub</span>
         </Link>
 
         <nav className={`navbar-menu ${isMenuOpen ? 'open' : ''}`}>
           <ul className="navbar-nav">
             <li>
-              <Link to="/" className="nav-link" onClick={closeMenu}>
-                Home
-              </Link>
+              <NavLink to="/" className={getNavLinkClass} onClick={closeMenu} end>
+                <span>Home</span>
+              </NavLink>
             </li>
             <li>
-              <Link to="/opportunities" className="nav-link" onClick={closeMenu}>
-                Opportunities
-              </Link>
+              <NavLink to="/organizations" className={getNavLinkClass} onClick={closeMenu}>
+                <span>Organizations</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/opportunities" className={getNavLinkClass} onClick={closeMenu}>
+                <span>Opportunities</span>
+              </NavLink>
             </li>
 
             {!isAuthenticated ? (
               <>
                 <li>
-                  <Link to="/login" className="nav-link" onClick={closeMenu}>
-                    Login
-                  </Link>
+                  <NavLink to="/login" className={getNavLinkClass} onClick={closeMenu}>
+                    <span>Login</span>
+                  </NavLink>
                 </li>
                 <li>
-                  <Link to="/register" className="nav-link nav-btn-primary" onClick={closeMenu}>
-                    Register
-                  </Link>
+                  <NavLink to="/register" className="nav-link-register" onClick={closeMenu}>
+                    <span>Register</span>
+                  </NavLink>
                 </li>
               </>
             ) : (
               <>
                 <li>
-                  <Link to="/profile" className="nav-link nav-btn-primary" onClick={closeMenu}>
-                    Profile
-                  </Link>
+                  <NavLink to="/dashboard" className={getNavLinkClass} onClick={closeMenu}>
+                    <span>Dashboard</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/profile" className="nav-link-register" onClick={closeMenu}>
+                    <span>Profile</span>
+                  </NavLink>
                 </li>
                 <li>
                   <button type="button" className="nav-btn-logout" onClick={handleLogout}>
@@ -75,24 +93,25 @@ function Navbar({ theme, onToggleTheme }) {
         <div className="navbar-actions">
           <button
             type="button"
-            className="theme-toggle"
+            className="theme-toggle-btn"
             onClick={onToggleTheme}
             aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
             title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
           >
-            {theme === 'light' ? '🌙' : '☀️'}
+            <span className={`theme-icon ${theme === 'dark' ? 'dark-active' : ''}`}>
+              {theme === 'light' ? '🌙' : '☀️'}
+            </span>
           </button>
 
           <button
             type="button"
-            className="navbar-toggle"
+            className="navbar-toggle-btn"
             aria-label="Toggle navigation"
             aria-expanded={isMenuOpen}
             onClick={toggleMenu}
           >
-            <span className={`toggle-line ${isMenuOpen ? 'open' : ''}`} />
-            <span className={`toggle-line ${isMenuOpen ? 'open' : ''}`} />
-            <span className={`toggle-line ${isMenuOpen ? 'open' : ''}`} />
+            <span className={`toggle-bar ${isMenuOpen ? 'open' : ''}`} />
+            <span className={`toggle-bar ${isMenuOpen ? 'open' : ''}`} />
           </button>
         </div>
       </div>
@@ -101,3 +120,4 @@ function Navbar({ theme, onToggleTheme }) {
 }
 
 export default Navbar
+

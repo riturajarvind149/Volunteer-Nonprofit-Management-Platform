@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { registerApi } from '../../services/api'
-import './Register.css'
+import '../Auth.css'
+
+const FIELDS = [
+  { id: 'name', label: 'Full Name', type: 'text', placeholder: 'e.g. John Doe' },
+  { id: 'email', label: 'Email Address', type: 'email', placeholder: 'you@example.com' },
+  { id: 'password', label: 'Password', type: 'password', placeholder: 'At least 8 characters' },
+  { id: 'confirmPassword', label: 'Confirm Password', type: 'password', placeholder: 'Repeat your password' },
+]
 
 function Register() {
   const navigate = useNavigate()
@@ -12,7 +19,6 @@ function Register() {
     password: '',
     confirmPassword: '',
   })
-
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -22,60 +28,42 @@ function Register() {
     setFormData((prev) => ({ ...prev, role }))
     setErrors({})
     setServerError('')
-    setSuccessMessage('')
   }
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }))
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
     if (serverError) setServerError('')
   }
 
   const validate = () => {
-    const newErrors = {}
+    const errs = {}
+    const name = formData.name.trim()
+    const email = formData.email.trim()
 
-    if (!formData.name.trim()) {
-      newErrors.name =
-        formData.role === 'COORDINATOR' ? 'Coordinator name is required' : 'Full name is required'
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters'
+    if (!name || name.length < 2) {
+      errs.name = 'Name must be at least 2 characters'
     }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email address is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = 'Please enter a valid email address'
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errs.email = 'Please enter a valid email address'
     }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required'
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
+    if (!formData.password || formData.password.length < 8) {
+      errs.password = 'Password must be at least 8 characters'
     }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Confirm password is required'
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
+    if (formData.password !== formData.confirmPassword) {
+      errs.confirmPassword = 'Passwords do not match'
     }
-
-    return newErrors
+    return errs
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setServerError('')
-    setSuccessMessage('')
 
     const validationErrors = validate()
     setErrors(validationErrors)
-
-    if (Object.keys(validationErrors).length > 0) {
-      return
-    }
+    if (Object.keys(validationErrors).length > 0) return
 
     setLoading(true)
     try {
@@ -99,11 +87,13 @@ function Register() {
     }
   }
 
+  const isCoordinator = formData.role === 'COORDINATOR'
+
   return (
-    <div className="register-page">
-      <div className="register-card">
-        <div className="register-header">
-          <Link to="/" className="register-brand">
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <Link to="/" className="auth-brand">
             ServeHub
           </Link>
           <h1>Create an Account</h1>
@@ -113,7 +103,7 @@ function Register() {
         <div className="role-selector">
           <button
             type="button"
-            className={`role-btn ${formData.role === 'VOLUNTEER' ? 'active' : ''}`}
+            className={`role-btn ${!isCoordinator ? 'active' : ''}`}
             onClick={() => handleRoleChange('VOLUNTEER')}
             disabled={loading}
           >
@@ -121,7 +111,7 @@ function Register() {
           </button>
           <button
             type="button"
-            className={`role-btn ${formData.role === 'COORDINATOR' ? 'active' : ''}`}
+            className={`role-btn ${isCoordinator ? 'active' : ''}`}
             onClick={() => handleRoleChange('COORDINATOR')}
             disabled={loading}
           >
@@ -132,84 +122,35 @@ function Register() {
         {serverError && <div className="alert-error">{serverError}</div>}
         {successMessage && <div className="alert-success">{successMessage}</div>}
 
-        <form className="register-form" onSubmit={handleSubmit} noValidate>
-          <div className="form-group">
-            <label htmlFor="name">
-              {formData.role === 'COORDINATOR' ? 'Coordinator / Contact Name' : 'Full Name'}
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              placeholder={formData.role === 'COORDINATOR' ? 'e.g. Sarah Jenkins' : 'e.g. John Doe'}
-              value={formData.name}
-              onChange={handleChange}
-              className={errors.name ? 'input-error' : ''}
-              disabled={loading}
-              required
-            />
-            {errors.name && <span className="error-text">{errors.name}</span>}
-          </div>
+        <form className="auth-form" onSubmit={handleSubmit} noValidate>
+          {FIELDS.map(({ id, label, type, placeholder }) => (
+            <div key={id} className="form-group">
+              <label htmlFor={id}>
+                {id === 'name' && isCoordinator ? 'Coordinator / Contact Name' : label}
+              </label>
+              <input
+                type={type}
+                id={id}
+                name={id}
+                placeholder={placeholder}
+                value={formData[id]}
+                onChange={handleChange}
+                className={errors[id] ? 'input-error' : ''}
+                disabled={loading}
+                required
+              />
+              {errors[id] && <span className="error-text">{errors[id]}</span>}
+            </div>
+          ))}
 
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              placeholder="you@example.com"
-              value={formData.email}
-              onChange={handleChange}
-              className={errors.email ? 'input-error' : ''}
-              disabled={loading}
-              required
-            />
-            {errors.email && <span className="error-text">{errors.email}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              placeholder="At least 8 characters"
-              value={formData.password}
-              onChange={handleChange}
-              className={errors.password ? 'input-error' : ''}
-              disabled={loading}
-              required
-            />
-            {errors.password && <span className="error-text">{errors.password}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              placeholder="Repeat your password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className={errors.confirmPassword ? 'input-error' : ''}
-              disabled={loading}
-              required
-            />
-            {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-          </div>
-
-          <button type="submit" className="btn btn-primary register-btn" disabled={loading}>
+          <button type="submit" className="btn btn-primary auth-btn" disabled={loading}>
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
-        <div className="register-footer">
+        <div className="auth-footer">
           <p>
-            Already have an account?{' '}
-            <Link to="/login" className="login-link">
-              Login
-            </Link>
+            Already have an account? <Link to="/login">Login</Link>
           </p>
         </div>
       </div>
