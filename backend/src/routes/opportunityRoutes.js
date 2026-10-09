@@ -1,42 +1,22 @@
 const express = require('express');
 const opportunityController = require('../controllers/opportunityController');
+const signupController = require('../controllers/signupController');
 const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
 const {
   validateCreateOpportunity,
+  validateUpdateOpportunity,
   validateOpportunityId,
 } = require('../middleware/validateOpportunity');
+const {
+  validateSignupOpportunityId,
+} = require('../middleware/validateSignup');
 
 const router = express.Router();
 
 /**
- * @route   GET /api/opportunities/dashboard-stats
- * @desc    Get dashboard stats for authenticated user
- * @access  Protected (VOLUNTEER, COORDINATOR)
- * NOTE: must be defined before /:id to avoid "dashboard-stats" being parsed as a UUID
- */
-router.get(
-  '/dashboard-stats',
-  authenticate,
-  authorizeRoles('VOLUNTEER', 'COORDINATOR'),
-  opportunityController.dashboardStats
-);
-
-/**
- * @route   GET /api/opportunities/my-signups
- * @desc    Get all opportunities the volunteer signed up for
- * @access  Protected (VOLUNTEER)
- */
-router.get(
-  '/my-signups',
-  authenticate,
-  authorizeRoles('VOLUNTEER'),
-  opportunityController.mySignups
-);
-
-/**
  * @route   POST /api/opportunities
- * @desc    Create a new opportunity
+ * @desc    Create a new volunteer opportunity (Coordinator only, must own organization)
  * @access  Protected (COORDINATOR)
  */
 router.post(
@@ -49,7 +29,7 @@ router.post(
 
 /**
  * @route   GET /api/opportunities
- * @desc    List all published opportunities
+ * @desc    Get all volunteer opportunities
  * @access  Protected (VOLUNTEER, COORDINATOR)
  */
 router.get(
@@ -61,8 +41,8 @@ router.get(
 
 /**
  * @route   GET /api/opportunities/:id
- * @desc    Get a single opportunity by UUID
- * @access  Protected (any authenticated user)
+ * @desc    Get a single volunteer opportunity by UUID
+ * @access  Protected (Any authenticated user)
  */
 router.get(
   '/:id',
@@ -72,29 +52,43 @@ router.get(
 );
 
 /**
- * @route   POST /api/opportunities/:id/signup
- * @desc    Volunteer signs up for an opportunity
- * @access  Protected (VOLUNTEER)
+ * @route   PATCH /api/opportunities/:id
+ * @desc    Partially update an opportunity (Coordinator owner only)
+ * @access  Protected (COORDINATOR)
  */
-router.post(
-  '/:id/signup',
+router.patch(
+  '/:id',
   authenticate,
-  authorizeRoles('VOLUNTEER'),
+  authorizeRoles('COORDINATOR'),
   validateOpportunityId,
-  opportunityController.signup
+  validateUpdateOpportunity,
+  opportunityController.update
 );
 
 /**
- * @route   DELETE /api/opportunities/:id/signup
- * @desc    Volunteer cancels their signup
+ * @route   GET /api/opportunities/:id/signups
+ * @desc    Get all attendees who signed up for an opportunity (Coordinator owner only)
+ * @access  Protected (COORDINATOR)
+ */
+router.get(
+  '/:id/signups',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  validateOpportunityId,
+  signupController.getOpportunityAttendees
+);
+
+/**
+ * @route   POST /api/opportunities/:opportunityId/signup
+ * @desc    Sign up for an opportunity (Volunteer only)
  * @access  Protected (VOLUNTEER)
  */
-router.delete(
-  '/:id/signup',
+router.post(
+  '/:opportunityId/signup',
   authenticate,
   authorizeRoles('VOLUNTEER'),
-  validateOpportunityId,
-  opportunityController.cancelSignup
+  validateSignupOpportunityId,
+  signupController.createSignup
 );
 
 module.exports = router;

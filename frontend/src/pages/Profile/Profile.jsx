@@ -1,10 +1,15 @@
+import { useState } from 'react'
 import { Navigate, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { testCoordinatorApi, testVolunteerApi } from '../../services/api'
 import './Profile.css'
 
 function Profile() {
-  const { user, loading, isAuthenticated, logout } = useAuth()
+  const { user, token, loading, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
+  const [testResult, setTestResult] = useState(null)
+  const [testingRole, setTestingRole] = useState(false)
+  const [testError, setTestError] = useState('')
 
   if (loading) {
     return (
@@ -24,6 +29,25 @@ function Profile() {
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+
+  const handleTestRole = async () => {
+    setTestingRole(true)
+    setTestResult(null)
+    setTestError('')
+    try {
+      let res
+      if (user.role === 'COORDINATOR') {
+        res = await testCoordinatorApi(token)
+      } else {
+        res = await testVolunteerApi(token)
+      }
+      setTestResult(res?.message || 'Authorization verified successfully!')
+    } catch (err) {
+      setTestError(err.message || 'Authorization test failed.')
+    } finally {
+      setTestingRole(false)
+    }
   }
 
   const isCoordinator = user.role === 'COORDINATOR'
@@ -77,21 +101,26 @@ function Profile() {
         </div>
 
         <div className="role-test-section">
-          <h3>Quick Navigation</h3>
+          <h3>Role Access Verification</h3>
+          <p className="role-test-desc">
+            Test backend RBAC access control for your <strong>{displayRole}</strong> role.
+          </p>
+
+          {testResult && <div className="alert-success">{testResult}</div>}
+          {testError && <div className="alert-error">{testError}</div>}
+
           <div className="role-test-actions">
-            {isCoordinator ? (
-              <>
-                <Link to="/organizations" className="btn btn-secondary">My Organizations</Link>
-                <Link to="/opportunities/new" className="btn btn-outline">Post Opportunity</Link>
-                <Link to="/dashboard" className="btn btn-outline">Dashboard</Link>
-              </>
-            ) : (
-              <>
-                <Link to="/my-signups" className="btn btn-secondary">My Signups</Link>
-                <Link to="/hours" className="btn btn-outline">My Hours</Link>
-                <Link to="/opportunities" className="btn btn-outline">Browse Opportunities</Link>
-              </>
-            )}
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={handleTestRole}
+              disabled={testingRole}
+            >
+              {testingRole ? 'Verifying...' : `Verify ${displayRole} Access`}
+            </button>
+            <Link to="/organizations" className="btn btn-secondary">
+              {isCoordinator ? 'Manage Organizations' : 'Browse Organizations'}
+            </Link>
           </div>
         </div>
 

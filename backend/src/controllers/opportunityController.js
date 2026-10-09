@@ -1,16 +1,24 @@
 const opportunityService = require('../services/opportunityService');
 
 /**
+ * Controller for opportunity endpoints
+ */
+
+/**
+ * Create a new opportunity
  * POST /api/opportunities
- * Create a new opportunity (COORDINATOR only)
  */
 const create = async (req, res, next) => {
   try {
-    const opportunity = await opportunityService.createOpportunity(req.body, req.user.id);
+    const coordinatorId = req.user.id;
+    const opportunity = await opportunityService.createOpportunity(req.body, coordinatorId);
+
     res.status(201).json({
       status: 'success',
       message: 'Opportunity created successfully',
-      data: { opportunity },
+      data: {
+        opportunity,
+      },
     });
   } catch (error) {
     next(error);
@@ -18,16 +26,19 @@ const create = async (req, res, next) => {
 };
 
 /**
+ * Retrieve all opportunities
  * GET /api/opportunities
- * List all published opportunities (authenticated)
  */
 const getAll = async (req, res, next) => {
   try {
     const opportunities = await opportunityService.getAllOpportunities();
+
     res.status(200).json({
       status: 'success',
       message: 'Opportunities retrieved successfully',
-      data: { opportunities },
+      data: {
+        opportunities,
+      },
     });
   } catch (error) {
     next(error);
@@ -35,16 +46,20 @@ const getAll = async (req, res, next) => {
 };
 
 /**
+ * Retrieve a single opportunity by ID
  * GET /api/opportunities/:id
- * Get a single opportunity by UUID (authenticated)
  */
 const getById = async (req, res, next) => {
   try {
-    const opportunity = await opportunityService.getOpportunityById(req.params.id);
+    const { id } = req.params;
+    const opportunity = await opportunityService.getOpportunityById(id);
+
     res.status(200).json({
       status: 'success',
       message: 'Opportunity retrieved successfully',
-      data: { opportunity },
+      data: {
+        opportunity,
+      },
     });
   } catch (error) {
     next(error);
@@ -52,72 +67,26 @@ const getById = async (req, res, next) => {
 };
 
 /**
- * POST /api/opportunities/:id/signup
- * Volunteer signs up for an opportunity (VOLUNTEER only)
+ * Update an opportunity partially (Coordinator owner only)
+ * PATCH /api/opportunities/:id
  */
-const signup = async (req, res, next) => {
+const update = async (req, res, next) => {
   try {
-    const result = await opportunityService.signUpForOpportunity({
-      volunteerId: req.user.id,
-      opportunityId: req.params.id,
-    });
-    res.status(201).json({
-      status: 'success',
-      message: 'Successfully signed up for the opportunity',
-      data: { signup: result },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+    const { id } = req.params;
+    const coordinatorId = req.user.id;
 
-/**
- * DELETE /api/opportunities/:id/signup
- * Volunteer cancels their signup (VOLUNTEER only)
- */
-const cancelSignup = async (req, res, next) => {
-  try {
-    await opportunityService.cancelSignUp({
-      volunteerId: req.user.id,
-      opportunityId: req.params.id,
-    });
+    const opportunity = await opportunityService.updateOpportunity(
+      id,
+      req.body,
+      coordinatorId
+    );
+
     res.status(200).json({
       status: 'success',
-      message: 'Signup cancelled successfully',
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * GET /api/opportunities/my-signups
- * Get all opportunities the authenticated volunteer signed up for
- */
-const mySignups = async (req, res, next) => {
-  try {
-    const opportunities = await opportunityService.getMySignedUpOpportunities(req.user.id);
-    res.status(200).json({
-      status: 'success',
-      message: 'Your signed-up opportunities retrieved successfully',
-      data: { opportunities },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * GET /api/opportunities/dashboard-stats
- * Get dashboard stats for the authenticated user (volunteer or coordinator)
- */
-const dashboardStats = async (req, res, next) => {
-  try {
-    const stats = await opportunityService.getDashboardStats(req.user);
-    res.status(200).json({
-      status: 'success',
-      message: 'Dashboard stats retrieved successfully',
-      data: { stats },
+      message: 'Opportunity updated successfully',
+      data: {
+        opportunity,
+      },
     });
   } catch (error) {
     next(error);
@@ -128,8 +97,5 @@ module.exports = {
   create,
   getAll,
   getById,
-  signup,
-  cancelSignup,
-  mySignups,
-  dashboardStats,
+  update,
 };

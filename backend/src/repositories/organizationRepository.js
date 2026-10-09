@@ -53,8 +53,27 @@ const findById = async (id) => {
   return rows[0] || null;
 };
 
+/**
+ * Verify organization ownership by organization ID and coordinator ID
+ * @param {string} id - Organization UUID
+ * @param {string} coordinator_id - Coordinator user UUID
+ * @returns {Promise<Object|null>} Matching organization record if owned, otherwise null
+ */
+const findByIdAndCoordinatorId = async (id, coordinator_id) => {
+  const query = `
+    SELECT id, name, description, coordinator_id, created_at, updated_at
+    FROM organizations
+    WHERE id = $1
+      AND coordinator_id = $2
+  `;
+  const { rows } = await pool.query(query, [id, coordinator_id]);
+  return rows[0] || null;
+};
+
 module.exports = {
   create,
   findAll,
   findById,
+  findByIdAndCoordinatorId,
 };
+

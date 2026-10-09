@@ -327,44 +327,6 @@ function Home() {
           </div>
         </div>
       </section>
-
-      {/* 8. ABOUT US SECTION (anchor target for footer link) */}
-      <section id="about" className="about-section reveal">
-        <div className="section-container">
-          <div className="about-grid">
-            <div className="about-text">
-              <span className="section-label">ABOUT SERVEHUB</span>
-              <h2>A platform built for community good.</h2>
-              <p>
-                ServeHub was created to close the gap between people who want to help and the non-profits that need them. We believe that meaningful volunteering should be easy to discover, simple to join, and rewarding to track.
-              </p>
-              <p>
-                Our platform connects verified nonprofit organizations with skilled and passionate volunteers — making it possible for every willing person to find a cause that resonates with them.
-              </p>
-              <Link to="/register" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-                Join the Community
-              </Link>
-            </div>
-            <div className="about-stats">
-              <div className="about-stat-card">
-                <span className="stat-icon">🏢</span>
-                <span className="stat-label">Verified Organizations</span>
-                <span className="stat-desc">Partner with trusted nonprofits that have been vetted for credibility and impact.</span>
-              </div>
-              <div className="about-stat-card">
-                <span className="stat-icon">🤝</span>
-                <span className="stat-label">Real Connections</span>
-                <span className="stat-desc">Direct communication between volunteers and coordinators — no barriers.</span>
-              </div>
-              <div className="about-stat-card">
-                <span className="stat-icon">📊</span>
-                <span className="stat-label">Impact Tracking</span>
-                <span className="stat-desc">Log volunteer hours and build a verified record of your community contributions.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
   )
 }

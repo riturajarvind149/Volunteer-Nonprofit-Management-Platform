@@ -1,14 +1,16 @@
 const pool = require('../config/db');
 
 /**
- * Data-access repository for the opportunities and signups tables.
+ * Data-access repository for opportunities table.
  * Uses parameterized queries to prevent SQL injection.
  */
 
 /**
- * Insert a new opportunity
+ * Insert a new opportunity record
+ * @param {Object} oppData
+ * @returns {Promise<Object>} Created opportunity record
  */
-const create = async ({
+const createOpportunity = async ({
   organization_id,
   title,
   description,
@@ -19,13 +21,28 @@ const create = async ({
   location,
   address,
   capacity,
+  status,
 }) => {
   const query = `
-    INSERT INTO opportunities
-      (organization_id, title, description, category, event_date, start_time, end_time, location, address, capacity, status)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PUBLISHED')
-    RETURNING *
+    INSERT INTO opportunities (
+      organization_id,
+      title,
+      description,
+      category,
+      event_date,
+      start_time,
+      end_time,
+      location,
+      address,
+      capacity,
+      status
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    RETURNING id, organization_id, title, description, category, event_date,
+              start_time, end_time, location, address, capacity, status,
+              created_at, updated_at
   `;
+
   const values = [
     organization_id,
     title,
@@ -37,163 +54,117 @@ const create = async ({
     location,
     address || null,
     capacity,
+    status || 'DRAFT',
   ];
+
   const { rows } = await pool.query(query, values);
   return rows[0];
 };
 
 /**
- * Retrieve all PUBLISHED opportunities with volunteer spot counts
+ * Retrieve all opportunities ordered by event date and start time ascending
+ * @returns {Promise<Array>} List of opportunities
  */
-const findAll = async () => {
+const findAllOpportunities = async () => {
   const query = `
-    SELECT
-      o.*,
-      org.name AS organization_name,
-      o.capacity - COUNT(s.id) FILTER (WHERE s.status = 'REGISTERED') AS spots_remaining
-    FROM opportunities o
-    LEFT JOIN organizations org ON org.id = o.organization_id
-    LEFT JOIN signups s ON s.opportunity_id = o.id
-    WHERE o.status = 'PUBLISHED'
-    GROUP BY o.id, org.name
-    ORDER BY o.event_date ASC, o.start_time ASC
+    SELECT id, organization_id, title, description, category, event_date,
+           start_time, end_time, location, address, capacity, status,
+           created_at, updated_at
+    FROM opportunities
+    ORDER BY event_date ASC, start_time ASC
   `;
   const { rows } = await pool.query(query);
   return rows;
 };
 
 /**
- * Retrieve a single opportunity by UUID
+ * Retrieve a single opportunity by its UUID
+ * @param {string} id - Opportunity UUID
+ * @returns {Promise<Object|null>} Opportunity record or null if not found
  */
-const findById = async (id) => {
+const findOpportunityById = async (id) => {
   const query = `
-    SELECT
-      o.*,
-      org.name AS organization_name,
-      o.capacity - COUNT(s.id) FILTER (WHERE s.status = 'REGISTERED') AS spots_remaining
-    FROM opportunities o
-    LEFT JOIN organizations org ON org.id = o.organization_id
-    LEFT JOIN signups s ON s.opportunity_id = o.id
-    WHERE o.id = $1
-    GROUP BY o.id, org.name
+    SELECT id, organization_id, title, description, category, event_date,
+           start_time, end_time, location, address, capacity, status,
+           created_at, updated_at
+    FROM opportunities
+    WHERE id = $1
   `;
   const { rows } = await pool.query(query, [id]);
   return rows[0] || null;
 };
 
 /**
- * Sign a volunteer up for an opportunity
+ * Retrieve a single opportunity along with its organization's coordinator_id
+ * @param {string} id - Opportunity UUID
+ * @returns {Promise<Object|null>} Opportunity record with coordinator_id or null
  */
-const createSignup = async ({ volunteer_id, opportunity_id }) => {
+const findOpportunityByIdWithCoordinator = async (id) => {
   const query = `
-    INSERT INTO signups (volunteer_id, opportunity_id, status)
-    VALUES ($1, $2, 'REGISTERED')
-    RETURNING *
+    SELECT o.id, o.organization_id, o.title, o.description, o.category, o.event_date,
+           o.start_time, o.end_time, o.location, o.address, o.capacity, o.status,
+           o.created_at, o.updated_at,
+           org.coordinator_id
+    FROM opportunities o
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE o.id = $1
   `;
-  const { rows } = await pool.query(query, [volunteer_id, opportunity_id]);
-  return rows[0];
-};
-
-/**
- * Cancel a volunteer's signup
- */
-const deleteSignup = async ({ volunteer_id, opportunity_id }) => {
-  const query = `
-    DELETE FROM signups
-    WHERE volunteer_id = $1 AND opportunity_id = $2
-    RETURNING *
-  `;
-  const { rows } = await pool.query(query, [volunteer_id, opportunity_id]);
+  const { rows } = await pool.query(query, [id]);
   return rows[0] || null;
 };
 
 /**
- * Check if a volunteer is already signed up for an opportunity
+ * Update an existing opportunity record with provided partial fields
+ * @param {string} id - Opportunity UUID
+ * @param {Object} updateFields - Fields to update
+ * @returns {Promise<Object|null>} Updated opportunity record
  */
-const findSignup = async ({ volunteer_id, opportunity_id }) => {
+const updateOpportunity = async (id, updateFields) => {
+  const allowedKeys = [
+    'title',
+    'description',
+    'category',
+    'event_date',
+    'start_time',
+    'end_time',
+    'location',
+    'address',
+    'capacity',
+    'status',
+  ];
+
+  const setClauses = [];
+  const values = [];
+  let paramIndex = 1;
+
+  for (const key of allowedKeys) {
+    if (updateFields[key] !== undefined) {
+      setClauses.push(`${key} = $${paramIndex}`);
+      values.push(updateFields[key]);
+      paramIndex++;
+    }
+  }
+
+  setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
+
+  values.push(id);
   const query = `
-    SELECT id FROM signups
-    WHERE volunteer_id = $1 AND opportunity_id = $2
+    UPDATE opportunities
+    SET ${setClauses.join(', ')}
+    WHERE id = $${paramIndex}
+    RETURNING id, organization_id, title, description, category, event_date,
+              start_time, end_time, location, address, capacity, status,
+              created_at, updated_at
   `;
-  const { rows } = await pool.query(query, [volunteer_id, opportunity_id]);
+
+  const { rows } = await pool.query(query, values);
   return rows[0] || null;
-};
-
-/**
- * Get all opportunities a volunteer is registered for
- */
-const findSignedUpByVolunteer = async (volunteer_id) => {
-  const query = `
-    SELECT
-      o.*,
-      org.name AS organization_name,
-      o.capacity - COUNT(s2.id) FILTER (WHERE s2.status = 'REGISTERED') AS spots_remaining
-    FROM signups s
-    JOIN opportunities o ON o.id = s.opportunity_id
-    LEFT JOIN organizations org ON org.id = o.organization_id
-    LEFT JOIN signups s2 ON s2.opportunity_id = o.id
-    WHERE s.volunteer_id = $1 AND s.status = 'REGISTERED'
-    GROUP BY o.id, org.name
-    ORDER BY o.event_date ASC
-  `;
-  const { rows } = await pool.query(query, [volunteer_id]);
-  return rows;
-};
-
-/**
- * Get dashboard stats for a volunteer:
- * - upcoming registrations
- * - completed registrations
- * - total verified volunteer hours
- */
-const getVolunteerStats = async (volunteer_id) => {
-  const query = `
-    SELECT
-      COUNT(*) FILTER (
-        WHERE s.status = 'REGISTERED' AND o.event_date >= CURRENT_DATE
-      ) AS upcoming_count,
-      COUNT(*) FILTER (
-        WHERE o.status = 'COMPLETED' OR o.event_date < CURRENT_DATE
-      ) AS completed_count,
-      COALESCE(SUM(vh.hours) FILTER (WHERE vh.status = 'VERIFIED'), 0) AS total_hours
-    FROM signups s
-    JOIN opportunities o ON o.id = s.opportunity_id
-    LEFT JOIN volunteer_hours vh ON vh.signup_id = s.id
-    WHERE s.volunteer_id = $1
-  `;
-  const { rows } = await pool.query(query, [volunteer_id]);
-  return rows[0];
-};
-
-/**
- * Get dashboard stats for a coordinator:
- * - organizations they manage
- * - published opportunities across their orgs
- * - total volunteers registered across their opportunities
- */
-const getCoordinatorStats = async (coordinator_id) => {
-  const query = `
-    SELECT
-      COUNT(DISTINCT org.id) AS organizations_count,
-      COUNT(DISTINCT o.id) FILTER (WHERE o.status = 'PUBLISHED') AS active_opportunities,
-      COUNT(s.id) FILTER (WHERE s.status = 'REGISTERED') AS total_volunteers_registered
-    FROM organizations org
-    LEFT JOIN opportunities o ON o.organization_id = org.id
-    LEFT JOIN signups s ON s.opportunity_id = o.id
-    WHERE org.coordinator_id = $1
-  `;
-  const { rows } = await pool.query(query, [coordinator_id]);
-  return rows[0];
 };
 
 module.exports = {
-  create,
-  findAll,
-  findById,
-  createSignup,
-  deleteSignup,
-  findSignup,
-  findSignedUpByVolunteer,
-  getVolunteerStats,
-  getCoordinatorStats,
+  createOpportunity,
+  findAllOpportunities,
+  findOpportunityById,
+  findOpportunityByIdWithCoordinator,
+  updateOpportunity,
 };

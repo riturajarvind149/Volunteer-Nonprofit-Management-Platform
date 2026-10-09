@@ -16,7 +16,11 @@ const errorHandler = (err, req, res, next) => {
   // Handle PostgreSQL unique constraint violation (code 23505) safely
   if (err.code === '23505') {
     statusCode = 409;
-    message = 'Email is already registered';
+    if (err.constraint === 'uq_signups_volunteer_opportunity') {
+      message = 'You have already signed up for this opportunity.';
+    } else {
+      message = 'Email is already registered';
+    }
   }
 
   res.status(statusCode).json({

@@ -5,9 +5,8 @@ import './Navbar.css'
 
 function Navbar({ theme, onToggleTheme }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { isAuthenticated, logout, user } = useAuth()
+  const { isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
-  const isCoordinator = user?.role === 'COORDINATOR'
 
   const toggleMenu = () => {
     setIsMenuOpen((prev) => !prev)
@@ -71,19 +70,6 @@ function Navbar({ theme, onToggleTheme }) {
               </>
             ) : (
               <>
-                {isCoordinator ? (
-                  <li>
-                    <NavLink to="/opportunities/new" className={getNavLinkClass} onClick={closeMenu}>
-                      <span>Post Opportunity</span>
-                    </NavLink>
-                  </li>
-                ) : (
-                  <li>
-                    <NavLink to="/my-signups" className={getNavLinkClass} onClick={closeMenu}>
-                      <span>My Signups</span>
-                    </NavLink>
-                  </li>
-                )}
                 <li>
                   <NavLink to="/dashboard" className={getNavLinkClass} onClick={closeMenu}>
                     <span>Dashboard</span>
