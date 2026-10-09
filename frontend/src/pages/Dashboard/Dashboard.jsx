@@ -130,12 +130,19 @@ function Dashboard() {
               : 'Find new ways to contribute or manage your profile details.'}
           </p>
           <div className="dashboard-actions-btns">
-            <Link to="/opportunities" className="btn btn-primary">
-              {isCoordinator ? 'Manage Opportunities' : 'Browse Opportunities'}
-            </Link>
-            <Link to={isCoordinator ? '/organizations' : '/profile'} className="btn btn-secondary">
-              {isCoordinator ? 'My Organizations' : 'View Profile'}
-            </Link>
+            {isCoordinator ? (
+              <>
+                <Link to="/opportunities/new" className="btn btn-primary">Post Opportunity</Link>
+                <Link to="/opportunities" className="btn btn-secondary">Manage Opportunities</Link>
+                <Link to="/organizations" className="btn btn-outline">My Organizations</Link>
+              </>
+            ) : (
+              <>
+                <Link to="/opportunities" className="btn btn-primary">Browse Opportunities</Link>
+                <Link to="/my-signups" className="btn btn-secondary">My Signups</Link>
+                <Link to="/hours" className="btn btn-outline">My Hours</Link>
+              </>
+            )}
           </div>
         </section>
 
