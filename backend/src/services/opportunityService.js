@@ -118,9 +118,19 @@ const getDashboardStats = async (user) => {
   }
 };
 
+/**
+ * Retrieves opportunities belonging to a specific coordinator's organizations
+ * @param {string} coordinatorId - Coordinator user UUID
+ * @returns {Promise<Array>} List of managed opportunities
+ */
+const getManagedOpportunities = async (coordinatorId) => {
+  return await opportunityRepository.findOpportunitiesByCoordinatorId(coordinatorId);
+};
+
 module.exports = {
   createOpportunity,
   getAllOpportunities,
+  getManagedOpportunities,
   getOpportunityById,
   updateOpportunity,
   getDashboardStats,

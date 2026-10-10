@@ -14,6 +14,7 @@ import Profile from './pages/Profile/Profile'
 import Dashboard from './pages/Dashboard/Dashboard'
 import OpportunityDetails from './pages/OpportunityDetails/OpportunityDetails'
 import MySignups from './pages/MySignups/MySignups'
+import ManageOpportunities from './pages/ManageOpportunities/ManageOpportunities'
 import './App.css'
 
 function App() {
@@ -42,6 +43,9 @@ function App() {
             <Route path="/organizations/:id" element={<OrganizationDetails />} />
             <Route path="/opportunities" element={<Opportunities />} />
             <Route path="/opportunities/:id" element={<OpportunityDetails />} />
+            <Route path="/manage-opportunities" element={<ManageOpportunities />} />
+            <Route path="/opportunities/create" element={<ManageOpportunities initialMode="create" />} />
+            <Route path="/opportunities/:id/edit" element={<ManageOpportunities initialMode="edit" />} />
             <Route path="/my-signups" element={<MySignups />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

@@ -7,6 +7,7 @@ import {
   cancelSignUpApi,
   getMySignupsApi,
   createOpportunityApi,
+  updateOpportunityApi,
 } from '../services/api'
 
 const OpportunityContext = createContext(null)
@@ -181,6 +182,20 @@ export function OpportunityProvider({ children }) {
     return created
   }
 
+  const updateOpportunity = async (id, payload) => {
+    if (usingMock) {
+      setOpportunities((prev) =>
+        prev.map((o) => (String(o.id) === String(id) ? { ...o, ...payload } : o))
+      )
+      return { id, ...payload }
+    }
+
+    const res = await updateOpportunityApi(id, payload, token)
+    const updated = res?.data?.opportunity
+    fetchOpportunities()
+    return updated
+  }
+
   const value = {
     opportunities,
     mySignupIds,
@@ -192,6 +207,7 @@ export function OpportunityProvider({ children }) {
     cancelSignUp,
     getRegisteredOpportunities,
     createOpportunity,
+    updateOpportunity,
     refetch: fetchOpportunities,
     refetchMySignups: fetchMySignups,
   }

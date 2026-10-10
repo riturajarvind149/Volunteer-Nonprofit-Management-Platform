@@ -141,7 +141,7 @@ function Dashboard() {
               : 'Find new ways to contribute or manage your profile details.'}
           </p>
           <div className="dashboard-actions-btns">
-            <Link to="/opportunities" className="btn btn-primary">
+            <Link to={isCoordinator ? '/manage-opportunities' : '/opportunities'} className="btn btn-primary">
               {isCoordinator ? 'Manage Opportunities' : 'Browse Opportunities'}
             </Link>
             {!isCoordinator && (

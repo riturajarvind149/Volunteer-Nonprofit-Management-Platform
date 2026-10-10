@@ -1,4 +1,5 @@
 const opportunityService = require('../services/opportunityService');
+const AppError = require('../utils/AppError');
 
 /**
  * Controller for opportunity endpoints
@@ -26,12 +27,22 @@ const create = async (req, res, next) => {
 };
 
 /**
- * Retrieve all opportunities
+ * Retrieve all opportunities (supports ?managed=true for coordinator's own opportunities)
  * GET /api/opportunities
  */
 const getAll = async (req, res, next) => {
   try {
-    const opportunities = await opportunityService.getAllOpportunities();
+    const { managed } = req.query;
+    let opportunities;
+
+    if (managed === 'true') {
+      if (!req.user || req.user.role !== 'COORDINATOR') {
+        throw new AppError('Only coordinators can access managed opportunities', 403);
+      }
+      opportunities = await opportunityService.getManagedOpportunities(req.user.id);
+    } else {
+      opportunities = await opportunityService.getAllOpportunities();
+    }
 
     res.status(200).json({
       status: 'success',

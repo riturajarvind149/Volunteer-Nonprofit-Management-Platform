@@ -82,6 +82,13 @@ function Navbar({ theme, onToggleTheme }) {
                     </NavLink>
                   </li>
                 )}
+                {user?.role === 'COORDINATOR' && (
+                  <li>
+                    <NavLink to="/manage-opportunities" className={getNavLinkClass} onClick={closeMenu}>
+                      <span>Manage Opportunities</span>
+                    </NavLink>
+                  </li>
+                )}
                 <li>
                   <NavLink to="/profile" className="nav-link-register" onClick={closeMenu}>
                     <span>Profile</span>

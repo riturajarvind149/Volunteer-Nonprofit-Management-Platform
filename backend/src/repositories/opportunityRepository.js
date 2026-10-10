@@ -67,13 +67,41 @@ const createOpportunity = async ({
  */
 const findAllOpportunities = async () => {
   const query = `
-    SELECT id, organization_id, title, description, category, event_date,
-           start_time, end_time, location, address, capacity, status,
-           created_at, updated_at
-    FROM opportunities
-    ORDER BY event_date ASC, start_time ASC
+    SELECT o.id, o.organization_id, o.title, o.description, o.category, o.event_date,
+           o.start_time, o.end_time, o.location, o.address, o.capacity, o.status,
+           o.created_at, o.updated_at,
+           org.name AS organization_name,
+           org.coordinator_id,
+           (SELECT COUNT(*)::int FROM signups s WHERE s.opportunity_id = o.id AND s.status != 'CANCELLED') AS active_signups,
+           (o.capacity - (SELECT COUNT(*)::int FROM signups s WHERE s.opportunity_id = o.id AND s.status != 'CANCELLED')) AS spots_remaining
+    FROM opportunities o
+    JOIN organizations org ON o.organization_id = org.id
+    ORDER BY o.event_date ASC, o.start_time ASC
   `;
   const { rows } = await pool.query(query);
+  return rows;
+};
+
+/**
+ * Retrieve all opportunities managed by a specific coordinator
+ * @param {string} coordinatorId - Coordinator user UUID
+ * @returns {Promise<Array>} List of coordinator's opportunities
+ */
+const findOpportunitiesByCoordinatorId = async (coordinatorId) => {
+  const query = `
+    SELECT o.id, o.organization_id, o.title, o.description, o.category, o.event_date,
+           o.start_time, o.end_time, o.location, o.address, o.capacity, o.status,
+           o.created_at, o.updated_at,
+           org.name AS organization_name,
+           org.coordinator_id,
+           (SELECT COUNT(*)::int FROM signups s WHERE s.opportunity_id = o.id AND s.status != 'CANCELLED') AS active_signups,
+           (o.capacity - (SELECT COUNT(*)::int FROM signups s WHERE s.opportunity_id = o.id AND s.status != 'CANCELLED')) AS spots_remaining
+    FROM opportunities o
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE org.coordinator_id = $1
+    ORDER BY o.event_date ASC, o.start_time ASC
+  `;
+  const { rows } = await pool.query(query, [coordinatorId]);
   return rows;
 };
 
@@ -84,11 +112,16 @@ const findAllOpportunities = async () => {
  */
 const findOpportunityById = async (id) => {
   const query = `
-    SELECT id, organization_id, title, description, category, event_date,
-           start_time, end_time, location, address, capacity, status,
-           created_at, updated_at
-    FROM opportunities
-    WHERE id = $1
+    SELECT o.id, o.organization_id, o.title, o.description, o.category, o.event_date,
+           o.start_time, o.end_time, o.location, o.address, o.capacity, o.status,
+           o.created_at, o.updated_at,
+           org.name AS organization_name,
+           org.coordinator_id,
+           (SELECT COUNT(*)::int FROM signups s WHERE s.opportunity_id = o.id AND s.status != 'CANCELLED') AS active_signups,
+           (o.capacity - (SELECT COUNT(*)::int FROM signups s WHERE s.opportunity_id = o.id AND s.status != 'CANCELLED')) AS spots_remaining
+    FROM opportunities o
+    JOIN organizations org ON o.organization_id = org.id
+    WHERE o.id = $1
   `;
   const { rows } = await pool.query(query, [id]);
   return rows[0] || null;
@@ -239,6 +272,7 @@ const getCoordinatorStats = async (coordinatorId) => {
 module.exports = {
   createOpportunity,
   findAllOpportunities,
+  findOpportunitiesByCoordinatorId,
   findOpportunityById,
   findOpportunityByIdWithCoordinator,
   updateOpportunity,
