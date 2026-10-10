@@ -103,9 +103,25 @@ const updateOpportunity = async (id, updateData, coordinatorId) => {
   return await opportunityRepository.updateOpportunity(id, updateData);
 };
 
+/**
+ * Retrieves dashboard statistics according to user role
+ * @param {Object} user - Authenticated user object { id, role }
+ * @returns {Promise<Object>} Statistics object for volunteer or coordinator
+ */
+const getDashboardStats = async (user) => {
+  if (user.role === 'COORDINATOR') {
+    return await opportunityRepository.getCoordinatorStats(user.id);
+  } else if (user.role === 'VOLUNTEER') {
+    return await opportunityRepository.getVolunteerStats(user.id);
+  } else {
+    throw new AppError('Unauthorized role for dashboard statistics', 403);
+  }
+};
+
 module.exports = {
   createOpportunity,
   getAllOpportunities,
   getOpportunityById,
   updateOpportunity,
+  getDashboardStats,
 };

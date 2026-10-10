@@ -93,9 +93,31 @@ const update = async (req, res, next) => {
   }
 };
 
+/**
+ * Retrieve dashboard statistics for authenticated user
+ * GET /api/opportunities/dashboard-stats
+ */
+const getDashboardStats = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const stats = await opportunityService.getDashboardStats(user);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Dashboard statistics retrieved successfully',
+      data: {
+        stats,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   create,
   getAll,
   getById,
   update,
+  getDashboardStats,
 };

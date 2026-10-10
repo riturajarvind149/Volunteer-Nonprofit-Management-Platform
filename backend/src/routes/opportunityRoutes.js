@@ -40,6 +40,30 @@ router.get(
 );
 
 /**
+ * @route   GET /api/opportunities/dashboard-stats
+ * @desc    Get dashboard statistics for authenticated user (Volunteer or Coordinator)
+ * @access  Protected (VOLUNTEER, COORDINATOR)
+ */
+router.get(
+  '/dashboard-stats',
+  authenticate,
+  authorizeRoles('VOLUNTEER', 'COORDINATOR'),
+  opportunityController.getDashboardStats
+);
+
+/**
+ * @route   GET /api/opportunities/my-signups
+ * @desc    Get all signups of the authenticated volunteer (alias)
+ * @access  Protected (VOLUNTEER)
+ */
+router.get(
+  '/my-signups',
+  authenticate,
+  authorizeRoles('VOLUNTEER'),
+  signupController.getMySignups
+);
+
+/**
  * @route   GET /api/opportunities/:id
  * @desc    Get a single volunteer opportunity by UUID
  * @access  Protected (Any authenticated user)
@@ -89,6 +113,19 @@ router.post(
   authorizeRoles('VOLUNTEER'),
   validateSignupOpportunityId,
   signupController.createSignup
+);
+
+/**
+ * @route   DELETE /api/opportunities/:opportunityId/signup
+ * @desc    Cancel a volunteer signup by opportunity ID (Volunteer only)
+ * @access  Protected (VOLUNTEER)
+ */
+router.delete(
+  '/:opportunityId/signup',
+  authenticate,
+  authorizeRoles('VOLUNTEER'),
+  validateSignupOpportunityId,
+  signupController.cancelSignupByOpportunity
 );
 
 module.exports = router;

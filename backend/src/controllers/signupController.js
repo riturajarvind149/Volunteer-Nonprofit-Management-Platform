@@ -41,6 +41,7 @@ const getMySignups = async (req, res, next) => {
       message: 'Volunteer signups retrieved successfully',
       data: {
         signups,
+        opportunities: signups,
       },
     });
   } catch (error) {
@@ -150,11 +151,38 @@ const updateSignupStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * Cancel a volunteer signup by opportunity ID
+ * DELETE /api/opportunities/:opportunityId/signup
+ */
+const cancelSignupByOpportunity = async (req, res, next) => {
+  try {
+    const { opportunityId } = req.params;
+    const volunteerId = req.user.id;
+
+    const signup = await signupService.cancelSignupByOpportunity(
+      opportunityId,
+      volunteerId
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Signup cancelled successfully',
+      data: {
+        signup,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createSignup,
   getMySignups,
   getSignupById,
   cancelSignup,
+  cancelSignupByOpportunity,
   getOpportunityAttendees,
   updateSignupStatus,
 };

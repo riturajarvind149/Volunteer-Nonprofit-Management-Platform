@@ -161,10 +161,87 @@ const updateOpportunity = async (id, updateFields) => {
   return rows[0] || null;
 };
 
+/**
+ * Retrieve live dashboard statistics for a volunteer
+ * @param {string} volunteerId - Volunteer user UUID
+ * @returns {Promise<Object>} Volunteer stats: upcoming_count, completed_count, total_hours
+ */
+const getVolunteerStats = async (volunteerId) => {
+  const query = `
+    SELECT
+      (SELECT COUNT(*)::int
+       FROM signups s
+       JOIN opportunities o ON s.opportunity_id = o.id
+       WHERE s.volunteer_id = $1
+         AND s.status = 'REGISTERED'
+         AND o.status != 'CANCELLED'
+         AND o.event_date >= CURRENT_DATE
+      ) AS upcoming_count,
+      (SELECT COUNT(*)::int
+       FROM signups s
+       JOIN opportunities o ON s.opportunity_id = o.id
+       WHERE s.volunteer_id = $1
+         AND s.status = 'REGISTERED'
+         AND o.status != 'CANCELLED'
+         AND (o.status = 'COMPLETED' OR o.event_date < CURRENT_DATE)
+      ) AS completed_count,
+      (SELECT COALESCE(SUM(vh.hours), 0)
+       FROM volunteer_hours vh
+       JOIN signups s ON vh.signup_id = s.id
+       WHERE s.volunteer_id = $1
+         AND vh.status = 'VERIFIED'
+      ) AS total_hours
+  `;
+  const { rows } = await pool.query(query, [volunteerId]);
+  const row = rows[0] || {};
+  return {
+    upcoming_count: parseInt(row.upcoming_count || 0, 10),
+    completed_count: parseInt(row.completed_count || 0, 10),
+    total_hours: parseFloat(Number(row.total_hours || 0).toFixed(2)),
+  };
+};
+
+/**
+ * Retrieve live dashboard statistics for a coordinator
+ * @param {string} coordinatorId - Coordinator user UUID
+ * @returns {Promise<Object>} Coordinator stats: organizations_count, active_opportunities, total_volunteers_registered
+ */
+const getCoordinatorStats = async (coordinatorId) => {
+  const query = `
+    SELECT
+      (SELECT COUNT(*)::int
+       FROM organizations
+       WHERE coordinator_id = $1
+      ) AS organizations_count,
+      (SELECT COUNT(*)::int
+       FROM opportunities o
+       JOIN organizations org ON o.organization_id = org.id
+       WHERE org.coordinator_id = $1
+         AND o.status = 'PUBLISHED'
+      ) AS active_opportunities,
+      (SELECT COUNT(*)::int
+       FROM signups s
+       JOIN opportunities o ON s.opportunity_id = o.id
+       JOIN organizations org ON o.organization_id = org.id
+       WHERE org.coordinator_id = $1
+         AND s.status = 'REGISTERED'
+      ) AS total_volunteers_registered
+  `;
+  const { rows } = await pool.query(query, [coordinatorId]);
+  const row = rows[0] || {};
+  return {
+    organizations_count: parseInt(row.organizations_count || 0, 10),
+    active_opportunities: parseInt(row.active_opportunities || 0, 10),
+    total_volunteers_registered: parseInt(row.total_volunteers_registered || 0, 10),
+  };
+};
+
 module.exports = {
   createOpportunity,
   findAllOpportunities,
   findOpportunityById,
   findOpportunityByIdWithCoordinator,
   updateOpportunity,
+  getVolunteerStats,
+  getCoordinatorStats,
 };

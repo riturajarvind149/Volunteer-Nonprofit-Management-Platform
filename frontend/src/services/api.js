@@ -44,5 +44,5 @@ export const signUpForOpportunityApi = (id, token) =>
   authFetch(`/opportunities/${id}/signup`, { method: 'POST', token })
 export const cancelSignUpApi = (id, token) =>
   authFetch(`/opportunities/${id}/signup`, { method: 'DELETE', token })
-export const getMySignupsApi = (token) => authFetch('/opportunities/my-signups', { token })
+export const getMySignupsApi = (token) => authFetch('/signups/my', { token })
 export const getDashboardStatsApi = (token) => authFetch('/opportunities/dashboard-stats', { token })

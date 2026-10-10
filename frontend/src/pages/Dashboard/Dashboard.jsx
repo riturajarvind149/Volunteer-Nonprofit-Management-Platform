@@ -15,6 +15,7 @@ function Dashboard() {
 
   const [stats, setStats] = useState(null)
   const [statsLoading, setStatsLoading] = useState(false)
+  const [statsError, setStatsError] = useState(null)
 
   const isCoordinator = user?.role === 'COORDINATOR'
   const featuredOpportunities = opportunities.slice(0, 3)
@@ -22,9 +23,13 @@ function Dashboard() {
   useEffect(() => {
     if (!token) return
     setStatsLoading(true)
+    setStatsError(null)
     getDashboardStatsApi(token)
       .then((res) => setStats(res?.data?.stats || null))
-      .catch(() => setStats(null))
+      .catch((err) => {
+        setStats(null)
+        setStatsError(err.message || 'Failed to load live statistics')
+      })
       .finally(() => setStatsLoading(false))
   }, [token])
 
@@ -104,6 +109,12 @@ function Dashboard() {
               : 'Here is an overview of your volunteering activities and community engagement.'}
           </p>
         </section>
+
+        {statsError && (
+          <div className="alert-error" style={{ marginBottom: '0.5rem' }}>
+            {statsError}
+          </div>
+        )}
 
         {/* Summary Cards Grid */}
         <section className="dashboard-summary">

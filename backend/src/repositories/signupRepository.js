@@ -255,11 +255,28 @@ const countActiveSignupsByOpportunityId = async (opportunityId) => {
   return rows[0]?.current_count || 0;
 };
 
+/**
+ * Retrieve a signup by volunteer ID and opportunity ID
+ * @param {string} volunteerId - Volunteer user UUID
+ * @param {string} opportunityId - Opportunity UUID
+ * @returns {Promise<Object|null>} Signup record or null if not found
+ */
+const findByVolunteerAndOpportunity = async (volunteerId, opportunityId) => {
+  const query = `
+    SELECT id, volunteer_id, opportunity_id, status, created_at, updated_at
+    FROM signups
+    WHERE volunteer_id = $1 AND opportunity_id = $2
+  `;
+  const { rows } = await pool.query(query, [volunteerId, opportunityId]);
+  return rows[0] || null;
+};
+
 module.exports = {
   createSignupTransaction,
   findByVolunteerId,
   findById,
   findByIdWithCoordinator,
+  findByVolunteerAndOpportunity,
   countActiveSignupsByOpportunityId,
   updateStatus,
   findAttendeesByOpportunityId,

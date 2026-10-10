@@ -173,11 +173,39 @@ const updateSignupStatus = async (id, status, coordinatorId) => {
   return await signupRepository.updateStatus(id, status);
 };
 
+/**
+ * Cancels a volunteer signup by opportunity ID and authenticated volunteer ID
+ * @param {string} opportunityId - Opportunity UUID
+ * @param {string} volunteerId - Authenticated volunteer UUID
+ * @returns {Promise<Object>} Updated signup record
+ * @throws {AppError} 404 if signup not found for this volunteer and opportunity
+ * @throws {AppError} 400 if signup is already cancelled
+ */
+const cancelSignupByOpportunity = async (opportunityId, volunteerId) => {
+  const signup = await signupRepository.findByVolunteerAndOpportunity(
+    volunteerId,
+    opportunityId
+  );
+
+  // Return 404 if not found (prevents data enumeration and ensures volunteer owns signup)
+  if (!signup) {
+    throw new AppError('Signup not found', 404);
+  }
+
+  // Validate that signup is not already CANCELLED
+  if (signup.status === 'CANCELLED') {
+    throw new AppError('Signup is already cancelled', 400);
+  }
+
+  return await signupRepository.updateStatus(signup.id, 'CANCELLED');
+};
+
 module.exports = {
   createSignup,
   getMySignups,
   getSignupById,
   cancelSignup,
+  cancelSignupByOpportunity,
   getOpportunityAttendees,
   updateSignupStatus,
 };
