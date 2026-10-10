@@ -7,6 +7,7 @@ import {
   cancelSignUpApi,
   getMySignupsApi,
   createOpportunityApi,
+  updateOpportunityApi,
 } from '../services/api'
 
 const OpportunityContext = createContext(null)
@@ -57,8 +58,11 @@ export function OpportunityProvider({ children }) {
     if (!token || user?.role !== 'VOLUNTEER' || usingMock) return
     try {
       const res = await getMySignupsApi(token)
-      const signedUp = res?.data?.opportunities || []
-      setMySignupIds(signedUp.map((o) => o.id))
+      const signups = res?.data?.signups || res?.data?.opportunities || []
+      const registeredOppIds = signups
+        .filter((s) => s.status !== 'CANCELLED')
+        .map((s) => s.opportunity_id || s.id)
+      setMySignupIds(registeredOppIds)
     } catch {
       // Non-fatal — leave mySignupIds as-is
     }
@@ -178,6 +182,20 @@ export function OpportunityProvider({ children }) {
     return created
   }
 
+  const updateOpportunity = async (id, payload) => {
+    if (usingMock) {
+      setOpportunities((prev) =>
+        prev.map((o) => (String(o.id) === String(id) ? { ...o, ...payload } : o))
+      )
+      return { id, ...payload }
+    }
+
+    const res = await updateOpportunityApi(id, payload, token)
+    const updated = res?.data?.opportunity
+    fetchOpportunities()
+    return updated
+  }
+
   const value = {
     opportunities,
     mySignupIds,
@@ -189,7 +207,9 @@ export function OpportunityProvider({ children }) {
     cancelSignUp,
     getRegisteredOpportunities,
     createOpportunity,
+    updateOpportunity,
     refetch: fetchOpportunities,
+    refetchMySignups: fetchMySignups,
   }
 
   return <OpportunityContext.Provider value={value}>{children}</OpportunityContext.Provider>

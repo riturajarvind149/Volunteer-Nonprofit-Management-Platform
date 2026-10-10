@@ -37,12 +37,15 @@ export const createOrganizationApi = (payload, token) =>
 
 // ── Opportunities ───────────────────────────────────────────────────────────
 export const getOpportunitiesApi = (token) => authFetch('/opportunities', { token })
+export const getManagedOpportunitiesApi = (token) => authFetch('/opportunities?managed=true', { token })
 export const getOpportunityByIdApi = (id, token) => authFetch(`/opportunities/${id}`, { token })
 export const createOpportunityApi = (payload, token) =>
   authFetch('/opportunities', { method: 'POST', body: payload, token })
+export const updateOpportunityApi = (id, payload, token) =>
+  authFetch(`/opportunities/${id}`, { method: 'PATCH', body: payload, token })
 export const signUpForOpportunityApi = (id, token) =>
   authFetch(`/opportunities/${id}/signup`, { method: 'POST', token })
 export const cancelSignUpApi = (id, token) =>
   authFetch(`/opportunities/${id}/signup`, { method: 'DELETE', token })
-export const getMySignupsApi = (token) => authFetch('/opportunities/my-signups', { token })
+export const getMySignupsApi = (token) => authFetch('/signups/my', { token })
 export const getDashboardStatsApi = (token) => authFetch('/opportunities/dashboard-stats', { token })

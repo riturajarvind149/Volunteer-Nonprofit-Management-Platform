@@ -15,6 +15,7 @@ function Dashboard() {
 
   const [stats, setStats] = useState(null)
   const [statsLoading, setStatsLoading] = useState(false)
+  const [statsError, setStatsError] = useState(null)
 
   const isCoordinator = user?.role === 'COORDINATOR'
   const featuredOpportunities = opportunities.slice(0, 3)
@@ -22,9 +23,13 @@ function Dashboard() {
   useEffect(() => {
     if (!token) return
     setStatsLoading(true)
+    setStatsError(null)
     getDashboardStatsApi(token)
       .then((res) => setStats(res?.data?.stats || null))
-      .catch(() => setStats(null))
+      .catch((err) => {
+        setStats(null)
+        setStatsError(err.message || 'Failed to load live statistics')
+      })
       .finally(() => setStatsLoading(false))
   }, [token])
 
@@ -105,6 +110,12 @@ function Dashboard() {
           </p>
         </section>
 
+        {statsError && (
+          <div className="alert-error" style={{ marginBottom: '0.5rem' }}>
+            {statsError}
+          </div>
+        )}
+
         {/* Summary Cards Grid */}
         <section className="dashboard-summary">
           {summaryCards.map(({ icon, label, value, caption }) => (
@@ -130,9 +141,14 @@ function Dashboard() {
               : 'Find new ways to contribute or manage your profile details.'}
           </p>
           <div className="dashboard-actions-btns">
-            <Link to="/opportunities" className="btn btn-primary">
+            <Link to={isCoordinator ? '/manage-opportunities' : '/opportunities'} className="btn btn-primary">
               {isCoordinator ? 'Manage Opportunities' : 'Browse Opportunities'}
             </Link>
+            {!isCoordinator && (
+              <Link to="/my-signups" className="btn btn-secondary">
+                My Signups
+              </Link>
+            )}
             <Link to={isCoordinator ? '/organizations' : '/profile'} className="btn btn-secondary">
               {isCoordinator ? 'My Organizations' : 'View Profile'}
             </Link>
