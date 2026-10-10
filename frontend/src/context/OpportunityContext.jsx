@@ -193,6 +193,7 @@ export function OpportunityProvider({ children }) {
     getRegisteredOpportunities,
     createOpportunity,
     refetch: fetchOpportunities,
+    refetchMySignups: fetchMySignups,
   }
 
   return <OpportunityContext.Provider value={value}>{children}</OpportunityContext.Provider>

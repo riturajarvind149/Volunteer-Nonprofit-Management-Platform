@@ -112,9 +112,11 @@ const findByVolunteerId = async (volunteerId) => {
            o.start_time AS opportunity_start_time,
            o.end_time AS opportunity_end_time,
            o.location AS opportunity_location,
-           o.organization_id AS opportunity_organization_id
+           o.organization_id AS opportunity_organization_id,
+           org.name AS organization_name
     FROM signups s
     JOIN opportunities o ON s.opportunity_id = o.id
+    JOIN organizations org ON o.organization_id = org.id
     WHERE s.volunteer_id = $1
     ORDER BY s.created_at DESC
   `;
