@@ -149,24 +149,13 @@ const updateSignupStatus = async (id, status, coordinatorId) => {
     throw new AppError('You do not have permission to update this signup', 403);
   }
 
-  // 3. Reactivation capacity protection: if moving from CANCELLED to REGISTERED
+  // 3. Reactivation capacity protection: if moving from CANCELLED to REGISTERED,
+  // execute concurrency-safe reactivation transaction with opportunity row lock (FOR UPDATE)
   if (status === 'REGISTERED' && signup.status !== 'REGISTERED') {
-    if (signup.opportunity_status !== 'PUBLISHED') {
-      throw new AppError(
-        'Cannot register for an opportunity that is not published',
-        400
-      );
-    }
-
-    const currentCount = await signupRepository.countActiveSignupsByOpportunityId(
+    return await signupRepository.reactivateSignupTransaction(
+      id,
       signup.opportunity_id
     );
-    if (currentCount >= signup.opportunity_capacity) {
-      throw new AppError(
-        'This opportunity has reached its maximum capacity',
-        409
-      );
-    }
   }
 
   // 4. Update status in database

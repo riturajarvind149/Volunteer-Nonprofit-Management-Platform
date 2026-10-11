@@ -922,6 +922,246 @@ const runTests = async () => {
       'Test 49: Spoofed query coordinator_id rejected; identity derived strictly from req.user.id'
     );
 
+    // ================================================================
+    // Group 10: Volunteer Re-Registration After Cancellation
+    // ================================================================
+    console.log(`\n${colors.bold}Group 10: Volunteer Re-Registration After Cancellation${colors.reset}`);
+
+    // Test 50: Cancelled volunteer can sign up again successfully (201 Created)
+    // Note: Alice previously cancelled her signup (aliceSignupId) on publishedOppId in Test 31
+    const reRegisterRes = await fetch(`${baseUrl}/api/opportunities/${publishedOppId}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol1}`,
+      },
+    });
+    const reRegisterData = await reRegisterRes.json();
+    assert(
+      reRegisterRes.status === 201 &&
+        reRegisterData.status === 'success' &&
+        reRegisterData.data?.signup?.status === 'REGISTERED',
+      'Test 50: Cancelled volunteer successfully signs up again (201 Created, status REGISTERED)'
+    );
+
+    // Test 51: Re-registration reuses existing signup row and does NOT create duplicate row
+    const dbVol1Rows = await pool.query(
+      `SELECT id, status FROM signups WHERE volunteer_id = $1 AND opportunity_id = $2`,
+      [vol1Id, publishedOppId]
+    );
+    assert(
+      reRegisterData.data?.signup?.id === aliceSignupId &&
+        dbVol1Rows.rows.length === 1 &&
+        dbVol1Rows.rows[0].id === aliceSignupId &&
+        dbVol1Rows.rows[0].status === 'REGISTERED',
+      'Test 51: Re-registration reuses existing signup row ID and preserves unique constraint'
+    );
+
+    // Test 52: Active volunteer attempting duplicate signup rejected with 409 Conflict
+    const activeDupRes = await fetch(`${baseUrl}/api/opportunities/${publishedOppId}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol1}`,
+      },
+    });
+    const activeDupData = await activeDupRes.json();
+    assert(
+      activeDupRes.status === 409 &&
+        activeDupData.message.includes('already signed up'),
+      'Test 52: Duplicate signup while actively registered rejected with 409 Conflict ("already signed up")'
+    );
+
+    // Test 53 & 54: Re-registration at capacity limit
+    // Create an opportunity with capacity = 1
+    const cap1OppRes = await fetch(`${baseUrl}/api/opportunities`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenCoord}`,
+      },
+      body: JSON.stringify({
+        title: `Re-reg Cap 1 Opp ${timestamp}`,
+        description: 'Testing re-registration when capacity full',
+        event_date: '2026-11-20',
+        start_time: '10:00:00',
+        end_time: '12:00:00',
+        location: 'Community Park',
+        address: '123 Park Lane',
+        capacity: 1,
+        organization_id: (await pool.query('SELECT organization_id FROM opportunities WHERE id = $1', [publishedOppId])).rows[0].organization_id,
+        status: 'PUBLISHED',
+      }),
+    });
+    const cap1OppData = await cap1OppRes.json();
+    const cap1OppId = cap1OppData.data.opportunity.id;
+
+    // Volunteer 2 signs up (1/1)
+    const vol2Cap1Signup = await fetch(`${baseUrl}/api/opportunities/${cap1OppId}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol2}`,
+      },
+    });
+    const vol2Cap1Data = await vol2Cap1Signup.json();
+    const vol2Cap1SignupId = vol2Cap1Data.data.signup.id;
+
+    // Volunteer 2 cancels (0/1 active)
+    await fetch(`${baseUrl}/api/signups/${vol2Cap1SignupId}/cancel`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol2}`,
+      },
+    });
+
+    // Volunteer 3 signs up (1/1 active, spot filled)
+    await fetch(`${baseUrl}/api/opportunities/${cap1OppId}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol3}`,
+      },
+    });
+
+    // Volunteer 2 attempts to re-register when capacity is full
+    const fullReRegRes = await fetch(`${baseUrl}/api/opportunities/${cap1OppId}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenVol2}`,
+      },
+    });
+    const fullReRegData = await fullReRegRes.json();
+    assert(
+      fullReRegRes.status === 409 &&
+        fullReRegData.message.includes('maximum capacity'),
+      'Test 53: Re-registration when opportunity capacity is full returns 409 Conflict'
+    );
+
+    // Test 54: Failed re-registration leaves existing signup CANCELLED
+    const vol2DbStatus = await pool.query(
+      `SELECT status FROM signups WHERE id = $1`,
+      [vol2Cap1SignupId]
+    );
+    assert(
+      vol2DbStatus.rows[0].status === 'CANCELLED',
+      'Test 54: Failed re-registration due to capacity limits leaves signup status as CANCELLED'
+    );
+
+    // Test 55 & 56: Concurrency - concurrent re-registration cannot exceed capacity
+    // Create opportunity with capacity = 1
+    const raceReRegOppRes = await fetch(`${baseUrl}/api/opportunities`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenCoord}`,
+      },
+      body: JSON.stringify({
+        title: `Re-reg Race Opp ${timestamp}`,
+        description: 'Testing concurrent re-registration',
+        event_date: '2026-11-21',
+        start_time: '14:00:00',
+        end_time: '16:00:00',
+        location: 'City Hall',
+        address: '456 City Ave',
+        capacity: 1,
+        organization_id: (await pool.query('SELECT organization_id FROM opportunities WHERE id = $1', [publishedOppId])).rows[0].organization_id,
+        status: 'PUBLISHED',
+      }),
+    });
+    const raceReRegOppData = await raceReRegOppRes.json();
+    const raceReRegOppId = raceReRegOppData.data.opportunity.id;
+
+    // Register 2 new test volunteers
+    const racerReReg1 = {
+      full_name: 'Racer ReReg 1',
+      email: `racer1.rereg.${timestamp}@test.org`,
+      password: 'Password123!',
+      role: 'VOLUNTEER',
+    };
+    const racerReReg2 = {
+      full_name: 'Racer ReReg 2',
+      email: `racer2.rereg.${timestamp}@test.org`,
+      password: 'Password123!',
+      role: 'VOLUNTEER',
+    };
+    await registerUser(racerReReg1);
+    await registerUser(racerReReg2);
+    testEmails.push(racerReReg1.email, racerReReg2.email);
+
+    const racer1LoginData = await loginUser(racerReReg1.email, racerReReg1.password);
+    const racer2LoginData = await loginUser(racerReReg2.email, racerReReg2.password);
+
+    // Racer 1 signs up, then cancels (0/1 active)
+    const r1SignupRes = await fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${racer1LoginData.data.token}`,
+      },
+    });
+    const r1SignupData = await r1SignupRes.json();
+    await fetch(`${baseUrl}/api/signups/${r1SignupData.data.signup.id}/cancel`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${racer1LoginData.data.token}`,
+      },
+    });
+
+    // Racer 2 also signs up, then cancels (0/1 active)
+    const r2SignupRes = await fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${racer2LoginData.data.token}`,
+      },
+    });
+    const r2SignupData = await r2SignupRes.json();
+    await fetch(`${baseUrl}/api/signups/${r2SignupData.data.signup.id}/cancel`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${racer2LoginData.data.token}`,
+      },
+    });
+
+    // Fire simultaneous re-registration requests
+    const [raceRes1, raceRes2] = await Promise.all([
+      fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${racer1LoginData.data.token}`,
+        },
+      }),
+      fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${racer2LoginData.data.token}`,
+        },
+      }),
+    ]);
+
+    const raceStatuses = [raceRes1.status, raceRes2.status].sort();
+    assert(
+      raceStatuses[0] === 201 && raceStatuses[1] === 409,
+      'Test 55: Concurrent re-registrations on capacity=1: exactly one succeeds (201) and one is rejected (409)'
+    );
+
+    // Verify exactly 1 active signup in database
+    const raceDbCheck = await pool.query(
+      `SELECT COUNT(*)::int AS active_count FROM signups WHERE opportunity_id = $1 AND status = 'REGISTERED'`,
+      [raceReRegOppId]
+    );
+    assert(
+      raceDbCheck.rows[0].active_count === 1,
+      'Test 56: Database integrity verified: exactly 1 active registered signup stored for raceReRegOppId'
+    );
+
   } catch (error) {
     console.error('Unexpected test error:', error);
     failed++;

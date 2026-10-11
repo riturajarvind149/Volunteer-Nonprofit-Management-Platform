@@ -40,13 +40,16 @@ const createSignupTransaction = async (opportunityId, volunteerId) => {
       );
     }
 
-    // 3. Check for duplicate signup by this volunteer
+    // 3. Check for existing signup by this volunteer
     const dupQuery = `
-      SELECT id FROM signups
+      SELECT id, status FROM signups
       WHERE volunteer_id = $1 AND opportunity_id = $2
     `;
     const dupResult = await client.query(dupQuery, [volunteerId, opportunityId]);
-    if (dupResult.rows.length > 0) {
+    const existingSignup = dupResult.rows[0];
+
+    // If an active (non-cancelled) signup already exists, reject as duplicate
+    if (existingSignup && existingSignup.status !== 'CANCELLED') {
       throw new AppError(
         'You have already signed up for this opportunity.',
         409
@@ -69,19 +72,37 @@ const createSignupTransaction = async (opportunityId, volunteerId) => {
       );
     }
 
-    // 5. Insert signup with status REGISTERED
-    const insertQuery = `
-      INSERT INTO signups (volunteer_id, opportunity_id, status)
-      VALUES ($1, $2, 'REGISTERED')
-      RETURNING id, volunteer_id, opportunity_id, status, created_at, updated_at
-    `;
-    const insertResult = await client.query(insertQuery, [
-      volunteerId,
-      opportunityId,
-    ]);
+    // 5. Insert new signup or reactivate existing cancelled signup
+    let signupRecord;
+    if (existingSignup) {
+      // Reactivate cancelled signup reusing existing record (preserves unique constraint)
+      const updateQuery = `
+        UPDATE signups
+        SET status = 'REGISTERED', updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND opportunity_id = $2
+        RETURNING id, volunteer_id, opportunity_id, status, created_at, updated_at
+      `;
+      const updateResult = await client.query(updateQuery, [
+        existingSignup.id,
+        opportunityId,
+      ]);
+      signupRecord = updateResult.rows[0];
+    } else {
+      // Insert new signup with status REGISTERED
+      const insertQuery = `
+        INSERT INTO signups (volunteer_id, opportunity_id, status)
+        VALUES ($1, $2, 'REGISTERED')
+        RETURNING id, volunteer_id, opportunity_id, status, created_at, updated_at
+      `;
+      const insertResult = await client.query(insertQuery, [
+        volunteerId,
+        opportunityId,
+      ]);
+      signupRecord = insertResult.rows[0];
+    }
 
     await client.query('COMMIT');
-    return insertResult.rows[0];
+    return signupRecord;
   } catch (err) {
     await client.query('ROLLBACK');
     if (
@@ -93,6 +114,86 @@ const createSignupTransaction = async (opportunityId, volunteerId) => {
         409
       );
     }
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Concurrency-safe signup reactivation using transaction and row-level locking.
+ * Locks the opportunity row (FOR UPDATE) to ensure capacity check and status update
+ * occur atomically, preventing oversubscription race conditions.
+ * @param {string} signupId - Signup UUID
+ * @param {string} opportunityId - Opportunity UUID
+ * @returns {Promise<Object>} Updated signup record
+ */
+const reactivateSignupTransaction = async (signupId, opportunityId) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Lock opportunity row for update to prevent race conditions on capacity
+    // Follows the identical lock ordering as createSignupTransaction
+    const oppQuery = `
+      SELECT id, title, capacity, status
+      FROM opportunities
+      WHERE id = $1
+      FOR UPDATE
+    `;
+    const oppResult = await client.query(oppQuery, [opportunityId]);
+
+    if (oppResult.rows.length === 0) {
+      throw new AppError('Opportunity not found', 404);
+    }
+
+    const opportunity = oppResult.rows[0];
+
+    // 2. Validate opportunity status (Only PUBLISHED opportunities allow registration)
+    if (opportunity.status !== 'PUBLISHED') {
+      throw new AppError(
+        'Cannot register for an opportunity that is not published',
+        400
+      );
+    }
+
+    // 3. Count active signups while holding the opportunity row lock
+    const countQuery = `
+      SELECT COUNT(*)::int AS current_count
+      FROM signups
+      WHERE opportunity_id = $1 AND status != 'CANCELLED'
+    `;
+    const countResult = await client.query(countQuery, [opportunityId]);
+    const currentCount = countResult.rows[0].current_count;
+
+    if (currentCount >= opportunity.capacity) {
+      throw new AppError(
+        'This opportunity has reached its maximum capacity',
+        409
+      );
+    }
+
+    // 4. Update signup status to REGISTERED inside the transaction
+    // Binds both signupId and opportunityId defensively to ensure relational integrity
+    const updateQuery = `
+      UPDATE signups
+      SET status = 'REGISTERED', updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1 AND opportunity_id = $2
+      RETURNING id, volunteer_id, opportunity_id, status, created_at, updated_at
+    `;
+    const updateResult = await client.query(updateQuery, [
+      signupId,
+      opportunityId,
+    ]);
+
+    if (updateResult.rows.length === 0) {
+      throw new AppError('Signup not found', 404);
+    }
+
+    await client.query('COMMIT');
+    return updateResult.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
@@ -275,6 +376,7 @@ const findByVolunteerAndOpportunity = async (volunteerId, opportunityId) => {
 
 module.exports = {
   createSignupTransaction,
+  reactivateSignupTransaction,
   findByVolunteerId,
   findById,
   findByIdWithCoordinator,
