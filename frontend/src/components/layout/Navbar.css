@@ -282,6 +282,11 @@
   .nav-link-register {
     width: 100%;
   }
+
+  .nav-btn-logout {
+    width: 100%;
+    text-align: left;
+  }
 }
 
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { OpportunityProvider } from './context/OpportunityContext'
@@ -15,6 +15,9 @@ import Dashboard from './pages/Dashboard/Dashboard'
 import OpportunityDetails from './pages/OpportunityDetails/OpportunityDetails'
 import MySignups from './pages/MySignups/MySignups'
 import ManageOpportunities from './pages/ManageOpportunities/ManageOpportunities'
+import VolunteerHours from './pages/VolunteerHours/VolunteerHours'
+import CoordinatorHours from './pages/CoordinatorHours/CoordinatorHours'
+import OpportunityAttendees from './pages/OpportunityAttendees/OpportunityAttendees'
 import './App.css'
 
 function App() {
@@ -46,7 +49,10 @@ function App() {
             <Route path="/manage-opportunities" element={<ManageOpportunities />} />
             <Route path="/opportunities/create" element={<ManageOpportunities initialMode="create" />} />
             <Route path="/opportunities/:id/edit" element={<ManageOpportunities initialMode="edit" />} />
+            <Route path="/opportunities/:id/attendees" element={<OpportunityAttendees />} />
             <Route path="/my-signups" element={<MySignups />} />
+            <Route path="/my-hours" element={<VolunteerHours />} />
+            <Route path="/coordinator-hours" element={<CoordinatorHours />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />

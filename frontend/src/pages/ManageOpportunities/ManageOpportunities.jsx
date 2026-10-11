@@ -620,10 +620,13 @@ function ManageOpportunities({ initialMode = 'list' }) {
                       className="btn btn-secondary btn-sm"
                       onClick={() => handleOpenEdit(opp)}
                     >
-                      ✏️ Edit Opportunity
+                      ✏️ Edit
                     </button>
+                    <Link to={`/opportunities/${opp.id}/attendees`} className="btn btn-outline btn-sm">
+                      👥 Attendees ({opp.active_signups ?? 0})
+                    </Link>
                     <Link to={`/opportunities/${opp.id}`} className="btn btn-outline btn-sm">
-                      Public View →
+                      View →
                     </Link>
                   </div>
                 </article>
