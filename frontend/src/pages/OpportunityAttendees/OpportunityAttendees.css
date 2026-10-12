@@ -1,0 +1,290 @@
+.attendees-page {
+  min-height: calc(100vh - 140px);
+  padding: 2.5rem 1.25rem;
+  background-color: var(--bg-primary);
+}
+
+.attendees-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.back-btn:hover { color: var(--text-primary); }
+
+.attendees-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.attendees-header h1 {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.3rem;
+}
+
+.attendees-header p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* Stats Row */
+.attendees-stats-row {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.attendee-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  text-align: center;
+  min-width: 100px;
+  flex: 1;
+  box-shadow: var(--card-shadow);
+}
+
+.attendee-stat-value {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.attendee-stat-label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  font-weight: 500;
+}
+
+/* Table */
+.attendees-table-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+
+.attendees-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.attendees-table-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.hours-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+}
+
+.attendees-table-wrapper { overflow-x: auto; }
+
+.attendees-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.attendees-table th {
+  padding: 0.75rem 1.25rem;
+  text-align: left;
+  font-size: 0.77rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.attendees-table td {
+  padding: 0.875rem 1.25rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.attendees-table tbody tr:last-child td { border-bottom: none; }
+.attendees-table tbody tr:hover { background: var(--bg-secondary); }
+
+.volunteer-name { font-weight: 600; }
+.volunteer-email { font-size: 0.8rem; color: var(--text-muted); }
+
+.signup-date-cell { color: var(--text-secondary); font-size: 0.88rem; }
+
+/* Status Badges */
+.signup-badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-registered {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.badge-cancelled {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+/* Status Actions */
+.status-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.status-action-btn {
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  transition: all 0.18s;
+  font-family: var(--font-body);
+}
+
+.status-action-btn:hover:not(:disabled) {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.status-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Record Hours Form */
+.record-hours-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.hours-input {
+  width: 70px;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-family: var(--font-body);
+}
+
+.hours-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.text-muted-sm {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Empty State */
+.attendees-empty {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 3.5rem 2rem;
+  text-align: center;
+}
+
+.attendees-empty .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+.attendees-empty h3 { font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; }
+.attendees-empty p { color: var(--text-secondary); max-width: 450px; margin: 0 auto; font-size: 0.95rem; }
+
+/* Alerts */
+.alert-error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #dc2626;
+  padding: 0.875rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+}
+
+.alert-success {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #059669;
+  padding: 0.875rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+}
+
+/* Loading */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 768px) {
+  .attendees-header { flex-direction: column; }
+  .attendees-table th, .attendees-table td { padding: 0.75rem 0.875rem; }
+}
+
+@media (max-width: 500px) {
+  .attendees-stats-row { flex-direction: column; }
+  .attendee-stat { min-width: unset; }
+}

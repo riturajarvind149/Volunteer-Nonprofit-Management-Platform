@@ -46,7 +46,7 @@ function Login() {
       const response = await loginApi({ email, password })
       const { token, user } = response.data
       login(token, user)
-      navigate('/profile')
+      navigate('/dashboard')
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.')
     } finally {

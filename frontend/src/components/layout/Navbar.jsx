@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import './Navbar.css'
@@ -8,13 +8,8 @@ function Navbar({ theme, onToggleTheme }) {
   const { isAuthenticated, logout, user } = useAuth()
   const navigate = useNavigate()
 
-  const toggleMenu = () => {
-    setIsMenuOpen((prev) => !prev)
-  }
-
-  const closeMenu = () => {
-    setIsMenuOpen(false)
-  }
+  const toggleMenu = () => setIsMenuOpen((prev) => !prev)
+  const closeMenu = () => setIsMenuOpen(false)
 
   const handleLogout = () => {
     closeMenu()
@@ -22,8 +17,10 @@ function Navbar({ theme, onToggleTheme }) {
     navigate('/login')
   }
 
-  const getNavLinkClass = ({ isActive }) =>
-    isActive ? 'nav-link active' : 'nav-link'
+  const getNavLinkClass = ({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')
+
+  const isVolunteer = user?.role === 'VOLUNTEER'
+  const isCoordinator = user?.role === 'COORDINATOR'
 
   return (
     <header className="navbar-sticky">
@@ -75,19 +72,33 @@ function Navbar({ theme, onToggleTheme }) {
                     <span>Dashboard</span>
                   </NavLink>
                 </li>
-                {user?.role === 'VOLUNTEER' && (
-                  <li>
-                    <NavLink to="/my-signups" className={getNavLinkClass} onClick={closeMenu}>
-                      <span>My Signups</span>
-                    </NavLink>
-                  </li>
+                {isVolunteer && (
+                  <>
+                    <li>
+                      <NavLink to="/my-signups" className={getNavLinkClass} onClick={closeMenu}>
+                        <span>My Signups</span>
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/my-hours" className={getNavLinkClass} onClick={closeMenu}>
+                        <span>My Hours</span>
+                      </NavLink>
+                    </li>
+                  </>
                 )}
-                {user?.role === 'COORDINATOR' && (
-                  <li>
-                    <NavLink to="/manage-opportunities" className={getNavLinkClass} onClick={closeMenu}>
-                      <span>Manage Opportunities</span>
-                    </NavLink>
-                  </li>
+                {isCoordinator && (
+                  <>
+                    <li>
+                      <NavLink to="/manage-opportunities" className={getNavLinkClass} onClick={closeMenu}>
+                        <span>Manage Opps</span>
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/coordinator-hours" className={getNavLinkClass} onClick={closeMenu}>
+                        <span>Hours</span>
+                      </NavLink>
+                    </li>
+                  </>
                 )}
                 <li>
                   <NavLink to="/profile" className="nav-link-register" onClick={closeMenu}>
@@ -134,4 +145,3 @@ function Navbar({ theme, onToggleTheme }) {
 }
 
 export default Navbar
-

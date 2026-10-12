@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import OpportunityCard from '../../components/OpportunityCard'
+import { useOpportunities } from '../../context/OpportunityContext'
 import { MOCK_OPPORTUNITIES } from '../Opportunities/mockOpportunities'
 import './Home.css'
 
 function Home() {
-  const heroFeatured = MOCK_OPPORTUNITIES[0]
-  const showcaseFeatured = MOCK_OPPORTUNITIES[1]
-  const showcaseSideItems = MOCK_OPPORTUNITIES.slice(2, 4)
+  const { opportunities: liveOpps } = useOpportunities()
+  const showcasePool = liveOpps.length >= 4 ? liveOpps : MOCK_OPPORTUNITIES
+  const heroFeatured = showcasePool[0]
+  const showcaseFeatured = showcasePool[1]
+  const showcaseSideItems = showcasePool.slice(2, 4)
 
   const [activeStep, setActiveStep] = useState(0)
   const [journeyProgress, setJourneyProgress] = useState(1)
@@ -105,14 +108,19 @@ function Home() {
           >
             <div className="hero-product-showcase">
               <div className="showcase-top-bar">
-                <span className="showcase-category">{heroFeatured.category}</span>
-                <span className="showcase-date-badge">{heroFeatured.date}</span>
+                <span className="showcase-category">{heroFeatured.category || 'Community'}</span>
+                <span className="showcase-date-badge">
+                  {heroFeatured.date ||
+                    (heroFeatured.event_date
+                      ? new Date(heroFeatured.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      : 'Upcoming')}
+                </span>
               </div>
 
               <div className="showcase-body">
                 <h3 className="showcase-event-title">{heroFeatured.title}</h3>
                 <p className="showcase-org-name">
-                  Organized by <strong>{heroFeatured.organization}</strong>
+                  Organized by <strong>{heroFeatured.organization_name || heroFeatured.organization || 'Partner Organization'}</strong>
                 </p>
 
                 <p className="showcase-description-text">{heroFeatured.description}</p>
@@ -120,11 +128,13 @@ function Home() {
                 <div className="showcase-meta-grid">
                   <div className="meta-item">
                     <span className="meta-label">Location</span>
-                    <span className="meta-val">📍 {heroFeatured.location}</span>
+                    <span className="meta-val">📍 {heroFeatured.location || 'TBD'}</span>
                   </div>
                   <div className="meta-item">
                     <span className="meta-label">Availability</span>
-                    <span className="meta-val spots-available">{heroFeatured.spots} spots remaining</span>
+                    <span className="meta-val spots-available">
+                      {(heroFeatured.spots_remaining ?? heroFeatured.spots ?? '?')} spots remaining
+                    </span>
                   </div>
                 </div>
               </div>

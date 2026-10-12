@@ -149,7 +149,17 @@ function Dashboard() {
                 My Signups
               </Link>
             )}
-            <Link to={isCoordinator ? '/organizations' : '/profile'} className="btn btn-secondary">
+            {!isCoordinator && (
+              <Link to="/my-hours" className="btn btn-secondary">
+                My Hours
+              </Link>
+            )}
+            {isCoordinator && (
+              <Link to="/coordinator-hours" className="btn btn-secondary">
+                Hours Management
+              </Link>
+            )}
+            <Link to={isCoordinator ? '/organizations' : '/profile'} className="btn btn-outline">
               {isCoordinator ? 'My Organizations' : 'View Profile'}
             </Link>
           </div>
