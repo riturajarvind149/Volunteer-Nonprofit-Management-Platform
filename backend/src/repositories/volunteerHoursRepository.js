@@ -1,4 +1,6 @@
+const crypto = require('crypto');
 const pool = require('../config/db');
+const AppError = require('../utils/AppError');
 
 /**
  * Data-access repository for volunteer_hours table.
@@ -6,29 +8,186 @@ const pool = require('../config/db');
  */
 
 /**
- * Insert a new volunteer_hours record
+ * Deterministically computes the SHA-256 fingerprint of the original creation payload.
+ * Canonicalizes signup_id, hours (formatted to 2 decimal places), and status (defaulting to 'RECORDED').
+ *
+ * @param {Object} payload
+ * @param {string} payload.signup_id - Signup UUID
+ * @param {number|string} payload.hours - Number of hours
+ * @param {string} [payload.status] - Status (PENDING, RECORDED, VERIFIED)
+ * @returns {string} 64-character hexadecimal SHA-256 hash
+ */
+const computePayloadFingerprint = ({ signup_id, hours, status = 'RECORDED' }) => {
+  const normalizedSignupId = String(signup_id).trim().toLowerCase();
+  const normalizedHours = parseFloat(Number(hours).toFixed(2)).toFixed(2);
+  const normalizedStatus = String(status || 'RECORDED').trim().toUpperCase();
+  return crypto
+    .createHash('sha256')
+    .update(`${normalizedSignupId}:${normalizedHours}:${normalizedStatus}`)
+    .digest('hex');
+};
+
+/**
+ * Validates whether an existing record matches the incoming payload, and returns
+ * the sanitized record object with isReplay: true.
+ *
+ * Compares against the immutable stored payload_hash first. If payload_hash is null
+ * (e.g. legacy keyed row created prior to fingerprinting), falls back to field comparison.
+ *
+ * @param {Object} existing - Existing row from database
+ * @param {string} incomingHash - Fingerprint of the incoming request
+ * @param {string} signup_id - Incoming signup UUID
+ * @param {number|string} hours - Incoming hours
+ * @param {string} status - Incoming status
+ * @returns {Object} Sanitized volunteer_hours record with isReplay: true
+ * @throws {AppError} 409 if payload mismatch detected
+ */
+const validateAndFormatReplay = (existing, incomingHash, signup_id, hours, status) => {
+  let isMatch = false;
+  if (existing.payload_hash) {
+    isMatch = existing.payload_hash === incomingHash;
+  } else {
+    // Fallback for legacy keyed rows created without a payload_hash
+    const isSameSignup = existing.signup_id === signup_id;
+    const isSameHours = parseFloat(Number(existing.hours).toFixed(2)) === parseFloat(Number(hours).toFixed(2));
+    const isSameStatus = existing.status === (status || 'RECORDED');
+    isMatch = isSameSignup && isSameHours && isSameStatus;
+  }
+
+  if (!isMatch) {
+    throw new AppError(
+      'Idempotency key was previously used with a different request payload',
+      409
+    );
+  }
+
+  return {
+    id: existing.id,
+    signup_id: existing.signup_id,
+    hours: existing.hours,
+    status: existing.status,
+    recorded_by: existing.recorded_by,
+    created_at: existing.created_at,
+    updated_at: existing.updated_at,
+    isReplay: true,
+  };
+};
+
+/**
+ * Insert a new volunteer_hours record or handle idempotent replay
  * @param {Object} data
  * @param {string} data.signup_id - Signup UUID
  * @param {number} data.hours - Number of hours
  * @param {string} data.status - Status (PENDING, RECORDED, VERIFIED)
  * @param {string} data.recorded_by - Coordinator UUID
- * @returns {Promise<Object>} Created volunteer_hours record
+ * @param {string|null} [data.idempotency_key] - Optional Idempotency-Key
+ * @returns {Promise<Object>} Created or retrieved volunteer_hours record with isReplay boolean
  */
-const create = async ({ signup_id, hours, status = 'RECORDED', recorded_by }) => {
-  const query = `
-    INSERT INTO volunteer_hours (
+const create = async ({ signup_id, hours, status = 'RECORDED', recorded_by, idempotency_key = null }) => {
+  // If no idempotency key was supplied, preserve existing simple insert behavior
+  if (!idempotency_key) {
+    const query = `
+      INSERT INTO volunteer_hours (
+        signup_id,
+        hours,
+        status,
+        recorded_by,
+        idempotency_key,
+        payload_hash
+      )
+      VALUES ($1, $2, $3, $4, NULL, NULL)
+      RETURNING id, signup_id, hours, status, recorded_by, created_at, updated_at
+    `;
+
+    const values = [signup_id, hours, status, recorded_by];
+    const { rows } = await pool.query(query, values);
+    return { ...rows[0], isReplay: false };
+  }
+
+  // Idempotency key supplied: use transaction with dedicated pooled client
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const incomingHash = computePayloadFingerprint({ signup_id, hours, status });
+
+    // 1. Check if record already exists for this coordinator and idempotency_key
+    const existingQuery = `
+      SELECT id, signup_id, hours, status, recorded_by, payload_hash, created_at, updated_at
+      FROM volunteer_hours
+      WHERE recorded_by = $1 AND idempotency_key = $2
+    `;
+    const existingResult = await client.query(existingQuery, [recorded_by, idempotency_key]);
+
+    if (existingResult.rows.length > 0) {
+      const existing = existingResult.rows[0];
+      await client.query('COMMIT');
+      return validateAndFormatReplay(existing, incomingHash, signup_id, hours, status);
+    }
+
+    // 2. Attempt insert with ON CONFLICT DO NOTHING against partial unique index
+    const insertQuery = `
+      INSERT INTO volunteer_hours (
+        signup_id,
+        hours,
+        status,
+        recorded_by,
+        idempotency_key,
+        payload_hash
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (recorded_by, idempotency_key) WHERE idempotency_key IS NOT NULL
+      DO NOTHING
+      RETURNING id, signup_id, hours, status, recorded_by, created_at, updated_at
+    `;
+    const insertResult = await client.query(insertQuery, [
       signup_id,
       hours,
       status,
-      recorded_by
-    )
-    VALUES ($1, $2, $3, $4)
-    RETURNING id, signup_id, hours, status, recorded_by, created_at, updated_at
-  `;
+      recorded_by,
+      idempotency_key,
+      incomingHash,
+    ]);
 
-  const values = [signup_id, hours, status, recorded_by];
-  const { rows } = await pool.query(query, values);
-  return rows[0];
+    if (insertResult.rows.length > 0) {
+      await client.query('COMMIT');
+      return { ...insertResult.rows[0], isReplay: false };
+    }
+
+    // 3. Conflict occurred (concurrent in-flight request committed first)
+    const conflictResult = await client.query(existingQuery, [recorded_by, idempotency_key]);
+    await client.query('COMMIT');
+
+    if (conflictResult.rows.length > 0) {
+      return validateAndFormatReplay(conflictResult.rows[0], incomingHash, signup_id, hours, status);
+    }
+
+    throw new AppError('Concurrent request in progress. Please retry.', 409);
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rbErr) {
+      // ignore rollback errors if connection closed
+    }
+
+    // Fallback: If 23505 unique violation occurred directly
+    if (err.code === '23505') {
+      const fallbackResult = await pool.query(
+        `SELECT id, signup_id, hours, status, recorded_by, payload_hash, created_at, updated_at
+         FROM volunteer_hours
+         WHERE recorded_by = $1 AND idempotency_key = $2`,
+        [recorded_by, idempotency_key]
+      );
+      if (fallbackResult.rows.length > 0) {
+        const incomingHash = computePayloadFingerprint({ signup_id, hours, status });
+        return validateAndFormatReplay(fallbackResult.rows[0], incomingHash, signup_id, hours, status);
+      }
+    }
+
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 /**

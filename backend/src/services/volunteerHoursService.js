@@ -8,18 +8,20 @@ const AppError = require('../utils/AppError');
  */
 
 /**
- * Record volunteer hours for a signup
+ * Record volunteer hours for a signup (with optional idempotency support)
  * @param {Object} data
  * @param {string} data.signupId - Signup UUID
  * @param {number} data.hours - Number of hours
  * @param {string} [data.status] - Status (PENDING, RECORDED, VERIFIED)
+ * @param {string|null} [data.idempotencyKey] - Optional Idempotency-Key
  * @param {string} coordinatorId - Authenticated coordinator UUID
- * @returns {Promise<Object>} Created volunteer_hours record
+ * @returns {Promise<Object>} Created or retrieved volunteer_hours record
  * @throws {AppError} 404 if signup not found
  * @throws {AppError} 400 if signup is cancelled
  * @throws {AppError} 403 if coordinator does not own the opportunity's organization
+ * @throws {AppError} 409 if idempotency key payload mismatch
  */
-const recordHours = async ({ signupId, hours, status }, coordinatorId) => {
+const recordHours = async ({ signupId, hours, status, idempotencyKey = null }, coordinatorId) => {
   // 1. Verify signup exists
   const signup = await signupRepository.findById(signupId);
   if (!signup) {
@@ -43,12 +45,13 @@ const recordHours = async ({ signupId, hours, status }, coordinatorId) => {
     );
   }
 
-  // 4. Delegate creation to repository
+  // 4. Delegate creation to repository (with transaction and concurrency safety)
   const volunteerHours = await volunteerHoursRepository.create({
     signup_id: signupId,
     hours,
     status: status || 'RECORDED',
     recorded_by: coordinatorId,
+    idempotency_key: idempotencyKey,
   });
 
   return volunteerHours;

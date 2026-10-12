@@ -56,10 +56,30 @@ const validateRecordHours = (req, res, next) => {
     }
   }
 
-  // 4. Sanitize req.body to prevent identity spoofing
+  // 4. Validate optional Idempotency-Key header
+  const rawIdempotencyKey = req.headers['idempotency-key'];
+  if (rawIdempotencyKey !== undefined) {
+    if (Array.isArray(rawIdempotencyKey)) {
+      return next(new AppError('Multiple Idempotency-Key headers are not allowed', 400));
+    }
+    if (typeof rawIdempotencyKey !== 'string' || rawIdempotencyKey.trim().length === 0) {
+      return next(new AppError('Idempotency-Key header cannot be empty', 400));
+    }
+    const trimmedKey = rawIdempotencyKey.trim();
+    if (trimmedKey.length > 255) {
+      return next(new AppError('Idempotency-Key header must not exceed 255 characters', 400));
+    }
+    req.idempotencyKey = trimmedKey;
+  } else {
+    req.idempotencyKey = null;
+  }
+
+  // 5. Sanitize req.body to prevent identity spoofing
   if (req.body.recorded_by !== undefined) delete req.body.recorded_by;
   if (req.body.coordinator_id !== undefined) delete req.body.coordinator_id;
   if (req.body.id !== undefined) delete req.body.id;
+  if (req.body.idempotency_key !== undefined) delete req.body.idempotency_key;
+  if (req.body.idempotencyKey !== undefined) delete req.body.idempotencyKey;
 
   req.body.hours = hours;
   req.body.status = normalizedStatus;

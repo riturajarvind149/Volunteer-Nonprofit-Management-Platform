@@ -71,9 +71,15 @@ CREATE TABLE IF NOT EXISTS volunteer_hours (
     hours NUMERIC(6, 2) NOT NULL CHECK (hours >= 0),
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'RECORDED', 'VERIFIED')),
     recorded_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    idempotency_key VARCHAR(255),
+    payload_hash VARCHAR(64),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Backward-compatible schema migration for existing volunteer_hours table
+ALTER TABLE volunteer_hours ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
+ALTER TABLE volunteer_hours ADD COLUMN IF NOT EXISTS payload_hash VARCHAR(64);
 
 -- ==================================================
 -- INDEXES FOR FOREIGN KEYS & FREQUENT LOOKUPS
@@ -85,3 +91,6 @@ CREATE INDEX IF NOT EXISTS idx_signups_volunteer_id ON signups(volunteer_id);
 CREATE INDEX IF NOT EXISTS idx_signups_opportunity_id ON signups(opportunity_id);
 CREATE INDEX IF NOT EXISTS idx_volunteer_hours_signup_id ON volunteer_hours(signup_id);
 CREATE INDEX IF NOT EXISTS idx_volunteer_hours_recorded_by ON volunteer_hours(recorded_by);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_volunteer_hours_coordinator_idempotency
+    ON volunteer_hours(recorded_by, idempotency_key)
+    WHERE idempotency_key IS NOT NULL;

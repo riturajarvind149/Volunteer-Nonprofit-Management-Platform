@@ -13,15 +13,27 @@ const recordHours = async (req, res, next) => {
     const signupId = req.params.signupId || req.params.id;
     const coordinatorId = req.user.id;
     const { hours, status } = req.body;
+    const idempotencyKey = req.idempotencyKey || null;
 
-    const volunteerHours = await volunteerHoursService.recordHours(
-      { signupId, hours, status },
+    const result = await volunteerHoursService.recordHours(
+      { signupId, hours, status, idempotencyKey },
       coordinatorId
     );
 
-    res.status(201).json({
+    const isReplay = result.isReplay === true;
+    const volunteerHours = { ...result };
+    delete volunteerHours.isReplay;
+
+    const statusCode = isReplay ? 200 : 201;
+    if (isReplay) {
+      res.set('Idempotency-Replayed', 'true');
+    }
+
+    res.status(statusCode).json({
       status: 'success',
-      message: 'Volunteer hours recorded successfully',
+      message: isReplay
+        ? 'Volunteer hours retrieved from idempotent request'
+        : 'Volunteer hours recorded successfully',
       data: {
         volunteer_hours: volunteerHours,
       },
