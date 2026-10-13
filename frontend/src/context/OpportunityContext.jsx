@@ -92,7 +92,6 @@ export function OpportunityProvider({ children }) {
     mySignupIds,
     loading,
     error,
-    usingMock: false,
     isRegistered,
     signUp,
     cancelSignUp,

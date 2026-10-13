@@ -137,8 +137,8 @@
   font-weight: 600;
   color: var(--bg-primary);
   background-color: var(--text-primary);
-  border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
               box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1),
               background-color 0.2s ease;
@@ -149,7 +149,7 @@
   background-color: var(--color-primary);
   color: #ffffff;
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(15, 98, 254, 0.3);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.3);
 }
 
 .nav-link-register:active {
@@ -162,7 +162,7 @@
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   padding: 0.45rem 1rem;
-  border-radius: 9999px;
+  border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
