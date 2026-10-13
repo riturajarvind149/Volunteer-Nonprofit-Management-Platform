@@ -1,9 +1,17 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
 import { getOpportunityByIdApi } from '../../services/api'
+import { formatTime } from '../../utils/format'
 import './OpportunityDetails.css'
+
+const STATUS_BADGE = {
+  PUBLISHED: 'badge-published',
+  DRAFT: 'badge-draft',
+  COMPLETED: 'badge-completed',
+  CANCELLED: 'badge-cancelled',
+}
 
 function OpportunityDetails() {
   const { id } = useParams()
@@ -26,78 +34,60 @@ function OpportunityDetails() {
     setLoading(true)
     setFetchError('')
     getOpportunityByIdApi(id, token)
-      .then((res) => {
-        setOpportunity(res?.data?.opportunity || null)
-      })
-      .catch((err) => {
-        setFetchError(err.message || 'Failed to load opportunity details.')
-      })
+      .then((res) => setOpportunity(res?.data?.opportunity || null))
+      .catch((err) => setFetchError(err.message || 'Failed to load opportunity details.'))
       .finally(() => setLoading(false))
   }, [id, token])
 
   if (authLoading || loading) {
     return (
-      <main className="details-page">
+      <div className="details-page">
         <div className="loading-container">
           <div className="loading-spinner" />
           <p>Loading opportunity details...</p>
         </div>
-      </main>
+      </div>
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="details-page">
+      <div className="details-page">
         <div className="details-container not-found">
           <h2>Authentication Required</h2>
           <p>Please log in to view opportunity details.</p>
           <Link to="/login" className="btn btn-primary">Login</Link>
         </div>
-      </main>
+      </div>
     )
   }
 
   if (fetchError || !opportunity) {
     return (
-      <main className="details-page">
+      <div className="details-page">
         <div className="details-container not-found">
           <h2>Opportunity Not Found</h2>
           <p>{fetchError || 'The opportunity you are looking for does not exist or has ended.'}</p>
           <Link to="/opportunities" className="btn btn-secondary">Back to Opportunities</Link>
         </div>
-      </main>
+      </div>
     )
   }
 
-  const title = opportunity.title
-  const organization = opportunity.organization_name || 'Unknown Organization'
-  const category = opportunity.category || 'General'
-  const location = opportunity.location || 'Location TBD'
-  const description = opportunity.description || ''
+  const { title, category, location, description, status, event_date, start_time, end_time, capacity, address, coordinator_id } = opportunity
   const spotsRemaining = opportunity.spots_remaining !== undefined ? Number(opportunity.spots_remaining) : null
   const isFull = spotsRemaining !== null && spotsRemaining <= 0
   const isCoordinator = user?.role === 'COORDINATOR'
-  const isOwner = isCoordinator && opportunity.coordinator_id === user?.id
+  const isOwner = isCoordinator && coordinator_id === user?.id
+  const registered = isRegistered(opportunity.id)
 
   let dateDisplay = ''
-  let timeDisplay = ''
-  if (opportunity.event_date) {
-    dateDisplay = new Date(opportunity.event_date + 'T00:00:00').toLocaleDateString('en-US', {
+  if (event_date) {
+    dateDisplay = new Date(event_date + 'T00:00:00').toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     })
-    if (opportunity.start_time && opportunity.end_time) {
-      const fmt = (t) => {
-        const [h, m] = t.split(':')
-        const d = new Date()
-        d.setHours(Number(h), Number(m))
-        return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-      }
-      timeDisplay = fmt(opportunity.start_time) + ' - ' + fmt(opportunity.end_time)
-    }
   }
-
-  const registered = isRegistered(opportunity.id)
+  const timeDisplay = formatTime(start_time, end_time)
 
   const handleSignUp = async () => {
     if (!isAuthenticated) { navigate('/login'); return }
@@ -128,36 +118,27 @@ function OpportunityDetails() {
     }
   }
 
-  const statusColors = {
-    PUBLISHED: 'badge-published',
-    DRAFT: 'badge-draft',
-    COMPLETED: 'badge-completed',
-    CANCELLED: 'badge-cancelled',
-  }
-
   return (
-    <main className="details-page">
+    <div className="details-page">
       <div className="details-container">
         <Link to="/opportunities" className="back-btn">Back to Opportunities</Link>
 
         <article className="details-card">
           <header className="details-header">
             <div className="details-badges">
-              <span className="card-category">{category}</span>
-              {opportunity.status && (
-                <span className={`status-pill ${statusColors[opportunity.status] || ''}`}>
-                  {opportunity.status}
-                </span>
+              <span className="card-category">{category || 'General'}</span>
+              {status && (
+                <span className={`status-pill ${STATUS_BADGE[status] || ''}`}>{status}</span>
               )}
               {spotsRemaining !== null && (
                 <span className="card-spots">
-                  {isFull ? 'Fully Booked' : spotsRemaining + ' spot' + (spotsRemaining !== 1 ? 's' : '') + ' available'}
+                  {isFull ? 'Fully Booked' : `${spotsRemaining} spot${spotsRemaining !== 1 ? 's' : ''} available`}
                 </span>
               )}
             </div>
             <h1>{title}</h1>
             <p className="details-org">
-              Organized by <strong>{organization}</strong>
+              Organized by <strong>{opportunity.organization_name || 'Unknown Organization'}</strong>
             </p>
           </header>
 
@@ -170,29 +151,29 @@ function OpportunityDetails() {
             )}
             <div className="meta-item">
               <span className="meta-label">Location</span>
-              <span className="meta-value">{location}</span>
+              <span className="meta-value">{location || 'Location TBD'}</span>
             </div>
-            {opportunity.address && (
+            {address && (
               <div className="meta-item">
                 <span className="meta-label">Address</span>
-                <span className="meta-value">{opportunity.address}</span>
+                <span className="meta-value">{address}</span>
               </div>
             )}
             <div className="meta-item">
               <span className="meta-label">Category</span>
-              <span className="meta-value">{category}</span>
+              <span className="meta-value">{category || 'General'}</span>
             </div>
-            {opportunity.capacity !== undefined && (
+            {capacity !== undefined && (
               <div className="meta-item">
                 <span className="meta-label">Capacity</span>
-                <span className="meta-value">{opportunity.capacity} total spots</span>
+                <span className="meta-value">{capacity} total spots</span>
               </div>
             )}
             {spotsRemaining !== null && (
               <div className="meta-item">
                 <span className="meta-label">Availability</span>
                 <span className="meta-value">
-                  {isFull ? 'Fully Booked' : spotsRemaining + ' spot' + (spotsRemaining !== 1 ? 's' : '') + ' remaining'}
+                  {isFull ? 'Fully Booked' : `${spotsRemaining} spot${spotsRemaining !== 1 ? 's' : ''} remaining`}
                 </span>
               </div>
             )}
@@ -210,9 +191,7 @@ function OpportunityDetails() {
             {actionError && <div className="alert-error" style={{ marginBottom: '1rem' }}>{actionError}</div>}
 
             {isCoordinator && isOwner && (
-              <Link to={'/opportunities/' + opportunity.id + '/edit'} className="btn btn-secondary">
-                Edit Opportunity
-              </Link>
+              <Link to={`/opportunities/${opportunity.id}/edit`} className="btn btn-secondary">Edit Opportunity</Link>
             )}
 
             {!isCoordinator && (
@@ -228,16 +207,19 @@ function OpportunityDetails() {
                   type="button"
                   className="btn btn-primary volunteer-btn"
                   onClick={handleSignUp}
-                  disabled={actionLoading || isFull || opportunity.status !== 'PUBLISHED'}
+                  disabled={actionLoading || isFull || status !== 'PUBLISHED'}
                 >
-                  {actionLoading ? 'Signing up...' : isFull ? 'Fully Booked' : opportunity.status !== 'PUBLISHED' ? 'Not Available' : 'Sign Up to Volunteer'}
+                  {actionLoading ? 'Signing up...'
+                    : isFull ? 'Fully Booked'
+                    : status !== 'PUBLISHED' ? 'Not Available'
+                    : 'Sign Up to Volunteer'}
                 </button>
               )
             )}
           </footer>
         </article>
       </div>
-    </main>
+    </div>
   )
 }
 

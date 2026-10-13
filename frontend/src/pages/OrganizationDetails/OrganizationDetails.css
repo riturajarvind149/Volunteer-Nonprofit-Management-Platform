@@ -1,12 +1,10 @@
 .org-details-page {
-  min-height: calc(100vh - 140px);
-  padding: 3rem 1.5rem;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
 }
 
 .org-details-container {
   max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .org-details-container.not-found {

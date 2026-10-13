@@ -35,7 +35,7 @@ function OrganizationDetails() {
 
   if (!isAuthenticated) {
     return (
-      <main className="org-details-page">
+      <div className="org-details-page">
         <div className="org-details-container not-found">
           <h2>Authentication Required</h2>
           <p>Please log in to view organization details.</p>
@@ -43,24 +43,24 @@ function OrganizationDetails() {
             Login
           </Link>
         </div>
-      </main>
+      </div>
     )
   }
 
   if (loading) {
     return (
-      <main className="org-details-page">
+      <div className="org-details-page">
         <div className="loading-container">
           <div className="loading-spinner" />
           <p>Loading organization details...</p>
         </div>
-      </main>
+      </div>
     )
   }
 
   if (error || !organization) {
     return (
-      <main className="org-details-page">
+      <div className="org-details-page">
         <div className="org-details-container not-found">
           <h2>Organization Not Found</h2>
           <p>{error || 'The requested organization could not be found.'}</p>
@@ -68,14 +68,14 @@ function OrganizationDetails() {
             ← Back to Organizations
           </Link>
         </div>
-      </main>
+      </div>
     )
   }
 
   const { name, description, coordinator_id, created_at } = organization
 
   return (
-    <main className="org-details-page">
+    <div className="org-details-page">
       <div className="org-details-container">
         <Link to="/organizations" className="back-btn">
           ← Back to Organizations
@@ -85,18 +85,19 @@ function OrganizationDetails() {
           <header className="org-details-header">
             <span className="org-badge">Verified Organization</span>
             <h1>{name}</h1>
-            <p className="org-id-sub">Organization ID: {organization.id}</p>
           </header>
 
           <section className="org-details-meta">
             <div className="meta-box">
-              <span className="meta-box-label">Manager ID</span>
-              <span className="meta-box-value">{coordinator_id || 'N/A'}</span>
+              <span className="meta-box-label">Managed By</span>
+              <span className="meta-box-value">
+                {organization.coordinator_name || (coordinator_id ? 'Registered Coordinator' : 'N/A')}
+              </span>
             </div>
             <div className="meta-box">
               <span className="meta-box-label">Registered Date</span>
               <span className="meta-box-value">
-                {created_at ? new Date(created_at).toLocaleDateString() : 'N/A'}
+                {created_at ? new Date(created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
               </span>
             </div>
           </section>
@@ -113,7 +114,7 @@ function OrganizationDetails() {
           </footer>
         </article>
       </div>
-    </main>
+    </div>
   )
 }
 

@@ -450,7 +450,7 @@
   background-color: var(--color-primary);
   padding: 0.35rem 0.85rem;
   border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(15, 98, 254, 0.3);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
 }
 
 .magazine-hero-card .opportunity-card {
@@ -778,3 +778,21 @@
   }
 }
 
+
+/* Hero placeholder — shown when no live opportunities are available */
+.hero-showcase-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  min-height: 280px;
+  text-align: center;
+}
+
+.showcase-placeholder-text {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  max-width: 260px;
+  line-height: 1.5;
+}

@@ -2,42 +2,22 @@ import { Link } from 'react-router-dom'
 import './OpportunityCard.css'
 
 function OpportunityCard({ opportunity }) {
-  const {
-    id,
-    title,
-    // Real API uses organization_name; mock uses organization
-    organization_name,
-    organization,
-    category,
-    // Real API uses event_date / start_time; mock uses date / time
-    event_date,
-    date,
-    location,
-    // Real API uses spots_remaining; mock uses spots
-    spots_remaining,
-    spots,
-  } = opportunity
+  const { id, title, organization_name, organization, category, event_date, date, location, spots_remaining, spots } = opportunity
 
   const orgDisplay = organization_name || organization || 'Unknown Organization'
 
-  // Format date display
   let dateDisplay = date || ''
   if (!dateDisplay && event_date) {
     dateDisplay = new Date(event_date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+      month: 'short', day: 'numeric', year: 'numeric',
     })
   }
 
-  // Spots display
   const spotsCount = spots_remaining !== undefined ? Number(spots_remaining) : spots !== undefined ? Number(spots) : null
   const spotsDisplay =
-    spotsCount === null
-      ? null
-      : spotsCount <= 0
-      ? 'Fully Booked'
-      : `${spotsCount} spot${spotsCount !== 1 ? 's' : ''} left`
+    spotsCount === null ? null
+    : spotsCount <= 0 ? 'Fully Booked'
+    : `${spotsCount} spot${spotsCount !== 1 ? 's' : ''} left`
 
   return (
     <article className="opportunity-card">

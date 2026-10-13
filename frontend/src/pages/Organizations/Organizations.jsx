@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getOrganizationsApi, createOrganizationApi } from '../../services/api'
@@ -18,7 +18,7 @@ function Organizations() {
   const [createError, setCreateError] = useState('')
   const [createSuccess, setCreateSuccess] = useState('')
 
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = useCallback(async () => {
     if (!token) return
     setError('')
     try {
@@ -29,13 +29,11 @@ function Organizations() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
 
   useEffect(() => {
     fetchOrganizations()
-  }, [token])
-
-
+  }, [fetchOrganizations])
   const handleCreateSubmit = async (e) => {
     e.preventDefault()
     setCreateError('')
@@ -76,7 +74,7 @@ function Organizations() {
 
   if (!isAuthenticated) {
     return (
-      <main className="organizations-page">
+      <div className="organizations-page">
         <div className="organizations-container auth-gate">
           <h2>Nonprofit Organizations</h2>
           <p>Please log in to view and register organizations on ServeHub.</p>
@@ -85,12 +83,12 @@ function Organizations() {
             <Link to="/register" className="btn btn-secondary">Create Account</Link>
           </div>
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="organizations-page">
+    <div className="organizations-page">
       <div className="organizations-container">
         <header className="organizations-header">
           <div>
@@ -218,7 +216,7 @@ function Organizations() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   )
 }
 

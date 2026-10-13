@@ -48,12 +48,12 @@ function OpportunityAttendees() {
 
   if (authLoading) {
     return (
-      <main className="attendees-page">
+      <div className="attendees-page">
         <div className="loading-container">
           <div className="loading-spinner" />
           <p>Loading attendees...</p>
         </div>
-      </main>
+      </div>
     )
   }
 
@@ -104,23 +104,23 @@ function OpportunityAttendees() {
 
   if (loading) {
     return (
-      <main className="attendees-page">
+      <div className="attendees-page">
         <div className="loading-container">
           <div className="loading-spinner" />
           <p>Loading attendees...</p>
         </div>
-      </main>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <main className="attendees-page">
+      <div className="attendees-page">
         <div className="attendees-container">
           <Link to="/manage-opportunities" className="back-btn">Back to Opportunities</Link>
           <div className="alert-error">{error}</div>
         </div>
-      </main>
+      </div>
     )
   }
 
@@ -130,7 +130,7 @@ function OpportunityAttendees() {
   const cancelledSignups = signups.filter((s) => s.status === 'CANCELLED')
 
   return (
-    <main className="attendees-page">
+    <div className="attendees-page">
       <div className="attendees-container">
         <Link to="/manage-opportunities" className="back-btn">Back to Opportunities</Link>
 
@@ -257,7 +257,7 @@ function OpportunityAttendees() {
           </section>
         )}
       </div>
-    </main>
+    </div>
   )
 }
 
