@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node test_registration.js && node test_login.js && node test_auth_middleware.js && node test_auth_rbac.js && node test_organization.js && node test_opportunity.js && node test_signup.js && node test_volunteer_hours.js && node test_volunteer_hours_retrieval.js && node test_volunteer_hours_status.js && node test_volunteer_hours_summary.js && node test_volunteer_hours_opportunity.js && node test_volunteer_hours_date.js && node test_volunteer_hours_my_date.js && node test_signup_status.js && node test_signup_detail.js && node test_opportunity_update.js && node test_batch1_integration.js && node test_batch2_mysignups.js && node test_batch3_coordinator_ui.js && node test_batch4_attendees.js && node test_volunteer_hours_idempotency.js",
+    "db:init": "node src/db/initDb.js",
+    "test": "node test_registration.js && node test_login.js && node test_auth_middleware.js && node test_auth_rbac.js && node test_organization.js && node test_opportunity.js && node test_signup.js && node test_volunteer_hours.js && node test_volunteer_hours_retrieval.js && node test_volunteer_hours_status.js && node test_volunteer_hours_summary.js && node test_volunteer_hours_opportunity.js && node test_volunteer_hours_date.js && node test_volunteer_hours_my_date.js && node test_signup_status.js && node test_signup_detail.js && node test_opportunity_update.js && node test_batch1_integration.js && node test_batch2_mysignups.js && node test_batch3_coordinator_ui.js && node test_batch4_attendees.js && node test_volunteer_hours_idempotency.js && node test_batch5_capabilities.js && node test_opportunity_auto_completion.js",
     "test:register": "node test_registration.js",
     "test:login": "node test_login.js",
     "test:middleware": "node test_auth_middleware.js",
@@ -27,7 +28,9 @@
     "test:batch1": "node test_batch1_integration.js",
     "test:batch2": "node test_batch2_mysignups.js",
     "test:batch3": "node test_batch3_coordinator_ui.js",
-    "test:batch4": "node test_batch4_attendees.js"
+    "test:batch4": "node test_batch4_attendees.js",
+    "test:batch5": "node test_batch5_capabilities.js",
+    "test:auto-completion": "node test_opportunity_auto_completion.js"
   },
   "keywords": [],
   "author": "",
