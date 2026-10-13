@@ -13,6 +13,11 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('VOLUNTEER', 'COORDINATOR')),
+    phone VARCHAR(50),
+    location VARCHAR(255),
+    bio TEXT,
+    skills TEXT[],
+    avatar_url TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -25,6 +30,12 @@ CREATE TABLE IF NOT EXISTS organizations (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     coordinator_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    phone VARCHAR(50),
+    email VARCHAR(255),
+    website VARCHAR(255),
+    address TEXT,
+    social_links JSONB,
+    logo_url TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -77,7 +88,34 @@ CREATE TABLE IF NOT EXISTS volunteer_hours (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Backward-compatible schema migration for existing volunteer_hours table
+-- ==================================================
+-- 6. NOTIFICATIONS TABLE
+-- ==================================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'INFO',
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    reference_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Backward-compatible schema migrations for existing database instances
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS skills TEXT[];
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS website VARCHAR(255);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS social_links JSONB;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS logo_url TEXT;
+
 ALTER TABLE volunteer_hours ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(255);
 ALTER TABLE volunteer_hours ADD COLUMN IF NOT EXISTS payload_hash VARCHAR(64);
 
@@ -94,3 +132,8 @@ CREATE INDEX IF NOT EXISTS idx_volunteer_hours_recorded_by ON volunteer_hours(re
 CREATE UNIQUE INDEX IF NOT EXISTS idx_volunteer_hours_coordinator_idempotency
     ON volunteer_hours(recorded_by, idempotency_key)
     WHERE idempotency_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_event_completed
+    ON notifications(user_id, reference_id, type)
+    WHERE type = 'EVENT_COMPLETED';
