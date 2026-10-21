@@ -30,7 +30,9 @@
     "test:batch3": "node test_batch3_coordinator_ui.js",
     "test:batch4": "node test_batch4_attendees.js",
     "test:batch5": "node test_batch5_capabilities.js",
-    "test:auto-completion": "node test_opportunity_auto_completion.js"
+    "test:auto-completion": "node test_opportunity_auto_completion.js",
+    "test:cors": "node test_cors_configuration.js",
+    "test:cors:production": "node test_cors_production.js"
   },
   "keywords": [],
   "author": "",
