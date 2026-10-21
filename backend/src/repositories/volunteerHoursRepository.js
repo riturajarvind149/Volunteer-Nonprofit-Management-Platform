@@ -305,7 +305,9 @@ const findByIdWithCoordinator = async (id) => {
       vh.created_at,
       vh.updated_at,
       org.coordinator_id,
-      org.id AS organization_id
+      org.id AS organization_id,
+      s.volunteer_id,
+      o.title AS opportunity_title
     FROM volunteer_hours vh
     JOIN signups s ON vh.signup_id = s.id
     JOIN opportunities o ON s.opportunity_id = o.id

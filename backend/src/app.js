@@ -6,6 +6,10 @@ const organizationRoutes = require('./routes/organizationRoutes');
 const opportunityRoutes = require('./routes/opportunityRoutes');
 const signupRoutes = require('./routes/signupRoutes');
 const volunteerHoursRoutes = require('./routes/volunteerHoursRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const userRoutes = require('./routes/userRoutes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -55,10 +59,14 @@ app.get('/', (req, res) => {
 // Route registration
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/signups', signupRoutes);
 app.use('/api/hours', volunteerHoursRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Fallback & Centralized error handling
 app.use(notFoundHandler);

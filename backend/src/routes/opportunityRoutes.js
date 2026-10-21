@@ -52,6 +52,18 @@ router.get(
 );
 
 /**
+ * @route   POST /api/opportunities/process-completions
+ * @desc    Trigger automatic opportunity completion check and attendee notifications
+ * @access  Protected (COORDINATOR)
+ */
+router.post(
+  '/process-completions',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  opportunityController.processCompletions
+);
+
+/**
  * @route   GET /api/opportunities/my-signups
  * @desc    Get all signups of the authenticated volunteer (alias)
  * @access  Protected (VOLUNTEER)
