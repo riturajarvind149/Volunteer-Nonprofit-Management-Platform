@@ -1,4 +1,5 @@
 const opportunityService = require('../services/opportunityService');
+const opportunityCompletionService = require('../services/opportunityCompletionService');
 const AppError = require('../utils/AppError');
 
 /**
@@ -125,10 +126,30 @@ const getDashboardStats = async (req, res, next) => {
   }
 };
 
+/**
+ * Trigger automatic opportunity completion process
+ * POST /api/opportunities/process-completions
+ */
+const processCompletions = async (req, res, next) => {
+  try {
+    const summary = await opportunityCompletionService.processCompletedOpportunities();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Opportunity completions processed successfully',
+      data: summary,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   create,
   getAll,
   getById,
   update,
   getDashboardStats,
+  processCompletions,
 };
+

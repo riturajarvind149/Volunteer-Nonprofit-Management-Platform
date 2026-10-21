@@ -5,6 +5,7 @@ const {
   getMe,
   coordinatorTest,
   volunteerTest,
+  changePassword,
 } = require('../controllers/authController');
 const validateRegister = require('../middleware/validateRegister');
 const validateLogin = require('../middleware/validateLogin');
@@ -16,6 +17,7 @@ const router = express.Router();
 router.post('/register', validateRegister, register);
 router.post('/login', validateLogin, login);
 router.get('/me', authenticate, getMe);
+router.post('/change-password', authenticate, changePassword);
 
 // Role-based authorization demonstration endpoints
 router.get('/coordinator-test', authenticate, authorizeRoles('COORDINATOR'), coordinatorTest);

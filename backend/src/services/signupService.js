@@ -1,6 +1,7 @@
 const signupRepository = require('../repositories/signupRepository');
 const opportunityRepository = require('../repositories/opportunityRepository');
 const organizationRepository = require('../repositories/organizationRepository');
+const notificationService = require('./notificationService');
 const AppError = require('../utils/AppError');
 
 /**
@@ -14,7 +15,35 @@ const AppError = require('../utils/AppError');
  * @returns {Promise<Object>} Created signup record
  */
 const createSignup = async (opportunityId, volunteerId) => {
-  return await signupRepository.createSignupTransaction(opportunityId, volunteerId);
+  const signup = await signupRepository.createSignupTransaction(opportunityId, volunteerId);
+
+  // Non-blocking notification dispatch
+  try {
+    const opp = await opportunityRepository.findOpportunityByIdWithCoordinator(opportunityId);
+    if (opp) {
+      await notificationService.createNotification({
+        user_id: volunteerId,
+        title: 'Registration Confirmed',
+        message: `You successfully registered for ${opp.title} on ${opp.event_date}`,
+        type: 'REGISTRATION',
+        reference_id: opp.id,
+      });
+
+      if (opp.coordinator_id) {
+        await notificationService.createNotification({
+          user_id: opp.coordinator_id,
+          title: 'New Registration',
+          message: `A volunteer registered for ${opp.title}`,
+          type: 'REGISTRATION',
+          reference_id: opp.id,
+        });
+      }
+    }
+  } catch (notifErr) {
+    // Non-blocking
+  }
+
+  return signup;
 };
 
 /**

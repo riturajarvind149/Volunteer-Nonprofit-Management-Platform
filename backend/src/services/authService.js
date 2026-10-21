@@ -102,10 +102,41 @@ const getUserProfile = async (id) => {
   return user;
 };
 
+/**
+ * Service to change authenticated user's password
+ * @param {string} userId - User UUID
+ * @param {string} currentPassword - Current plaintext password
+ * @param {string} newPassword - New plaintext password
+ */
+const changePassword = async (userId, currentPassword, newPassword) => {
+  if (!currentPassword || !newPassword) {
+    throw new AppError('Current password and new password are required', 400);
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    throw new AppError('New password must be at least 8 characters long', 400);
+  }
+
+  const currentHash = await userRepository.findPasswordHashById(userId);
+  if (!currentHash) {
+    throw new AppError('User not found', 404);
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, currentHash);
+  if (!isMatch) {
+    throw new AppError('Current password is incorrect', 400);
+  }
+
+  const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await userRepository.updatePassword(userId, newHash);
+
+  return { message: 'Password updated successfully' };
+};
+
 module.exports = {
   registerUser,
   loginUser,
   generateToken,
   getUserProfile,
+  changePassword,
 };
 

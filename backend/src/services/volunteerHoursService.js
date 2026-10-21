@@ -1,6 +1,7 @@
 const volunteerHoursRepository = require('../repositories/volunteerHoursRepository');
 const signupRepository = require('../repositories/signupRepository');
 const organizationRepository = require('../repositories/organizationRepository');
+const notificationService = require('./notificationService');
 const AppError = require('../utils/AppError');
 
 /**
@@ -54,6 +55,21 @@ const recordHours = async ({ signupId, hours, status, idempotencyKey = null }, c
     idempotency_key: idempotencyKey,
   });
 
+  // 5. Notify volunteer of hours submission
+  try {
+    if (signup && signup.volunteer_id) {
+      await notificationService.createNotification({
+        user_id: signup.volunteer_id,
+        title: 'Hours Submitted',
+        message: `${hours} hours submitted for ${signup.opportunity_title || 'event'}. Status: ${status || 'RECORDED'}`,
+        type: 'HOURS',
+        reference_id: volunteerHours.id,
+      });
+    }
+  } catch (notifErr) {
+    // Non-blocking notification
+  }
+
   return volunteerHours;
 };
 
@@ -101,7 +117,24 @@ const updateStatus = async (id, status, coordinatorId) => {
   }
 
   // 3. Delegate update to repository
-  return await volunteerHoursRepository.updateStatus(id, status);
+  const updatedRecord = await volunteerHoursRepository.updateStatus(id, status);
+
+  // 4. Notify volunteer when hours are verified
+  try {
+    if (status === 'VERIFIED' && record.volunteer_id) {
+      await notificationService.createNotification({
+        user_id: record.volunteer_id,
+        title: 'Hours Verified',
+        message: `Your ${record.hours} volunteer hours for ${record.opportunity_title || 'event'} have been verified!`,
+        type: 'HOURS',
+        reference_id: id,
+      });
+    }
+  } catch (notifErr) {
+    // Non-blocking notification
+  }
+
+  return updatedRecord;
 };
 
 /**

@@ -46,4 +46,29 @@ router.get(
   organizationController.getById
 );
 
+/**
+ * @route   PATCH /api/organizations/:id
+ * @desc    Update organization profile (Coordinator owner only)
+ * @access  Protected (COORDINATOR)
+ */
+router.patch(
+  '/:id',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  validateOrganizationId,
+  organizationController.update
+);
+
+/**
+ * @route   GET /api/organizations/:id/impact
+ * @desc    Get organization impact summary and metrics
+ * @access  Protected (Any authenticated user)
+ */
+router.get(
+  '/:id/impact',
+  authenticate,
+  validateOrganizationId,
+  organizationController.getImpact
+);
+
 module.exports = router;

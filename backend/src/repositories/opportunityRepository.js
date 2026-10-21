@@ -269,6 +269,83 @@ const getCoordinatorStats = async (coordinatorId) => {
   };
 };
 
+/**
+ * Find all PUBLISHED opportunities whose scheduled end time has elapsed
+ * @param {string} timezone - Application timezone (e.g. 'Asia/Kolkata')
+ * @param {string|Date|null} [simulatedNow] - Optional simulated timestamp for boundary testing
+ * @returns {Promise<Array>} List of eligible opportunities
+ */
+const findEligibleForCompletion = async (timezone, simulatedNow = null) => {
+  const query = `
+    SELECT 
+      id, 
+      organization_id, 
+      title, 
+      description, 
+      category, 
+      event_date, 
+      start_time, 
+      end_time, 
+      status
+    FROM opportunities
+    WHERE status = 'PUBLISHED'
+      AND (
+        (CASE 
+          WHEN end_time > start_time THEN (event_date + end_time) 
+          ELSE (event_date + INTERVAL '1 day' + end_time) 
+        END) AT TIME ZONE $1
+      ) <= COALESCE($2::timestamptz, NOW())
+    ORDER BY event_date ASC, end_time ASC
+  `;
+  const values = [timezone, simulatedNow || null];
+  const { rows } = await pool.query(query, values);
+  return rows;
+};
+
+/**
+ * Atomically transitions an opportunity from PUBLISHED to COMPLETED.
+ * Returns null if status was not PUBLISHED (e.g., already COMPLETED, CANCELLED, or DRAFT).
+ * @param {string} id - Opportunity UUID
+ * @returns {Promise<Object|null>} Updated opportunity or null if condition unmet
+ */
+const markCompletedIfPublished = async (id) => {
+  const query = `
+    UPDATE opportunities
+    SET status = 'COMPLETED', updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1 AND status = 'PUBLISHED'
+    RETURNING id, organization_id, title, status, event_date, start_time, end_time, updated_at
+  `;
+  const { rows } = await pool.query(query, [id]);
+  return rows[0] || null;
+};
+
+/**
+ * Retrieve registered attendees for an opportunity who have NOT yet received an EVENT_COMPLETED notification.
+ * Excludes cancelled signups and volunteers who already received the notification.
+ * @param {string} opportunityId - Opportunity UUID
+ * @returns {Promise<Array>} List of attendees { volunteer_id, full_name, email }
+ */
+const findRegisteredAttendeesWithoutCompletionNotification = async (opportunityId) => {
+  const query = `
+    SELECT 
+      s.volunteer_id,
+      u.full_name,
+      u.email
+    FROM signups s
+    JOIN users u ON s.volunteer_id = u.id
+    WHERE s.opportunity_id = $1
+      AND s.status = 'REGISTERED'
+      AND NOT EXISTS (
+        SELECT 1 FROM notifications n
+        WHERE n.user_id = s.volunteer_id
+          AND n.reference_id = s.opportunity_id
+          AND n.type = 'EVENT_COMPLETED'
+      )
+  `;
+  const { rows } = await pool.query(query, [opportunityId]);
+  return rows;
+};
+
 module.exports = {
   createOpportunity,
   findAllOpportunities,
@@ -278,4 +355,7 @@ module.exports = {
   updateOpportunity,
   getVolunteerStats,
   getCoordinatorStats,
+  findEligibleForCompletion,
+  markCompletedIfPublished,
+  findRegisteredAttendeesWithoutCompletionNotification,
 };

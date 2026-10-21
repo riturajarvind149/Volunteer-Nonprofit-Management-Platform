@@ -73,8 +73,51 @@ const getById = async (req, res, next) => {
   }
 };
 
+/**
+ * Update an organization
+ * PATCH /api/organizations/:id
+ */
+const update = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const coordinatorId = req.user.id;
+    const organization = await organizationService.updateOrganization(id, coordinatorId, req.body);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Organization updated successfully',
+      data: {
+        organization,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Retrieve organization impact summary and analytics
+ * GET /api/organizations/:id/impact
+ */
+const getImpact = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await organizationService.getOrganizationImpact(id);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Organization impact retrieved successfully',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   create,
   getAll,
   getById,
+  update,
+  getImpact,
 };

@@ -109,10 +109,30 @@ const volunteerTest = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller for updating user password
+ * POST /api/auth/change-password
+ */
+const changePassword = async (req, res, next) => {
+  try {
+    const { current_password, new_password } = req.body;
+    const result = await authService.changePassword(req.user.id, current_password, new_password);
+
+    res.status(200).json({
+      status: 'success',
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   getMe,
   coordinatorTest,
   volunteerTest,
+  changePassword,
 };
+
