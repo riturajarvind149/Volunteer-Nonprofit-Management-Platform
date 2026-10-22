@@ -1,0 +1,56 @@
+.tilt {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --glare-x: 50%;
+  --glare-y: 50%;
+  perspective: 900px;
+}
+
+.tilt-inner {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s;
+}
+
+.tilt[data-tilting] .tilt-inner {
+  transition: transform 0.08s linear, box-shadow 0.3s;
+  box-shadow: var(--shadow-overlay);
+}
+
+/* Soft highlight that follows the pointer */
+.tilt-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at var(--glare-x) var(--glare-y), rgba(255, 255, 255, 0.18), transparent 55%);
+  transition: opacity 0.3s;
+}
+
+.tilt[data-tilting] .tilt-inner::after {
+  opacity: 1;
+}
+
+.tilt-layer {
+  transform: translateZ(28px);
+}
+
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .tilt-inner,
+  .tilt[data-tilting] .tilt-inner {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .tilt-inner::after {
+    content: none;
+  }
+
+  .tilt-layer {
+    transform: none;
+  }
+}
