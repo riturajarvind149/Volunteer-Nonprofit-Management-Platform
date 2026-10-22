@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getMyHoursApi, getMyHoursSummaryApi } from '../../services/api'
+import { formatDate } from '../../utils/format'
 import './VolunteerHours.css'
 
 function SimpleBarChart({ data }) {
@@ -68,26 +69,15 @@ function VolunteerHours() {
     loadData()
   }
 
-  const formatDate = (d) => {
-    if (!d) return ''
-    try { return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) }
-    catch { return d }
-  }
-
   const totalHours = Number(summary?.total_hours || 0)
   const events = summary?.total_records || hours.length
-  const orgs = new Set(hours.map(h => h.organization_name).filter(Boolean)).size || 5
-  const verifiedCount = hours.filter(h => h.status === 'VERIFIED').length
-  const pendingCount = hours.filter(h => h.status === 'PENDING').length
+  const orgs = new Set(hours.map(h => h.organization_name).filter(Boolean)).size
 
-  const CHART_MONTHS = [
-    { label: 'Apr', value: 4 },
-    { label: 'May', value: 6 },
-    { label: 'Jun', value: 5 },
-    { label: 'Jul', value: 3.5 },
-    { label: 'Aug', value: 11 },
-    { label: 'Sep', value: 4 },
-  ]
+  // Build chart data from real hours grouped by month if available,
+  // otherwise fall back to summary by_month from API
+  const monthlyData = summary?.by_month
+    ? summary.by_month.map(m => ({ label: m.month, value: Number(m.hours || 0) }))
+    : null
 
   const statusClass = { PENDING: 'badge-pending', RECORDED: 'badge-recorded', VERIFIED: 'badge-verified' }
 
@@ -101,7 +91,6 @@ function VolunteerHours() {
           <h1>My Volunteer Hours</h1>
           <p>Your complete volunteering history and verified hours.</p>
         </div>
-        <button type="button" className="vh-export-btn">&#8595; Export Report</button>
       </div>
 
       <div className="vh-summary-cards">
@@ -120,20 +109,16 @@ function VolunteerHours() {
           <div className="vh-sum-value">{orgs}</div>
           <div className="vh-sum-label">Organizations</div>
         </div>
-        <div className="vh-sum-card orange">
-          <span className="vh-sum-icon">🔥</span>
-          <div className="vh-sum-value">4<span className="vh-sum-unit"> weeks</span></div>
-          <div className="vh-sum-label">Current Streak</div>
-        </div>
       </div>
 
-      <div className="vh-chart-card">
-        <div className="vh-chart-header">
-          <h2>Hours by Month</h2>
-          <span className="vh-chart-range">Apr – Sep 2024</span>
+      {monthlyData && monthlyData.length > 1 && (
+        <div className="vh-chart-card">
+          <div className="vh-chart-header">
+            <h2>Hours by Month</h2>
+          </div>
+          <SimpleBarChart data={monthlyData} />
         </div>
-        <SimpleBarChart data={CHART_MONTHS} />
-      </div>
+      )}
 
       <div className="vh-table-card">
         <div className="vh-table-header">

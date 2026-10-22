@@ -59,10 +59,10 @@
   gap: 0.3rem;
 }
 
-.vh-sum-card.green { background-color: rgba(22, 163, 74, 0.06); border-color: rgba(22, 163, 74, 0.2); }
+.vh-sum-card.green { background-color: rgba(40, 118, 83, 0.06); border-color: rgba(40, 118, 83, 0.2); }
 .vh-sum-card.blue { background-color: rgba(2, 132, 199, 0.06); border-color: rgba(2, 132, 199, 0.2); }
-.vh-sum-card.purple { background-color: rgba(124, 58, 237, 0.06); border-color: rgba(124, 58, 237, 0.2); }
-.vh-sum-card.orange { background-color: rgba(217, 119, 6, 0.06); border-color: rgba(217, 119, 6, 0.2); }
+.vh-sum-card.purple { background-color: rgba(120, 61, 75, 0.06); border-color: rgba(120, 61, 75, 0.2); }
+.vh-sum-card.orange { background-color: rgba(147, 101, 29, 0.06); border-color: rgba(147, 101, 29, 0.2); }
 
 .vh-sum-icon {
   font-size: 1.2rem;
@@ -308,13 +308,13 @@
 }
 
 .badge-verified {
-  background-color: rgba(22, 163, 74, 0.12);
-  color: #15803d;
+  background-color: rgba(120, 61, 75, 0.1);
+  color: var(--color-primary);
 }
 
 .badge-pending {
-  background-color: rgba(217, 119, 6, 0.12);
-  color: #d97706;
+  background-color: rgba(147, 101, 29, 0.12);
+  color: #93651D;
 }
 
 .badge-recorded {
@@ -356,8 +356,8 @@
   margin: 0.5rem 1.25rem;
 }
 
-[data-theme="dark"] .badge-verified { color: #4ade80; }
-[data-theme="dark"] .badge-pending { color: #fbbf24; }
+[data-theme="dark"] .badge-verified { color: #C4778A; }
+[data-theme="dark"] .badge-pending { color: #D4A052; }
 
 @media (max-width: 700px) {
   .vh-summary-cards {
