@@ -1,77 +1,53 @@
-import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import Icon from '../../components/Icon'
+import { PageHeader } from '../../components/ui'
 import './Notifications.css'
 
-const TYPE_ICONS = {
-  success: '✓',
-  warning: '⚠',
-  info: 'ℹ',
-  error: '✕',
+const PLACES = {
+  VOLUNTEER: [
+    { to: '/my-signups', icon: 'registrations', title: 'My registrations', body: 'Shows if a coordinator cancels one of your registrations.' },
+    { to: '/my-hours', icon: 'clock', title: 'My hours', body: 'Shows new hour entries and when they are verified.' },
+  ],
+  COORDINATOR: [
+    { to: '/volunteers', icon: 'users', title: 'Rosters', body: 'Shows new and cancelled registrations for each event.' },
+    { to: '/coordinator-hours', icon: 'clock', title: 'Hours & attendance', body: 'Shows hour entries that still need verification.' },
+  ],
 }
 
 function Notifications() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth()
-  const [tab, setTab] = useState('all')
-
-  // Notifications are not yet connected to a backend endpoint.
-  // The list will remain empty until a real notifications API is integrated.
-  const [notifications] = useState([])
-
-  if (authLoading) return <div className="loading-container"><div className="loading-spinner" /></div>
-  if (!isAuthenticated || !user) return <Navigate to="/login" replace />
-
-  const unreadCount = notifications.filter((n) => !n.read).length
-  const displayed = tab === 'unread' ? notifications.filter((n) => !n.read) : notifications
+  const { user } = useAuth()
+  const places = PLACES[user.role] || PLACES.VOLUNTEER
 
   return (
-    <div className="notif-page">
-      <div className="notif-header">
+    <div className="page page-narrow">
+      <PageHeader title="Notifications" />
+
+      <section className="panel notif-unavailable">
+        <Icon name="bell" size={24} className="state-icon" />
         <div>
-          <h1>Notifications</h1>
-          {unreadCount > 0 && <p className="notif-unread-count">{unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}</p>}
+          <h2>In-app notifications aren’t available yet</h2>
+          <p>
+            ServeHub doesn’t generate notifications at the moment, so nothing will appear here.
+            Until it does, these pages always reflect the latest changes:
+          </p>
         </div>
-      </div>
+      </section>
 
-      <div className="notif-tabs">
-        <button
-          type="button"
-          className={`notif-tab-btn${tab === 'all' ? ' active' : ''}`}
-          onClick={() => setTab('all')}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          className={`notif-tab-btn${tab === 'unread' ? ' active' : ''}`}
-          onClick={() => setTab('unread')}
-        >
-          Unread {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
-        </button>
-      </div>
-
-      <div className="notif-list">
-        {displayed.length === 0 ? (
-          <div className="notif-empty">
-            <p>No {tab === 'unread' ? 'unread ' : ''}notifications.</p>
-          </div>
-        ) : (
-          displayed.map((n) => (
-            <div
-              key={n.id}
-              className={`notif-item notif-item-${n.type}${n.read ? '' : ' unread'}`}
-            >
-              <div className={`notif-icon notif-icon-${n.type}`}>{TYPE_ICONS[n.type]}</div>
-              <div className="notif-content">
-                <strong className="notif-title">{n.title}</strong>
-                <p className="notif-body">{n.body}</p>
-                <span className="notif-time">{n.time}</span>
-              </div>
-              {!n.read && <span className="notif-unread-dot" />}
-            </div>
-          ))
-        )}
-      </div>
+      <ul role="list" className="notif-places">
+        {places.map((place) => (
+          <li key={place.to}>
+            <Link to={place.to} className="notif-place">
+              <Icon name={place.icon} size={18} />
+              <span>
+                <strong>{place.title}</strong>
+                <span className="muted">{place.body}</span>
+              </span>
+              <Icon name="chevron-right" size={16} className="notif-chevron" />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

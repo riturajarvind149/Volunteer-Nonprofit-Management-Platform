@@ -1,264 +1,315 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link, Navigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
+  getManagedOpportunitiesApi,
   getOpportunityAttendeesApi,
+  getOpportunityByIdApi,
   updateSignupStatusApi,
   recordHoursApi,
 } from '../../services/api'
+import Icon from '../../components/Icon'
+import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge, CapacityMeter } from '../../components/ui'
+import { formatDate, formatTime, formatHours, isUpcoming, compareByDate, pluralize } from '../../utils/format'
 import './OpportunityAttendees.css'
 
-const SIGNUP_STATUSES = ['REGISTERED', 'CANCELLED']
-
-function OpportunityAttendees() {
-  const { id: opportunityId } = useParams()
-  const { user, token, isAuthenticated, loading: authLoading } = useAuth()
-
-  const [data, setData] = useState(null) // { opportunity, signups }
+function RosterPicker() {
+  const { token } = useAuth()
+  const [opportunities, setOpportunities] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState('')
 
-  const [updatingSignupId, setUpdatingSignupId] = useState(null)
-  const [recordingHoursId, setRecordingHoursId] = useState(null)
-  const [hoursInput, setHoursInput] = useState({}) // signupId -> value
-  const [actionMessage, setActionMessage] = useState({ type: '', text: '' })
-
-  const loadData = useCallback(async () => {
-    if (!token) return
-    setLoading(true)
-    setError(null)
+  const load = useCallback(async () => {
+    setError('')
     try {
-      const res = await getOpportunityAttendeesApi(opportunityId, token)
-      setData({
-        opportunity: res?.data?.opportunity || {},
-        signups: res?.data?.signups || res?.data?.attendees || [],
-      })
+      const res = await getManagedOpportunitiesApi(token)
+      setOpportunities(res?.data?.opportunities || [])
     } catch (err) {
-      setError(err.message || 'Failed to load attendees.')
+      setError(err.message || 'Your opportunities could not be loaded.')
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => { load() }, [load])
+
+  const upcoming = opportunities.filter((o) => isUpcoming(o.event_date)).sort(compareByDate)
+  const past = opportunities.filter((o) => !isUpcoming(o.event_date)).sort((a, b) => compareByDate(b, a))
+
+  const renderTable = (rows, caption) => (
+    <section className="panel" aria-label={caption}>
+      <div className="panel-header"><h2>{caption}</h2><span className="muted">{pluralize(rows.length, 'event')}</span></div>
+      <div className="table-wrap">
+        <table className="table table-stack">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Opportunity</th>
+              <th>Registered</th>
+              <th>Status</th>
+              <th><span className="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((o) => (
+              <tr key={o.id}>
+                <td data-label="Date" className="num">{formatDate(o.event_date)}</td>
+                <td data-label="Opportunity" className="cell-lead">
+                  <span className="cell-primary">{o.title}</span>
+                  <span className="cell-sub">{o.organization_name}</span>
+                </td>
+                <td data-label="Registered" className="num">{o.active_signups} / {o.capacity}</td>
+                <td data-label="Status"><StatusBadge status={o.status} /></td>
+                <td data-label="">
+                  <Link to={`/opportunities/${o.id}/attendees`} className="btn btn-secondary btn-sm">Open roster</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+
+  return (
+    <div className="page">
+      <PageHeader title="Rosters" description="Choose an event to see who registered, manage signups and log hours." />
+      {error && <Alert onRetry={load}>{error}</Alert>}
+      {loading ? (
+        <LoadingState label="Loading events…" />
+      ) : opportunities.length === 0 ? (
+        <div className="panel">
+          <EmptyState
+            icon="users"
+            title="No events yet"
+            action={<Link to="/opportunities/create" className="btn btn-primary">Create an opportunity</Link>}
+          >
+            Rosters appear once you’ve created an opportunity.
+          </EmptyState>
+        </div>
+      ) : (
+        <>
+          {upcoming.length > 0 && renderTable(upcoming, 'Upcoming events')}
+          {past.length > 0 && renderTable(past, 'Past events')}
+        </>
+      )}
+    </div>
+  )
+}
+
+function Roster({ opportunityId }) {
+  const { token } = useAuth()
+  const [opportunity, setOpportunity] = useState(null)
+  const [signups, setSignups] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState(null)
+  const [confirmingId, setConfirmingId] = useState(null)
+  const [hoursInput, setHoursInput] = useState({})
+  const [hoursErrors, setHoursErrors] = useState({})
+  const [logged, setLogged] = useState({})
+  const [notice, setNotice] = useState(null)
+
+  const load = useCallback(async () => {
+    setError('')
+    try {
+      const [rosterRes, oppRes] = await Promise.all([
+        getOpportunityAttendeesApi(opportunityId, token),
+        getOpportunityByIdApi(opportunityId, token),
+      ])
+      setSignups(rosterRes?.data?.signups || [])
+      setOpportunity(oppRes?.data?.opportunity || rosterRes?.data?.opportunity || null)
+    } catch (err) {
+      setError(err.message || 'This roster could not be loaded.')
     } finally {
       setLoading(false)
     }
   }, [opportunityId, token])
 
-  useEffect(() => {
-    if (token && user?.role === 'COORDINATOR') {
-      loadData()
-    }
-  }, [token, user, loadData])
+  useEffect(() => { load() }, [load])
 
-  if (authLoading) {
-    return (
-      <div className="attendees-page">
-        <div className="loading-container">
-          <div className="loading-spinner" />
-          <p>Loading attendees...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated || !user) return <Navigate to="/login" replace />
-  if (user.role !== 'COORDINATOR') return <Navigate to="/dashboard" replace />
-
-  const showMessage = (type, text) => {
-    setActionMessage({ type, text })
-    setTimeout(() => setActionMessage({ type: '', text: '' }), 4000)
-  }
-
-  const handleUpdateSignupStatus = async (signupId, newStatus) => {
-    if (updatingSignupId) return
-    setUpdatingSignupId(signupId)
+  const changeStatus = async (signup, status) => {
+    setBusyId(signup.id)
+    setNotice(null)
     try {
-      await updateSignupStatusApi(signupId, newStatus, token)
-      setData((prev) => ({
-        ...prev,
-        signups: prev.signups.map((s) => s.id === signupId ? { ...s, status: newStatus } : s),
-      }))
-      showMessage('success', 'Signup status updated to ' + newStatus + '.')
+      await updateSignupStatusApi(signup.id, status, token)
+      setSignups((prev) => prev.map((s) => (s.id === signup.id ? { ...s, status } : s)))
+      setConfirmingId(null)
+      setNotice({
+        tone: 'success',
+        text: status === 'CANCELLED'
+          ? `${signup.volunteer_name}’s registration was cancelled.`
+          : `${signup.volunteer_name}’s registration was restored.`,
+      })
     } catch (err) {
-      showMessage('error', err.message || 'Failed to update signup status.')
+      setNotice({ tone: 'error', text: err.message || 'The registration could not be updated.' })
     } finally {
-      setUpdatingSignupId(null)
+      setBusyId(null)
     }
   }
 
-  const handleRecordHours = async (signupId) => {
-    const hrs = parseFloat(hoursInput[signupId])
-    if (isNaN(hrs) || hrs < 0) {
-      showMessage('error', 'Please enter a valid number of hours (0 or more).')
+  const logHours = async (e, signup) => {
+    e.preventDefault()
+    const value = Number(hoursInput[signup.id])
+    if (!hoursInput[signup.id] || Number.isNaN(value) || value <= 0 || value > 9999) {
+      setHoursErrors((prev) => ({ ...prev, [signup.id]: 'Enter hours greater than 0.' }))
       return
     }
-    setRecordingHoursId(signupId)
+    setHoursErrors((prev) => ({ ...prev, [signup.id]: '' }))
+    setBusyId(signup.id)
+    setNotice(null)
     try {
-      await recordHoursApi(signupId, { hours: hrs, status: 'RECORDED' }, token)
-      setHoursInput((prev) => ({ ...prev, [signupId]: '' }))
-      showMessage('success', hrs + ' hours recorded successfully.')
+      await recordHoursApi(signup.id, { hours: value, status: 'RECORDED' }, token)
+      setHoursInput((prev) => ({ ...prev, [signup.id]: '' }))
+      setLogged((prev) => ({ ...prev, [signup.id]: (prev[signup.id] || 0) + value }))
+      setNotice({ tone: 'success', text: `${formatHours(value)} hours logged for ${signup.volunteer_name}. They’re now waiting for verification.` })
     } catch (err) {
-      showMessage('error', err.message || 'Failed to record hours.')
+      setNotice({ tone: 'error', text: err.message || 'The hours could not be logged.' })
     } finally {
-      setRecordingHoursId(null)
+      setBusyId(null)
     }
   }
 
-  const statusClass = { REGISTERED: 'badge-registered', CANCELLED: 'badge-cancelled' }
+  if (loading) return <LoadingState label="Loading roster…" />
 
-  if (loading) {
+  const back = { to: '/volunteers', label: 'Rosters' }
+
+  if (error && !opportunity) {
     return (
-      <div className="attendees-page">
-        <div className="loading-container">
-          <div className="loading-spinner" />
-          <p>Loading attendees...</p>
-        </div>
+      <div className="page page-narrow">
+        <PageHeader title="Roster" back={back} />
+        <Alert onRetry={load}>{error}</Alert>
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div className="attendees-page">
-        <div className="attendees-container">
-          <Link to="/manage-opportunities" className="back-btn">Back to Opportunities</Link>
-          <div className="alert-error">{error}</div>
-        </div>
-      </div>
-    )
-  }
-
-  const opportunity = data?.opportunity || {}
-  const signups = data?.signups || []
-  const activeSignups = signups.filter((s) => s.status !== 'CANCELLED')
-  const cancelledSignups = signups.filter((s) => s.status === 'CANCELLED')
+  const active = signups.filter((s) => s.status !== 'CANCELLED')
+  const cancelled = signups.length - active.length
+  const time = formatTime(opportunity?.start_time, opportunity?.end_time)
 
   return (
-    <div className="attendees-page">
-      <div className="attendees-container">
-        <Link to="/manage-opportunities" className="back-btn">Back to Opportunities</Link>
+    <div className="page">
+      <PageHeader
+        title={opportunity?.title || 'Roster'}
+        back={back}
+        actions={(
+          <>
+            <Link to={`/opportunities/${opportunityId}`} className="btn btn-ghost">View listing</Link>
+            <Link to={`/opportunities/${opportunityId}/edit`} className="btn btn-secondary"><Icon name="edit" size={14} />Edit</Link>
+          </>
+        )}
+      />
 
-        <header className="attendees-header">
-          <div>
-            <h1>{opportunity.title || 'Opportunity'}</h1>
-            <p>
-              Manage volunteer signups, update attendance status, and record volunteer hours.
-            </p>
-          </div>
-          <Link to={'/opportunities/' + opportunityId} className="btn btn-outline btn-sm">
-            View Details
-          </Link>
-        </header>
-
-        {/* Stats Row */}
-        <div className="attendees-stats-row">
-          <div className="attendee-stat">
-            <span className="attendee-stat-value">{signups.length}</span>
-            <span className="attendee-stat-label">Total Signups</span>
-          </div>
-          <div className="attendee-stat">
-            <span className="attendee-stat-value">{activeSignups.length}</span>
-            <span className="attendee-stat-label">Active</span>
-          </div>
-          <div className="attendee-stat">
-            <span className="attendee-stat-value">{cancelledSignups.length}</span>
-            <span className="attendee-stat-label">Cancelled</span>
-          </div>
+      <div className="roster-summary">
+        <div className="meta-line">
+          {opportunity?.event_date && <span><Icon name="calendar" size={14} />{formatDate(opportunity.event_date, { weekday: 'long', month: 'long' })}</span>}
+          {time && <span><Icon name="clock" size={14} />{time}</span>}
+          {opportunity?.location && <span><Icon name="map-pin" size={14} />{opportunity.location}</span>}
+          {opportunity?.status && <StatusBadge status={opportunity.status} />}
         </div>
-
-        {actionMessage.text && (
-          <div className={actionMessage.type === 'success' ? 'alert-success' : 'alert-error'}>
-            {actionMessage.text}
+        {opportunity?.capacity && (
+          <div className="roster-capacity">
+            <span><strong className="num">{active.length}</strong> of {opportunity.capacity} spots filled{cancelled > 0 && ` · ${cancelled} cancelled`}</span>
+            <CapacityMeter taken={active.length} capacity={opportunity.capacity} />
           </div>
         )}
+      </div>
 
+      <div aria-live="polite">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
+
+      <section className="panel">
         {signups.length === 0 ? (
-          <div className="attendees-empty">
-            <div className="empty-icon">👥</div>
-            <h3>No Signups Yet</h3>
-            <p>No volunteers have signed up for this opportunity. Share it to attract volunteers.</p>
-          </div>
+          <EmptyState icon="users" title="No one has registered yet">
+            Volunteers who register for this opportunity will be listed here.
+          </EmptyState>
         ) : (
-          <section className="attendees-table-section">
-            <div className="attendees-table-header">
-              <h2>Volunteer Signups</h2>
-              <span className="hours-count">{signups.length} signup{signups.length !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="attendees-table-wrapper">
-              <table className="attendees-table">
-                <thead>
-                  <tr>
-                    <th>Volunteer</th>
-                    <th>Status</th>
-                    <th>Signed Up</th>
-                    <th>Update Status</th>
-                    <th>Record Hours</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {signups.map((signup) => (
-                    <tr key={signup.id}>
-                      <td>
-                        <div className="volunteer-name">{signup.volunteer_name || signup.full_name || 'Volunteer'}</div>
-                        <div className="volunteer-email">{signup.volunteer_email || signup.email || ''}</div>
+          <div className="table-wrap">
+            <table className="table table-stack roster-table">
+              <thead>
+                <tr>
+                  <th>Volunteer</th>
+                  <th>Registered</th>
+                  <th>Status</th>
+                  <th>Log hours</th>
+                  <th><span className="sr-only">Registration actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {signups.map((s) => {
+                  const isCancelled = s.status === 'CANCELLED'
+                  const busy = busyId === s.id
+                  return (
+                    <tr key={s.id} className={isCancelled ? 'is-cancelled' : undefined}>
+                      <td data-label="Volunteer" className="cell-lead">
+                        <span className="cell-primary">{s.volunteer_name}</span>
+                        <a href={`mailto:${s.volunteer_email}`} className="cell-sub roster-email">{s.volunteer_email}</a>
                       </td>
-                      <td>
-                        <span className={'signup-badge ' + (statusClass[signup.status] || '')}>
-                          {signup.status || 'REGISTERED'}
-                        </span>
-                      </td>
-                      <td className="signup-date-cell">
-                        {signup.created_at
-                          ? new Date(signup.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                          : '—'}
-                      </td>
-                      <td>
-                        <div className="status-actions">
-                          {SIGNUP_STATUSES.filter((s) => s !== signup.status).map((s) => (
-                            <button
-                              key={s}
-                              type="button"
-                              className={'status-action-btn status-' + s.toLowerCase()}
-                              onClick={() => handleUpdateSignupStatus(signup.id, s)}
-                              disabled={!!updatingSignupId}
-                            >
-                              {updatingSignupId === signup.id ? '...' : s}
-                            </button>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        {signup.status !== 'CANCELLED' ? (
-                          <div className="record-hours-form">
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              max="9999.99"
-                              placeholder="hrs"
-                              value={hoursInput[signup.id] || ''}
-                              onChange={(e) => setHoursInput((prev) => ({ ...prev, [signup.id]: e.target.value }))}
-                              className="hours-input"
-                            />
-                            <button
-                              type="button"
-                              className="btn btn-primary btn-sm"
-                              onClick={() => handleRecordHours(signup.id)}
-                              disabled={!!recordingHoursId || !hoursInput[signup.id]}
-                            >
-                              {recordingHoursId === signup.id ? '...' : 'Log'}
-                            </button>
-                          </div>
+                      <td data-label="Registered" className="num">{formatDate(s.created_at)}</td>
+                      <td data-label="Status"><StatusBadge status={s.status} /></td>
+                      <td data-label="Log hours">
+                        {isCancelled ? (
+                          <span className="muted">—</span>
                         ) : (
-                          <span className="text-muted-sm">N/A (cancelled)</span>
+                          <form className="hours-form" onSubmit={(e) => logHours(e, s)} noValidate>
+                            <label className="sr-only" htmlFor={`hours-${s.id}`}>Hours for {s.volunteer_name}</label>
+                            <input
+                              id={`hours-${s.id}`}
+                              type="number"
+                              inputMode="decimal"
+                              min="0.25"
+                              step="0.25"
+                              className="input"
+                              placeholder="0"
+                              value={hoursInput[s.id] || ''}
+                              onChange={(e) => setHoursInput((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                              aria-invalid={Boolean(hoursErrors[s.id])}
+                              disabled={busy}
+                            />
+                            <button type="submit" className="btn btn-secondary btn-sm" disabled={busy}>Log</button>
+                            {logged[s.id] > 0 && <span className="hours-logged">{formatHours(logged[s.id])} h logged</span>}
+                            {hoursErrors[s.id] && <span className="field-error hours-error">{hoursErrors[s.id]}</span>}
+                          </form>
+                        )}
+                      </td>
+                      <td data-label="">
+                        {confirmingId === s.id ? (
+                          <div className="roster-confirm">
+                            <button type="button" className="btn btn-danger btn-sm" onClick={() => changeStatus(s, 'CANCELLED')} disabled={busy}>
+                              {busy ? 'Cancelling…' : 'Confirm cancel'}
+                            </button>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmingId(null)} disabled={busy}>Keep</button>
+                          </div>
+                        ) : isCancelled ? (
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => changeStatus(s, 'REGISTERED')} disabled={busy}>
+                            {busy ? 'Restoring…' : 'Restore'}
+                          </button>
+                        ) : (
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmingId(s.id)} disabled={busy}>
+                            Cancel registration
+                          </button>
                         )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </section>
+
+      {active.length > 0 && (
+        <p className="muted roster-footnote">
+          Logged hours appear in <Link to="/coordinator-hours">Hours &amp; attendance</Link>, where you can verify them.
+        </p>
+      )}
     </div>
   )
+}
+
+function OpportunityAttendees() {
+  const { id } = useParams()
+  return id ? <Roster opportunityId={id} /> : <RosterPicker />
 }
 
 export default OpportunityAttendees
