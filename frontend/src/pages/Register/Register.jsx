@@ -1,19 +1,38 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { registerApi } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
+import { Alert } from '../../components/ui'
 import '../Auth.css'
 
-const FIELDS = [
-  { id: 'name', label: 'Full Name', type: 'text', placeholder: 'e.g. John Doe' },
-  { id: 'email', label: 'Email Address', type: 'email', placeholder: 'you@example.com' },
-  { id: 'password', label: 'Password', type: 'password', placeholder: 'At least 8 characters' },
-  { id: 'confirmPassword', label: 'Confirm Password', type: 'password', placeholder: 'Repeat your password' },
+const ROLES = [
+  { value: 'VOLUNTEER', title: 'Volunteer', desc: 'Find and register for opportunities' },
+  { value: 'COORDINATOR', title: 'Coordinator', desc: 'Publish opportunities for a nonprofit' },
 ]
+
+const FIELDS = [
+  { id: 'name', label: 'Full name', type: 'text', autoComplete: 'name' },
+  { id: 'email', label: 'Email address', type: 'email', autoComplete: 'email' },
+  { id: 'password', label: 'Password', type: 'password', autoComplete: 'new-password', hint: 'At least 8 characters.' },
+  { id: 'confirmPassword', label: 'Confirm password', type: 'password', autoComplete: 'new-password' },
+]
+
+function validate(form) {
+  const errors = {}
+  if (form.name.trim().length < 2) errors.name = 'Enter your full name (at least 2 characters).'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = 'Enter a valid email address.'
+  if (form.password.length < 8) errors.password = 'Use at least 8 characters.'
+  if (!form.confirmPassword) errors.confirmPassword = 'Re-enter your password.'
+  else if (form.password !== form.confirmPassword) errors.confirmPassword = 'Passwords don’t match.'
+  return errors
+}
 
 function Register() {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    role: 'VOLUNTEER',
+  const { isAuthenticated } = useAuth()
+  const [searchParams] = useSearchParams()
+  const [form, setForm] = useState({
+    role: searchParams.get('role')?.toUpperCase() === 'COORDINATOR' ? 'COORDINATOR' : 'VOLUNTEER',
     name: '',
     email: '',
     password: '',
@@ -21,138 +40,103 @@ function Register() {
   })
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleRoleChange = (role) => {
-    setFormData((prev) => ({ ...prev, role }))
-    setErrors({})
-    setServerError('')
-  }
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setForm((prev) => ({ ...prev, [name]: value }))
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
-    if (serverError) setServerError('')
-  }
-
-  const validate = () => {
-    const errs = {}
-    const name = formData.name.trim()
-    const email = formData.email.trim()
-
-    if (!name || name.length < 2) {
-      errs.name = 'Name must be at least 2 characters'
-    }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errs.email = 'Please enter a valid email address'
-    }
-    if (!formData.password || formData.password.length < 8) {
-      errs.password = 'Password must be at least 8 characters'
-    }
-    if (formData.password !== formData.confirmPassword) {
-      errs.confirmPassword = 'Passwords do not match'
-    }
-    return errs
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setServerError('')
-
-    const validationErrors = validate()
+    const validationErrors = validate(form)
     setErrors(validationErrors)
-    if (Object.keys(validationErrors).length > 0) return
+    if (Object.keys(validationErrors).length) return
 
+    setServerError('')
     setLoading(true)
     try {
       await registerApi({
-        full_name: formData.name.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        role: formData.role,
+        full_name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        role: form.role,
       })
-
-      setSuccessMessage('Registration successful! Redirecting to login...')
-      setTimeout(() => {
-        navigate('/login', {
-          state: { message: 'Registration successful! Please login with your credentials.' },
-        })
-      }, 1500)
+      navigate('/login', { state: { message: 'Your account was created. Sign in to continue.' } })
     } catch (err) {
       setServerError(err.message || 'Registration failed. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
 
-  const isCoordinator = formData.role === 'COORDINATOR'
-
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-header">
-          <Link to="/" className="auth-brand">
-            ServeHub
-          </Link>
-          <h1>Create an Account</h1>
-          <p>Join our community to discover or host meaningful volunteer opportunities.</p>
+    <div className="auth">
+      <div className="auth-panel">
+        <div className="auth-heading">
+          <h1>Create your account</h1>
+          <p>Your role decides what you see after signing in. It can’t be changed later.</p>
         </div>
 
-        <div className="role-selector">
-          <button
-            type="button"
-            className={`role-btn ${!isCoordinator ? 'active' : ''}`}
-            onClick={() => handleRoleChange('VOLUNTEER')}
-            disabled={loading}
-          >
-            Volunteer
-          </button>
-          <button
-            type="button"
-            className={`role-btn ${isCoordinator ? 'active' : ''}`}
-            onClick={() => handleRoleChange('COORDINATOR')}
-            disabled={loading}
-          >
-            NGO Coordinator
-          </button>
-        </div>
-
-        {serverError && <div className="alert-error">{serverError}</div>}
-        {successMessage && <div className="alert-success">{successMessage}</div>}
+        {serverError && <Alert>{serverError}</Alert>}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
-          {FIELDS.map(({ id, label, type, placeholder }) => (
-            <div key={id} className="form-group">
-              <label htmlFor={id}>
-                {id === 'name' && isCoordinator ? 'Coordinator / Contact Name' : label}
-              </label>
-              <input
-                type={type}
-                id={id}
-                name={id}
-                placeholder={placeholder}
-                value={formData[id]}
-                onChange={handleChange}
-                className={errors[id] ? 'input-error' : ''}
-                disabled={loading}
-                required
-              />
-              {errors[id] && <span className="error-text">{errors[id]}</span>}
+          <fieldset className="role-options" disabled={loading}>
+            <legend className="field-label">I’m joining as</legend>
+            <div className="role-option-grid">
+              {ROLES.map((role) => (
+                <label key={role.value} className="role-option">
+                  <input
+                    type="radio"
+                    name="role"
+                    value={role.value}
+                    checked={form.role === role.value}
+                    onChange={handleChange}
+                  />
+                  <span className="role-option-title">{role.title}</span>
+                  <span className="role-option-desc">{role.desc}</span>
+                </label>
+              ))}
             </div>
-          ))}
+          </fieldset>
 
-          <button type="submit" className="btn btn-primary auth-btn" disabled={loading}>
-            {loading ? 'Creating Account...' : 'Create Account'}
+          {FIELDS.map((field) => {
+            const describedBy = [errors[field.id] && `${field.id}-error`, field.hint && `${field.id}-hint`].filter(Boolean).join(' ')
+            return (
+              <div key={field.id} className="field">
+                <label className="field-label" htmlFor={field.id}>{field.label}</label>
+                <input
+                  id={field.id}
+                  name={field.id}
+                  type={field.type}
+                  className="input"
+                  value={form[field.id]}
+                  onChange={handleChange}
+                  autoComplete={field.autoComplete}
+                  disabled={loading}
+                  aria-invalid={Boolean(errors[field.id])}
+                  aria-describedby={describedBy || undefined}
+                  required
+                />
+                {field.hint && !errors[field.id] && <span id={`${field.id}-hint`} className="field-hint">{field.hint}</span>}
+                {errors[field.id] && <span id={`${field.id}-error`} className="field-error">{errors[field.id]}</span>}
+              </div>
+            )
+          })}
+
+          <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={loading}>
+            {loading ? 'Creating account…' : 'Create account'}
           </button>
+          <p className="field-hint">
+            By creating an account you agree to the <Link to="/terms">Terms of Use</Link> and <Link to="/privacy">Privacy Policy</Link>.
+          </p>
         </form>
 
-        <div className="auth-footer">
-          <p>
-            Already have an account? <Link to="/login">Login</Link>
-          </p>
-        </div>
+        <p className="auth-switch">
+          Already registered? <Link to="/login">Sign in</Link>
+        </p>
       </div>
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   getOrganizationHoursApi,
@@ -7,276 +7,217 @@ import {
   getOrganizationOpportunitiesSummaryApi,
   updateHoursStatusApi,
 } from '../../services/api'
+import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge } from '../../components/ui'
+import { formatDate, formatHours, pluralize } from '../../utils/format'
 import './CoordinatorHours.css'
 
-const HOUR_STATUSES = ['PENDING', 'RECORDED', 'VERIFIED']
-const STATUS_CLASS = { PENDING: 'badge-pending', RECORDED: 'badge-recorded', VERIFIED: 'badge-verified' }
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—'
-  try {
-    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-  } catch { return dateStr }
-}
+const QUEUE_FILTERS = [
+  { key: 'review', label: 'Needs review', match: (r) => r.status !== 'VERIFIED' },
+  { key: 'verified', label: 'Verified', match: (r) => r.status === 'VERIFIED' },
+  { key: 'all', label: 'All entries', match: () => true },
+]
 
 function CoordinatorHours() {
-  const { user, token, isAuthenticated, loading: authLoading } = useAuth()
-
-  const [hours, setHours] = useState([])
+  const { token } = useAuth()
+  const [records, setRecords] = useState([])
   const [summary, setSummary] = useState(null)
-  const [oppsSummary, setOppsSummary] = useState([])
+  const [byOpportunity, setByOpportunity] = useState([])
+  const [view, setView] = useState('entries')
+  const [filter, setFilter] = useState('review')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState('')
   const [updatingId, setUpdatingId] = useState(null)
-  const [updateError, setUpdateError] = useState('')
-  const [updateSuccess, setUpdateSuccess] = useState('')
-  const [activeTab, setActiveTab] = useState('log') // 'log' | 'byOpportunity'
+  const [notice, setNotice] = useState(null)
 
-  const loadData = useCallback(async () => {
-    if (!token) return
-    setLoading(true)
-    setError(null)
+  const load = useCallback(async () => {
+    setError('')
     try {
       const [hoursRes, summaryRes, oppsRes] = await Promise.all([
         getOrganizationHoursApi(token),
         getOrganizationHoursSummaryApi(token),
         getOrganizationOpportunitiesSummaryApi(token),
       ])
-      setHours(hoursRes?.data?.volunteer_hours || hoursRes?.data?.hours || [])
-      setSummary(summaryRes?.data?.summary || summaryRes?.data || null)
-      setOppsSummary(oppsRes?.data?.opportunities || oppsRes?.data?.opportunity_hours || [])
+      setRecords(hoursRes?.data?.volunteer_hours || [])
+      setSummary(summaryRes?.data?.summary || null)
+      setByOpportunity(oppsRes?.data?.opportunities || [])
     } catch (err) {
-      setError(err.message || 'Failed to load organization hours.')
+      setError(err.message || 'Hours could not be loaded.')
     } finally {
       setLoading(false)
     }
   }, [token])
 
-  useEffect(() => {
-    if (token && user?.role === 'COORDINATOR') loadData()
-  }, [token, user, loadData])
+  useEffect(() => { load() }, [load])
 
-  if (authLoading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner" />
-        <p>Loading hours data...</p>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated || !user) return <Navigate to="/login" replace />
-  if (user.role !== 'COORDINATOR') return <Navigate to="/dashboard" replace />
-
-  const handleUpdateStatus = async (id, newStatus) => {
-    if (updatingId) return
-    setUpdatingId(id)
-    setUpdateError('')
-    setUpdateSuccess('')
+  const updateStatus = async (record, status) => {
+    setUpdatingId(record.id)
+    setNotice(null)
     try {
-      await updateHoursStatusApi(id, newStatus, token)
-      setHours((prev) => prev.map((h) => h.id === id ? { ...h, status: newStatus } : h))
-      setUpdateSuccess(`Hours status updated to ${newStatus}.`)
-      setTimeout(() => setUpdateSuccess(''), 3000)
+      await updateHoursStatusApi(record.id, status, token)
+      setRecords((prev) => prev.map((r) => (r.id === record.id ? { ...r, status } : r)))
+      setNotice({ tone: 'success', text: `${formatHours(record.hours)} hours for ${record.volunteer_name} marked as ${status.toLowerCase()}.` })
+      const [summaryRes, oppsRes] = await Promise.all([
+        getOrganizationHoursSummaryApi(token),
+        getOrganizationOpportunitiesSummaryApi(token),
+      ])
+      setSummary(summaryRes?.data?.summary || null)
+      setByOpportunity(oppsRes?.data?.opportunities || [])
     } catch (err) {
-      setUpdateError(err.message || 'Failed to update status.')
+      setNotice({ tone: 'error', text: err.message || 'The status could not be updated.' })
     } finally {
       setUpdatingId(null)
     }
   }
 
-  const totalHours = summary?.total_hours ?? 0
-  const verifiedHours = summary?.verified_hours ?? 0
-  const totalVolunteers = summary?.total_volunteers ?? 0
-  const totalRecords = summary?.total_records ?? hours.length
+  const activeFilter = QUEUE_FILTERS.find((f) => f.key === filter)
+  const visible = records.filter(activeFilter.match)
+  const awaiting = Number(summary?.pending_hours || 0) + Number(summary?.recorded_hours || 0)
+  const withHours = byOpportunity.filter((o) => Number(o.total_hours) > 0)
 
   return (
-    <div className="coord-hours-page">
-      <div className="coord-hours-container">
-        <header className="coord-hours-header">
-          <div>
-            <h1>Volunteer Hours Management</h1>
-            <p>Review, verify, and manage volunteer hours for your organization's opportunities.</p>
-          </div>
-          <Link to="/manage-opportunities" className="btn btn-secondary">Manage Opportunities</Link>
-        </header>
+    <div className="page">
+      <PageHeader
+        title="Hours & attendance"
+        description="Hours you log on a roster land here. Verify them so they count toward each volunteer’s total."
+        actions={<Link to="/volunteers" className="btn btn-secondary">Go to rosters</Link>}
+      />
 
-        {/* Summary Cards */}
-        <section className="hours-summary-grid">
-          <div className="hours-stat-card">
-            <div className="stat-icon">&#9201;</div>
-            <div className="stat-value">{Number(totalHours).toFixed(1)}</div>
-            <div className="stat-label">Total Hours Logged</div>
-          </div>
-          <div className="hours-stat-card">
-            <div className="stat-icon">&#10003;</div>
-            <div className="stat-value">{Number(verifiedHours).toFixed(1)}</div>
-            <div className="stat-label">Verified Hours</div>
-          </div>
-          <div className="hours-stat-card">
-            <div className="stat-icon">&#128101;</div>
-            <div className="stat-value">{totalVolunteers}</div>
-            <div className="stat-label">Volunteers</div>
-          </div>
-          <div className="hours-stat-card">
-            <div className="stat-icon">&#128203;</div>
-            <div className="stat-value">{totalRecords}</div>
-            <div className="stat-label">Hour Records</div>
-          </div>
-        </section>
+      <section className="figures" aria-label="Hours summary">
+        <div className="figure">
+          <span className="figure-value">{formatHours(awaiting)}</span>
+          <span className="figure-label">Awaiting verification</span>
+        </div>
+        <div className="figure">
+          <span className="figure-value">{formatHours(summary?.verified_hours)}</span>
+          <span className="figure-label">Verified</span>
+        </div>
+        <div className="figure">
+          <span className="figure-value">{formatHours(summary?.total_hours)}</span>
+          <span className="figure-label">Total logged</span>
+          <span className="figure-note">{pluralize(summary?.total_records ?? 0, 'entry', 'entries')}</span>
+        </div>
+        <div className="figure">
+          <span className="figure-value">{summary?.total_volunteers ?? 0}</span>
+          <span className="figure-label">Volunteers with hours</span>
+        </div>
+      </section>
 
-        {updateSuccess && <div className="alert-success">{updateSuccess}</div>}
-        {updateError && <div className="alert-error">{updateError}</div>}
+      <div aria-live="polite">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
+      {error && <Alert onRetry={load}>{error}</Alert>}
 
-        {error && (
-          <div className="alert-error" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>{error}</span>
-            <button type="button" className="btn btn-sm btn-outline" onClick={loadData}>Retry</button>
+      <section className="panel">
+        <div className="panel-header">
+          <div className="segmented" role="group" aria-label="View">
+            <button type="button" aria-pressed={view === 'entries'} onClick={() => setView('entries')}>Entries</button>
+            <button type="button" aria-pressed={view === 'opportunities'} onClick={() => setView('opportunities')}>By opportunity</button>
           </div>
-        )}
-
-        {/* Tab Navigation */}
-        <nav className="coord-hours-tabs" aria-label="Hours view">
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'log' ? 'active' : ''}`}
-            onClick={() => setActiveTab('log')}
-          >
-            Hours Log
-            <span className="tab-badge">{hours.length}</span>
-          </button>
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'byOpportunity' ? 'active' : ''}`}
-            onClick={() => setActiveTab('byOpportunity')}
-          >
-            By Opportunity
-            <span className="tab-badge">{oppsSummary.length}</span>
-          </button>
-        </nav>
+          {view === 'entries' && (
+            <div className="segmented" role="group" aria-label="Filter entries">
+              {QUEUE_FILTERS.map((f) => (
+                <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
+                  {f.label}<span className="count">{records.filter(f.match).length}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {loading ? (
-          <div className="loading-container">
-            <div className="loading-spinner" />
-            <p>Loading organization hours...</p>
-          </div>
-        ) : activeTab === 'log' ? (
-          hours.length === 0 ? (
-            <div className="hours-empty">
-              <div className="empty-icon">&#9201;</div>
-              <h3>No Hours Recorded Yet</h3>
-              <p>No volunteer hours have been logged for your organization's opportunities. Record hours for signups from the attendees view.</p>
-              <Link to="/manage-opportunities" className="btn btn-primary">Go to Opportunities</Link>
-            </div>
+          <LoadingState label="Loading hours…" />
+        ) : view === 'entries' ? (
+          visible.length === 0 ? (
+            <EmptyState
+              icon="check-circle"
+              title={records.length === 0 ? 'No hours logged yet' : filter === 'review' ? 'Nothing left to review' : 'No entries here'}
+              action={records.length === 0 && <Link to="/volunteers" className="btn btn-secondary">Open a roster</Link>}
+            >
+              {records.length === 0 ? 'Log hours for attendees from an event’s roster.' : filter === 'review' ? 'Every logged hour has been verified.' : 'Try another filter.'}
+            </EmptyState>
           ) : (
-            <section className="coord-hours-table-section">
-              <div className="hours-table-header">
-                <h2>Hours Log</h2>
-                <span className="hours-count">{hours.length} record{hours.length !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="hours-table-wrapper">
-                <table className="hours-table">
-                  <thead>
-                    <tr>
-                      <th>Volunteer</th>
-                      <th>Opportunity</th>
-                      <th>Hours</th>
-                      <th>Status</th>
-                      <th>Recorded On</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hours.map((record) => (
-                      <tr key={record.id}>
-                        <td>
-                          <div className="volunteer-name">{record.volunteer_name || record.volunteer_full_name || 'Volunteer'}</div>
-                          <div className="volunteer-email">{record.volunteer_email || ''}</div>
+            <div className="table-wrap">
+              <table className="table table-stack">
+                <thead>
+                  <tr>
+                    <th>Volunteer</th>
+                    <th>Opportunity</th>
+                    <th>Logged on</th>
+                    <th className="cell-num">Hours</th>
+                    <th>Status</th>
+                    <th><span className="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((r) => {
+                    const busy = updatingId === r.id
+                    return (
+                      <tr key={r.id}>
+                        <td data-label="Volunteer" className="cell-lead">
+                          <span className="cell-primary">{r.volunteer_name}</span>
+                          <span className="cell-sub">{r.volunteer_email}</span>
                         </td>
-                        <td>
-                          <Link to={'/opportunities/' + (record.opportunity_id || '#')} className="opp-link">
-                            {record.opportunity_title || 'Opportunity'}
-                          </Link>
-                          {record.opportunity_event_date && (
-                            <span className="opp-date-sub">{formatDate(record.opportunity_event_date)}</span>
-                          )}
+                        <td data-label="Opportunity">
+                          <Link to={`/opportunities/${r.opportunity_id}/attendees`}>{r.opportunity_title}</Link>
                         </td>
-                        <td className="hours-cell">{Number(record.hours || 0).toFixed(1)}</td>
-                        <td>
-                          <span className={`hours-badge ${STATUS_CLASS[record.status] || ''}`}>
-                            {record.status || 'RECORDED'}
-                          </span>
-                        </td>
-                        <td>{formatDate(record.created_at)}</td>
-                        <td>
-                          <div className="status-actions">
-                            {HOUR_STATUSES.filter((s) => s !== record.status).map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                className={`status-action-btn status-${s.toLowerCase()}`}
-                                onClick={() => handleUpdateStatus(record.id, s)}
-                                disabled={!!updatingId}
-                                title={`Set to ${s}`}
-                              >
-                                {updatingId === record.id ? '...' : s}
+                        <td data-label="Logged on" className="num">{formatDate(r.created_at)}</td>
+                        <td data-label="Hours" className="cell-num">{formatHours(r.hours)}</td>
+                        <td data-label="Status"><StatusBadge status={r.status} /></td>
+                        <td data-label="">
+                          <div className="hours-actions">
+                            {r.status !== 'VERIFIED' ? (
+                              <button type="button" className="btn btn-primary btn-sm" onClick={() => updateStatus(r, 'VERIFIED')} disabled={busy}>
+                                {busy ? 'Saving…' : 'Verify'}
                               </button>
-                            ))}
+                            ) : (
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(r, 'RECORDED')} disabled={busy}>
+                                {busy ? 'Saving…' : 'Undo verification'}
+                              </button>
+                            )}
+                            {r.status === 'RECORDED' && (
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(r, 'PENDING')} disabled={busy}>
+                                Mark pending
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )
-        ) : (
-          /* By Opportunity tab */
-          oppsSummary.length === 0 ? (
-            <div className="hours-empty">
-              <div className="empty-icon">&#128202;</div>
-              <h3>No Opportunity Data Yet</h3>
-              <p>No per-opportunity hours breakdown is available yet.</p>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-          ) : (
-            <section className="coord-hours-table-section">
-              <div className="hours-table-header">
-                <h2>Hours by Opportunity</h2>
-                <span className="hours-count">{oppsSummary.length} opportunit{oppsSummary.length !== 1 ? 'ies' : 'y'}</span>
-              </div>
-              <div className="hours-table-wrapper">
-                <table className="hours-table">
-                  <thead>
-                    <tr>
-                      <th>Opportunity</th>
-                      <th>Event Date</th>
-                      <th>Total Hours</th>
-                      <th>Verified Hours</th>
-                      <th>Volunteers</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {oppsSummary.map((opp) => (
-                      <tr key={opp.opportunity_id || opp.id}>
-                        <td>
-                          <Link to={'/opportunities/' + (opp.opportunity_id || opp.id || '#')} className="opp-link">
-                            {opp.opportunity_title || opp.title || 'Opportunity'}
-                          </Link>
-                        </td>
-                        <td>{formatDate(opp.event_date || opp.opportunity_event_date)}</td>
-                        <td className="hours-cell">{Number(opp.total_hours || 0).toFixed(1)}</td>
-                        <td className="hours-cell">{Number(opp.verified_hours || 0).toFixed(1)}</td>
-                        <td>{opp.volunteer_count ?? opp.total_volunteers ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
           )
+        ) : withHours.length === 0 ? (
+          <EmptyState icon="chart" title="No hours logged against any opportunity yet" />
+        ) : (
+          <div className="table-wrap">
+            <table className="table table-stack">
+              <thead>
+                <tr>
+                  <th>Opportunity</th>
+                  <th className="cell-num">Volunteers</th>
+                  <th className="cell-num">Logged</th>
+                  <th className="cell-num">Verified</th>
+                  <th className="cell-num">Awaiting</th>
+                </tr>
+              </thead>
+              <tbody>
+                {withHours.map((o) => (
+                  <tr key={o.opportunity_id}>
+                    <td data-label="Opportunity" className="cell-lead">
+                      <Link to={`/opportunities/${o.opportunity_id}/attendees`}>{o.opportunity_title}</Link>
+                      <span className="cell-sub">{o.organization_name}</span>
+                    </td>
+                    <td data-label="Volunteers" className="cell-num">{o.total_volunteers}</td>
+                    <td data-label="Logged" className="cell-num">{formatHours(o.total_hours)}</td>
+                    <td data-label="Verified" className="cell-num">{formatHours(o.verified_hours)}</td>
+                    <td data-label="Awaiting" className="cell-num">{formatHours(Number(o.recorded_hours || 0) + Number(o.pending_hours || 0))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }

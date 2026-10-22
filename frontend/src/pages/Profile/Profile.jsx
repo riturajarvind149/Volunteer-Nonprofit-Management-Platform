@@ -1,134 +1,94 @@
 import { useState } from 'react'
-import { Navigate, useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { testCoordinatorApi, testVolunteerApi } from '../../services/api'
+import Icon from '../../components/Icon'
+import { Alert } from '../../components/ui'
+import { formatDate } from '../../utils/format'
 import './Profile.css'
 
 function Profile() {
-  const { user, token, loading, isAuthenticated, logout } = useAuth()
+  const { user, token, logout } = useAuth()
   const navigate = useNavigate()
-  const [testResult, setTestResult] = useState(null)
-  const [testingRole, setTestingRole] = useState(false)
-  const [testError, setTestError] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [result, setResult] = useState(null)
 
-  if (loading) {
-    return (
-      <div className="profile-page">
-        <div className="loading-container">
-          <div className="loading-spinner" />
-          <p>Loading your profile...</p>
-        </div>
-      </div>
-    )
+  const isCoordinator = user.role === 'COORDINATOR'
+  const roleLabel = isCoordinator ? 'Coordinator' : 'Volunteer'
+  const initials = (user.full_name || '?').split(' ').filter(Boolean).map((p) => p[0]).join('').toUpperCase().slice(0, 2)
+
+  const handleCheck = async () => {
+    setChecking(true)
+    setResult(null)
+    try {
+      const res = await (isCoordinator ? testCoordinatorApi(token) : testVolunteerApi(token))
+      setResult({ tone: 'success', text: res?.message || `The server confirmed your ${roleLabel.toLowerCase()} access.` })
+    } catch (err) {
+      setResult({ tone: 'error', text: err.message || 'The access check failed.' })
+    } finally {
+      setChecking(false)
+    }
   }
 
-  if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />
-  }
-
-  const handleLogout = () => {
+  const handleSignOut = () => {
     logout()
     navigate('/login')
   }
 
-  const handleTestRole = async () => {
-    setTestingRole(true)
-    setTestResult(null)
-    setTestError('')
-    try {
-      let res
-      if (user.role === 'COORDINATOR') {
-        res = await testCoordinatorApi(token)
-      } else {
-        res = await testVolunteerApi(token)
-      }
-      setTestResult(res?.message || 'Authorization verified successfully!')
-    } catch (err) {
-      setTestError(err.message || 'Authorization test failed.')
-    } finally {
-      setTestingRole(false)
-    }
-  }
-
-  const isCoordinator = user.role === 'COORDINATOR'
-  const displayRole = isCoordinator ? 'NGO Coordinator' : 'Volunteer'
-  const roleClass = isCoordinator ? 'coordinator' : 'volunteer'
-  const initial = (user.full_name?.[0] || 'U').toUpperCase()
-
-  const formattedDate = user.created_at
-    ? new Date(user.created_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-    : 'Active Member'
-
-  const details = [
-    { label: 'Full Name', value: user.full_name },
-    { label: 'Email Address', value: user.email },
-    {
-      label: 'Platform Role',
-      value: <span className={`role-badge ${roleClass}`}>{displayRole}</span>,
-    },
-    {
-      label: 'Account Status',
-      value: (
-        <span className="status-badge">
-          <span className="status-dot" />
-          Active
-        </span>
-      ),
-    },
-    { label: 'Member Since', value: formattedDate },
-  ]
-
   return (
-    <div className="profile-page">
-      <div className="profile-card">
-        <div className="profile-header">
-          <div className="profile-avatar">{initial}</div>
-          <h1>My Profile</h1>
-          <p>Manage your account details and platform permissions.</p>
+    <div className="page page-narrow">
+      <header className="profile-header">
+        <span className="profile-avatar" aria-hidden="true">{initials}</span>
+        <div>
+          <h1>{user.full_name}</h1>
+          <p className="muted">{roleLabel} account</p>
         </div>
+      </header>
 
-        <div className="profile-details">
-          {details.map(({ label, value }) => (
-            <div key={label} className="profile-row">
-              <span className="profile-row-label">{label}</span>
-              <span className="profile-row-value">{value}</span>
-            </div>
-          ))}
+      <section className="panel" aria-labelledby="details-title">
+        <div className="panel-header">
+          <h2 id="details-title">Account details</h2>
         </div>
+        <dl className="profile-details">
+          <div><dt>Full name</dt><dd>{user.full_name}</dd></div>
+          <div><dt>Email address</dt><dd>{user.email}</dd></div>
+          <div><dt>Role</dt><dd>{roleLabel}</dd></div>
+          <div><dt>Member since</dt><dd>{formatDate(user.created_at, { month: 'long' })}</dd></div>
+        </dl>
+        <p className="profile-note">
+          Account details can’t be edited from ServeHub yet — the server doesn’t provide an update endpoint.
+        </p>
+      </section>
 
-        <div className="role-test-section">
-          <h3>Role Access Verification</h3>
-          <p className="role-test-desc">
-            Test backend RBAC access control for your <strong>{displayRole}</strong> role.
-          </p>
+      {isCoordinator && (
+        <Link to="/organization-profile" className="panel profile-link">
+          <Icon name="building" size={18} />
+          <span>
+            <strong>My organizations</strong>
+            <span className="muted">Organizations you manage and their opportunities</span>
+          </span>
+          <Icon name="chevron-right" size={16} />
+        </Link>
+      )}
 
-          {testResult && <div className="alert-success">{testResult}</div>}
-          {testError && <div className="alert-error">{testError}</div>}
-
-          <div className="role-test-actions">
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={handleTestRole}
-              disabled={testingRole}
-            >
-              {testingRole ? 'Verifying...' : `Verify ${displayRole} Access`}
-            </button>
-            <Link to="/organizations" className="btn btn-secondary">
-              {isCoordinator ? 'Manage Organizations' : 'Browse Organizations'}
-            </Link>
-          </div>
+      <section className="panel" aria-labelledby="access-title">
+        <div className="panel-header">
+          <h2 id="access-title">Access check</h2>
         </div>
-
-        <div className="profile-actions">
-          <button type="button" className="logout-btn" onClick={handleLogout}>
-            Sign Out
+        <div className="panel-body profile-access">
+          <p className="muted">Ask the server to confirm that your session carries {roleLabel.toLowerCase()} permissions. Useful if a page refuses to load.</p>
+          {result && <Alert tone={result.tone}>{result.text}</Alert>}
+          <button type="button" className="btn btn-secondary" onClick={handleCheck} disabled={checking}>
+            <Icon name="shield" size={15} />
+            {checking ? 'Checking…' : 'Run access check'}
           </button>
         </div>
+      </section>
+
+      <div className="profile-signout">
+        <button type="button" className="btn btn-ghost" onClick={handleSignOut}>
+          <Icon name="log-out" size={15} /> Sign out
+        </button>
       </div>
     </div>
   )

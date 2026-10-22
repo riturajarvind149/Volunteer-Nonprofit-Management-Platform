@@ -1,165 +1,173 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { useOpportunities } from '../../context/OpportunityContext'
 import { useAuth } from '../../context/AuthContext'
+import Icon from '../../components/Icon'
+import OpportunityRow from '../../components/OpportunityRow'
+import { PageHeader, LoadingState, EmptyState, Alert } from '../../components/ui'
+import { isUpcoming, compareByDate, parseDate, pluralize } from '../../utils/format'
 import './Opportunities.css'
 
-const CATEGORIES = ['All', 'Environment', 'Education', 'Food & Hunger', 'Animal Welfare', 'Health', 'Community']
+function matchesQuery(opportunity, query) {
+  if (!query) return true
+  const haystack = [
+    opportunity.title,
+    opportunity.organization_name,
+    opportunity.location,
+    opportunity.address,
+    opportunity.category,
+    opportunity.description,
+  ].filter(Boolean).join(' ').toLowerCase()
+  return query.toLowerCase().split(/\s+/).every((word) => haystack.includes(word))
+}
 
-function OpportunityBrowseCard({ opportunity }) {
-  const { isRegistered } = useOpportunities()
-  const registered = isRegistered(opportunity.id)
-
-  const spotsRemaining = opportunity.spots_remaining ?? opportunity.spots
-  const capacity = opportunity.capacity
-  const active = opportunity.active_signups || 0
-  const filled = capacity > 0 ? active : 0
-  const total = capacity || 30
-  const isFull = spotsRemaining !== undefined ? spotsRemaining <= 0 : false
-  const fillPct = Math.min(Math.round((filled / total) * 100), 100)
-
-  const formatDate = (d) => {
-    if (!d) return ''
-    try {
-      return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    } catch { return d }
+function groupByMonth(items) {
+  const groups = []
+  for (const item of items) {
+    const date = parseDate(item.event_date)
+    const label = date ? date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Date to be confirmed'
+    const last = groups[groups.length - 1]
+    if (last?.label === label) last.items.push(item)
+    else groups.push({ label, items: [item] })
   }
-
-  const formatTime = (t) => {
-    if (!t) return ''
-    const [h, m] = t.split(':')
-    const d = new Date()
-    d.setHours(Number(h), Number(m))
-    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-  }
-
-  return (
-    <article className="browse-card">
-      <div className="browse-card-img-wrapper">
-        <div className="browse-card-img-placeholder" />
-        <span className={`browse-category-tag browse-cat-${(opportunity.category || 'community').toLowerCase().replace(/\s+/g, '-').replace(/[&]/g, '')}`}>
-          {opportunity.category || 'Community'}
-        </span>
-        {isFull && <span className="browse-full-badge">FULLY BOOKED</span>}
-        {!isFull && spotsRemaining !== undefined && spotsRemaining <= 5 && (
-          <span className="browse-spots-badge">{spotsRemaining} SPOTS LEFT</span>
-        )}
-      </div>
-
-      <div className="browse-card-body">
-        <h3 className="browse-card-title">{opportunity.title}</h3>
-        <p className="browse-card-org">
-          {opportunity.organization_name || opportunity.organization || 'Organization'}
-        </p>
-        <p className="browse-card-desc">
-          {opportunity.description ? opportunity.description.slice(0, 90) + (opportunity.description.length > 90 ? '...' : '') : ''}
-        </p>
-
-        <div className="browse-card-meta">
-          {opportunity.event_date && (
-            <span>📅 {formatDate(opportunity.event_date)}</span>
-          )}
-          {opportunity.start_time && (
-            <span>🕐 {formatTime(opportunity.start_time)}</span>
-          )}
-          {opportunity.location && (
-            <span>📍 {opportunity.location}</span>
-          )}
-        </div>
-
-        <div className="browse-card-capacity">
-          <div className="browse-cap-bar-track">
-            <div className="browse-cap-bar-fill" style={{ width: `${fillPct}%` }} />
-          </div>
-          <span className="browse-cap-label">{filled}/{total} volunteers</span>
-        </div>
-      </div>
-
-      <div className="browse-card-footer">
-        {isFull ? (
-          <button type="button" className="browse-btn-full" disabled>Opportunity Full</button>
-        ) : (
-          <Link to={`/opportunities/${opportunity.id}`} className="browse-btn-view">
-            View Details
-          </Link>
-        )}
-      </div>
-    </article>
-  )
+  return groups
 }
 
 function Opportunities() {
-  const { opportunities, loading, error } = useOpportunities()
-  const { isAuthenticated } = useAuth()
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('All')
+  const { opportunities, loading, error, refetch, isRegistered } = useOpportunities()
+  const { user } = useAuth()
+  const [params, setParams] = useSearchParams()
 
-  const filtered = opportunities.filter((item) => {
-    const title = (item.title || '').toLowerCase()
-    const org = (item.organization_name || item.organization || '').toLowerCase()
-    const q = search.toLowerCase()
-    const matchSearch = !q || title.includes(q) || org.includes(q)
-    const matchCat = category === 'All' || item.category === category || (category === 'Food & Hunger' && item.category === 'Hunger & Food')
-    return matchSearch && matchCat
-  })
+  const query = params.get('q') || ''
+  const category = params.get('category') || ''
+  const showPast = params.get('when') === 'all'
+  const openOnly = params.get('open') === '1'
+
+  const updateParam = (key, value) => {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (value) next.set(key, value)
+      else next.delete(key)
+      return next
+    }, { replace: true })
+  }
+
+  const published = opportunities.filter((o) => o.status === 'PUBLISHED')
+  const categories = [...new Set(published.map((o) => o.category).filter(Boolean))].sort()
+
+  const results = published
+    .filter((o) => showPast || isUpcoming(o.event_date))
+    .filter((o) => !category || o.category === category)
+    .filter((o) => !openOnly || Number(o.spots_remaining) > 0)
+    .filter((o) => matchesQuery(o, query.trim()))
+    .sort(compareByDate)
+
+  const activeFilters = [
+    query && { key: 'q', label: `“${query}”` },
+    category && { key: 'category', label: category },
+    showPast && { key: 'when', label: 'Including past dates' },
+    openOnly && { key: 'open', label: 'Open spots only' },
+  ].filter(Boolean)
+
+  const isVolunteer = user?.role === 'VOLUNTEER'
 
   return (
-    <div className="browse-page">
-      <div className="browse-header">
-        <h1>Find Your Next Opportunity</h1>
-        <p>Browse {filtered.length} verified volunteer opportunities.</p>
-      </div>
+    <div className="page">
+      <PageHeader
+        title="Browse opportunities"
+        description="Published volunteer opportunities from every organization on ServeHub, soonest first."
+      />
 
-      <div className="browse-search-row">
-        <div className="browse-search-wrapper">
-          <span className="browse-search-icon">🔍</span>
+      <div className="browse-toolbar" role="search">
+        <label className="search">
+          <span className="sr-only">Search opportunities</span>
+          <Icon name="search" size={16} />
           <input
-            type="text"
-            className="browse-search-input"
-            placeholder="Search opportunities, organizations..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            type="search"
+            className="input"
+            placeholder="Search by title, organization, place or keyword"
+            value={query}
+            onChange={(e) => updateParam('q', e.target.value)}
           />
+        </label>
+        <label className="browse-category">
+          <span className="sr-only">Category</span>
+          <select className="select" value={category} onChange={(e) => updateParam('category', e.target.value)}>
+            <option value="">All categories</option>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+        <div className="segmented" role="group" aria-label="Dates">
+          <button type="button" aria-pressed={!showPast} onClick={() => updateParam('when', '')}>Upcoming</button>
+          <button type="button" aria-pressed={showPast} onClick={() => updateParam('when', 'all')}>All dates</button>
         </div>
-        <button type="button" className="browse-filters-btn">▼ Filters</button>
+        <label className="checkbox">
+          <input type="checkbox" checked={openOnly} onChange={(e) => updateParam('open', e.target.checked ? '1' : '')} />
+          Open spots only
+        </label>
       </div>
 
-      <div className="browse-category-pills">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            className={`browse-cat-pill${category === cat ? ' active' : ''}`}
-            onClick={() => setCategory(cat)}
-          >
-            {cat}
-          </button>
-        ))}
+      <div className="browse-summary">
+        <p aria-live="polite">
+          {loading ? 'Loading…' : pluralize(results.length, 'opportunity', 'opportunities')}
+        </p>
+        {activeFilters.length > 0 && (
+          <ul className="filter-chips" role="list">
+            {activeFilters.map((f) => (
+              <li key={f.key}>
+                <button type="button" className="filter-chip" onClick={() => updateParam(f.key, '')} aria-label={`Remove filter ${f.label}`}>
+                  {f.label}
+                  <Icon name="x" size={12} />
+                </button>
+              </li>
+            ))}
+            <li>
+              <button type="button" className="link-button" onClick={() => setParams({}, { replace: true })}>Clear all</button>
+            </li>
+          </ul>
+        )}
       </div>
 
-      {error && <div className="alert-error">{error}</div>}
+      {error && <Alert onRetry={refetch}>{error}</Alert>}
 
       {loading ? (
-        <div className="loading-container">
-          <div className="loading-spinner" />
-          <p>Loading opportunities...</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="browse-empty">
-          <p>No opportunities found.</p>
-          <button type="button" className="browse-reset-btn" onClick={() => { setSearch(''); setCategory('All') }}>
-            Clear Filters
-          </button>
+        <LoadingState label="Loading opportunities…" />
+      ) : results.length === 0 ? (
+        <div className="panel">
+          {published.length === 0 && !error ? (
+            <EmptyState icon="calendar" title="No opportunities have been published yet">
+              {isVolunteer ? 'Check back soon — new opportunities appear here as soon as an organization publishes them.' : 'Published opportunities from every organization will be listed here.'}
+            </EmptyState>
+          ) : (
+            <EmptyState
+              icon="search"
+              title="Nothing matches these filters"
+              action={<button type="button" className="btn btn-secondary" onClick={() => setParams({}, { replace: true })}>Clear filters</button>}
+            >
+              {showPast ? 'Try a different search term or category.' : 'Try another search term, or include past dates.'}
+            </EmptyState>
+          )}
         </div>
       ) : (
-        <>
-          <p className="browse-results-count">{filtered.length} opportunities found</p>
-          <div className="browse-grid">
-            {filtered.map((opp) => (
-              <OpportunityBrowseCard key={opp.id} opportunity={opp} />
-            ))}
-          </div>
-        </>
+        <div className="browse-groups">
+          {groupByMonth(results).map((group) => (
+            <section key={group.label} aria-label={group.label}>
+              <h2 className="browse-month">{group.label}</h2>
+              <ul role="list" className="opp-list">
+                {group.items.map((o) => (
+                  <li key={o.id}>
+                    <OpportunityRow opportunity={o} registered={isVolunteer && isRegistered(o.id)} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {user?.role === 'COORDINATOR' && (
+        <p className="muted browse-note">
+          Drafts are hidden here. Manage your own drafts from <Link to="/manage-opportunities">Opportunities</Link>.
+        </p>
       )}
     </div>
   )

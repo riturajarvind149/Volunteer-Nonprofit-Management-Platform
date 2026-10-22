@@ -15,13 +15,14 @@ export function OpportunityProvider({ children }) {
   const { token, user, isAuthenticated } = useAuth()
 
   const [opportunities, setOpportunities] = useState([])
-  const [mySignupIds, setMySignupIds] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [signupStatuses, setSignupStatuses] = useState({})
+  const [loading, setLoading] = useState(Boolean(token))
   const [error, setError] = useState(null)
 
   const fetchOpportunities = useCallback(async () => {
     if (!token) {
       setOpportunities([])
+      setLoading(false)
       return
     }
     setLoading(true)
@@ -38,14 +39,14 @@ export function OpportunityProvider({ children }) {
   }, [token])
 
   const fetchMySignups = useCallback(async () => {
-    if (!token || user?.role !== 'VOLUNTEER') return
+    if (!token || user?.role !== 'VOLUNTEER') {
+      setSignupStatuses({})
+      return
+    }
     try {
       const res = await getMySignupsApi(token)
-      const signups = res?.data?.signups || res?.data?.opportunities || []
-      const activeIds = signups
-        .filter((s) => s.status !== 'CANCELLED')
-        .map((s) => s.opportunity_id || s.id)
-      setMySignupIds(activeIds)
+      const signups = res?.data?.signups || []
+      setSignupStatuses(Object.fromEntries(signups.map((s) => [s.opportunity_id, s.status])))
     } catch {
       // non-fatal
     }
@@ -54,24 +55,22 @@ export function OpportunityProvider({ children }) {
   useEffect(() => { fetchOpportunities() }, [fetchOpportunities])
   useEffect(() => { if (isAuthenticated) fetchMySignups() }, [isAuthenticated, fetchMySignups])
 
-  const isRegistered = (oppId) => mySignupIds.includes(oppId)
+  const signupStatus = (oppId) => signupStatuses[oppId]
+  const isRegistered = (oppId) => Boolean(signupStatuses[oppId]) && signupStatuses[oppId] !== 'CANCELLED'
 
   const signUp = async (oppId) => {
     const res = await signUpForOpportunityApi(oppId, token)
-    setMySignupIds((prev) => [...prev, oppId])
+    setSignupStatuses((prev) => ({ ...prev, [oppId]: 'REGISTERED' }))
     fetchOpportunities()
     return res
   }
 
   const cancelSignUp = async (oppId) => {
     const res = await cancelSignUpApi(oppId, token)
-    setMySignupIds((prev) => prev.filter((id) => id !== oppId))
+    setSignupStatuses((prev) => ({ ...prev, [oppId]: 'CANCELLED' }))
     fetchOpportunities()
     return res
   }
-
-  const getRegisteredOpportunities = () =>
-    opportunities.filter((o) => mySignupIds.includes(o.id))
 
   const createOpportunity = async (payload) => {
     const res = await createOpportunityApi(payload, token)
@@ -89,17 +88,15 @@ export function OpportunityProvider({ children }) {
 
   const value = {
     opportunities,
-    mySignupIds,
     loading,
     error,
     isRegistered,
+    signupStatus,
     signUp,
     cancelSignUp,
-    getRegisteredOpportunities,
     createOpportunity,
     updateOpportunity,
     refetch: fetchOpportunities,
-    refetchMySignups: fetchMySignups,
   }
 
   return <OpportunityContext.Provider value={value}>{children}</OpportunityContext.Provider>

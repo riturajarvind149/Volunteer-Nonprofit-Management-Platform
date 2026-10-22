@@ -1,196 +1,140 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getMyHoursApi, getMyHoursSummaryApi } from '../../services/api'
-import { formatDate } from '../../utils/format'
-import './VolunteerHours.css'
+import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge } from '../../components/ui'
+import DateRangeForm from '../../components/DateRangeForm'
+import { formatDate, formatHours, pluralize } from '../../utils/format'
 
-function SimpleBarChart({ data }) {
-  const max = Math.max(...data.map(d => d.value), 1)
-  return (
-    <div className="hours-bar-chart">
-      {data.map((d, i) => (
-        <div key={i} className="hours-bar-col">
-          <div className="hours-bar-fill" style={{ height: `${Math.max((d.value / max) * 80, 2)}px` }} />
-          <span className="hours-bar-label">{d.label}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
+const STATUS_FILTERS = [
+  { key: '', label: 'All' },
+  { key: 'PENDING', label: 'Pending' },
+  { key: 'RECORDED', label: 'Recorded' },
+  { key: 'VERIFIED', label: 'Verified' },
+]
 
 function VolunteerHours() {
-  const { user, token, isAuthenticated, loading: authLoading } = useAuth()
-  const [hours, setHours] = useState([])
+  const { token } = useAuth()
+  const [records, setRecords] = useState([])
   const [summary, setSummary] = useState(null)
+  const [range, setRange] = useState({ from_date: '', to_date: '' })
+  const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [filterApplied, setFilterApplied] = useState(false)
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [error, setError] = useState('')
 
-  const loadData = useCallback(async (params = {}) => {
-    if (!token) return
+  const load = useCallback(async () => {
+    setError('')
     setLoading(true)
-    setError(null)
     try {
-      const [hoursRes, summaryRes] = await Promise.all([
-        getMyHoursApi(token, params),
-        getMyHoursSummaryApi(token),
-      ])
-      setHours(hoursRes?.data?.volunteer_hours || hoursRes?.data?.hours || [])
-      setSummary(summaryRes?.data?.summary || summaryRes?.data || null)
+      const [hoursRes, summaryRes] = await Promise.all([getMyHoursApi(token, range), getMyHoursSummaryApi(token)])
+      setRecords(hoursRes?.data?.volunteer_hours || [])
+      setSummary(summaryRes?.data?.summary || null)
     } catch (err) {
-      setError(err.message || 'Failed to load volunteer hours.')
+      setError(err.message || 'Your hours could not be loaded.')
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, range])
 
-  useEffect(() => {
-    if (token && user?.role === 'VOLUNTEER') loadData()
-  }, [token, user, loadData])
+  useEffect(() => { load() }, [load])
 
-  if (authLoading) return <div className="loading-container"><div className="loading-spinner" /></div>
-  if (!isAuthenticated || !user) return <Navigate to="/login" replace />
-  if (user.role !== 'VOLUNTEER') return <Navigate to="/dashboard" replace />
-
-  const handleFilter = (e) => {
-    e.preventDefault()
-    setFilterApplied(true)
-    loadData({ from_date: fromDate || undefined, to_date: toDate || undefined })
-  }
-
-  const handleClearFilter = () => {
-    setFromDate('')
-    setToDate('')
-    setFilterApplied(false)
-    loadData()
-  }
-
-  const totalHours = Number(summary?.total_hours || 0)
-  const events = summary?.total_records || hours.length
-  const orgs = new Set(hours.map(h => h.organization_name).filter(Boolean)).size
-
-  // Build chart data from real hours grouped by month if available,
-  // otherwise fall back to summary by_month from API
-  const monthlyData = summary?.by_month
-    ? summary.by_month.map(m => ({ label: m.month, value: Number(m.hours || 0) }))
-    : null
-
-  const statusClass = { PENDING: 'badge-pending', RECORDED: 'badge-recorded', VERIFIED: 'badge-verified' }
-
-  const filteredHours = statusFilter === 'all' ? hours
-    : hours.filter(h => h.status === statusFilter.toUpperCase())
+  const visible = status ? records.filter((r) => r.status === status) : records
+  const visibleTotal = visible.reduce((sum, r) => sum + Number(r.hours || 0), 0)
+  const hasRange = Boolean(range.from_date || range.to_date)
 
   return (
-    <div className="vh-page">
-      <div className="vh-topbar">
-        <div>
-          <h1>My Volunteer Hours</h1>
-          <p>Your complete volunteering history and verified hours.</p>
-        </div>
-      </div>
+    <div className="page">
+      <PageHeader
+        title="My hours"
+        description="Hours are logged by the coordinator of each opportunity. They count toward your total once verified."
+      />
 
-      <div className="vh-summary-cards">
-        <div className="vh-sum-card green">
-          <span className="vh-sum-icon">⏱</span>
-          <div className="vh-sum-value">{totalHours.toFixed(1)}<span className="vh-sum-unit">hrs</span></div>
-          <div className="vh-sum-label">Total Hours</div>
+      <section className="figures" aria-label="Hours summary">
+        <div className="figure">
+          <span className="figure-value">{formatHours(summary?.verified_hours)}</span>
+          <span className="figure-label">Verified</span>
+          <span className="figure-note">Counted in your total</span>
         </div>
-        <div className="vh-sum-card blue">
-          <span className="vh-sum-icon">📅</span>
-          <div className="vh-sum-value">{events}</div>
-          <div className="vh-sum-label">Events</div>
+        <div className="figure">
+          <span className="figure-value">{formatHours(summary?.recorded_hours)}</span>
+          <span className="figure-label">Recorded</span>
+          <span className="figure-note">Logged, awaiting verification</span>
         </div>
-        <div className="vh-sum-card purple">
-          <span className="vh-sum-icon">🏢</span>
-          <div className="vh-sum-value">{orgs}</div>
-          <div className="vh-sum-label">Organizations</div>
+        <div className="figure">
+          <span className="figure-value">{formatHours(summary?.pending_hours)}</span>
+          <span className="figure-label">Pending</span>
+          <span className="figure-note">Under review</span>
         </div>
-      </div>
+        <div className="figure">
+          <span className="figure-value">{formatHours(summary?.total_hours)}</span>
+          <span className="figure-label">All logged hours</span>
+          <span className="figure-note">{pluralize(summary?.total_records ?? 0, 'entry', 'entries')}</span>
+        </div>
+      </section>
 
-      {monthlyData && monthlyData.length > 1 && (
-        <div className="vh-chart-card">
-          <div className="vh-chart-header">
-            <h2>Hours by Month</h2>
-          </div>
-          <SimpleBarChart data={monthlyData} />
-        </div>
-      )}
-
-      <div className="vh-table-card">
-        <div className="vh-table-header">
-          <h2>Hour History</h2>
-          <div className="vh-status-filters">
-            {['all', 'verified', 'pending'].map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`vh-filter-btn${statusFilter === s ? ' active' : ''}`}
-                onClick={() => setStatusFilter(s)}
-              >
-                {s.charAt(0).toUpperCase() + s.slice(1)}
+      <section className="panel" aria-labelledby="history-title">
+        <div className="panel-header">
+          <h2 id="history-title">Hour history</h2>
+          <div className="segmented" role="group" aria-label="Filter by status">
+            {STATUS_FILTERS.map((f) => (
+              <button key={f.key || 'all'} type="button" aria-pressed={status === f.key} onClick={() => setStatus(f.key)}>
+                {f.label}
               </button>
             ))}
           </div>
         </div>
-
-        <div className="vh-date-filter">
-          <form onSubmit={handleFilter} className="vh-date-form">
-            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} max={toDate || undefined} />
-            <span>to</span>
-            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} min={fromDate || undefined} />
-            <button type="submit" className="vh-apply-btn">Apply</button>
-            {filterApplied && <button type="button" className="vh-clear-btn" onClick={handleClearFilter}>Clear</button>}
-          </form>
+        <div className="panel-filters">
+          <DateRangeForm label="Logged between" value={range} onApply={setRange} disabled={loading} />
         </div>
 
-        {error && <div className="alert-error">{error}</div>}
+        {error && <div className="panel-body"><Alert onRetry={load}>{error}</Alert></div>}
 
         {loading ? (
-          <div className="loading-container"><div className="loading-spinner" /></div>
-        ) : filteredHours.length === 0 ? (
-          <div className="vh-empty">
-            <p>No hours recorded yet.</p>
-            <Link to="/opportunities" className="vh-browse-btn">Browse Opportunities</Link>
-          </div>
+          <LoadingState label="Loading hours…" />
+        ) : visible.length === 0 ? (
+          <EmptyState
+            icon="clock"
+            title={records.length === 0 && !hasRange ? 'No hours logged yet' : 'No entries match these filters'}
+            action={records.length === 0 && !hasRange && <Link to="/my-signups" className="btn btn-secondary">View my registrations</Link>}
+          >
+            {records.length === 0 && !hasRange
+              ? 'After you volunteer, the coordinator records your hours and they appear here.'
+              : 'Try a different status or date range.'}
+          </EmptyState>
         ) : (
-          <div className="vh-table-wrapper">
-            <table className="vh-table">
+          <div className="table-wrap">
+            <table className="table table-stack">
               <thead>
                 <tr>
-                  <th>Date</th>
                   <th>Opportunity</th>
-                  <th>Organization</th>
-                  <th>Hours</th>
+                  <th>Logged on</th>
                   <th>Status</th>
+                  <th className="cell-num">Hours</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredHours.map((record) => (
-                  <tr key={record.id}>
-                    <td>{formatDate(record.opportunity_event_date || record.created_at)}</td>
-                    <td>
-                      <Link to={`/opportunities/${record.opportunity_id || '#'}`} className="vh-opp-link">
-                        {record.opportunity_title || 'Opportunity'}
-                      </Link>
+                {visible.map((r) => (
+                  <tr key={r.id}>
+                    <td data-label="Opportunity" className="cell-lead">
+                      <Link to={`/opportunities/${r.opportunity_id}`}>{r.opportunity_title}</Link>
+                      <span className="cell-sub">{r.organization_name}</span>
                     </td>
-                    <td>{record.organization_name || '—'}</td>
-                    <td className="vh-hours-val">{Number(record.hours || 0).toFixed(1)}</td>
-                    <td>
-                      <span className={`vh-badge ${statusClass[record.status] || 'badge-recorded'}`}>
-                        {record.status === 'VERIFIED' ? '✓ VERIFIED' : record.status === 'PENDING' ? '⚡ PENDING' : record.status || 'RECORDED'}
-                      </span>
-                    </td>
+                    <td data-label="Logged on" className="num">{formatDate(r.created_at)}</td>
+                    <td data-label="Status"><StatusBadge status={r.status} /></td>
+                    <td data-label="Hours" className="cell-num">{formatHours(r.hours)}</td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td data-label="" colSpan={3}>Total shown</td>
+                  <td data-label="" className="cell-num">{formatHours(visibleTotal)}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }
