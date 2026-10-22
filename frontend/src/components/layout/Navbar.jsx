@@ -1,6 +1,7 @@
 ﻿import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import Icon from '../Icon'
 import './Navbar.css'
 
 function Navbar({ theme, onToggleTheme }) {
@@ -27,9 +28,7 @@ function Navbar({ theme, onToggleTheme }) {
       <div className="navbar-container">
         <Link to="/" className="navbar-brand" onClick={closeMenu}>
           <div className="brand-emblem">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
+            <Icon name="heart" size={15} />
           </div>
           <span className="brand-title">ServeHub</span>
         </Link>
@@ -38,17 +37,17 @@ function Navbar({ theme, onToggleTheme }) {
           <ul className="navbar-nav">
             <li>
               <NavLink to="/" className={getNavLinkClass} onClick={closeMenu} end>
-                <span>Home</span>
+                Home
               </NavLink>
             </li>
             <li>
               <NavLink to="/organizations" className={getNavLinkClass} onClick={closeMenu}>
-                <span>Organizations</span>
+                Organizations
               </NavLink>
             </li>
             <li>
               <NavLink to="/opportunities" className={getNavLinkClass} onClick={closeMenu}>
-                <span>Opportunities</span>
+                Opportunities
               </NavLink>
             </li>
 
@@ -56,12 +55,12 @@ function Navbar({ theme, onToggleTheme }) {
               <>
                 <li>
                   <NavLink to="/login" className={getNavLinkClass} onClick={closeMenu}>
-                    <span>Login</span>
+                    Login
                   </NavLink>
                 </li>
                 <li>
                   <NavLink to="/register" className="nav-link-register" onClick={closeMenu}>
-                    <span>Register</span>
+                    Register
                   </NavLink>
                 </li>
               </>
@@ -69,19 +68,19 @@ function Navbar({ theme, onToggleTheme }) {
               <>
                 <li>
                   <NavLink to="/dashboard" className={getNavLinkClass} onClick={closeMenu}>
-                    <span>Dashboard</span>
+                    Dashboard
                   </NavLink>
                 </li>
                 {isVolunteer && (
                   <>
                     <li>
                       <NavLink to="/my-signups" className={getNavLinkClass} onClick={closeMenu}>
-                        <span>My Signups</span>
+                        My Signups
                       </NavLink>
                     </li>
                     <li>
                       <NavLink to="/my-hours" className={getNavLinkClass} onClick={closeMenu}>
-                        <span>My Hours</span>
+                        My Hours
                       </NavLink>
                     </li>
                   </>
@@ -90,19 +89,19 @@ function Navbar({ theme, onToggleTheme }) {
                   <>
                     <li>
                       <NavLink to="/manage-opportunities" className={getNavLinkClass} onClick={closeMenu}>
-                        <span>Manage Opps</span>
+                        Manage
                       </NavLink>
                     </li>
                     <li>
                       <NavLink to="/coordinator-hours" className={getNavLinkClass} onClick={closeMenu}>
-                        <span>Hours</span>
+                        Hours
                       </NavLink>
                     </li>
                   </>
                 )}
                 <li>
                   <NavLink to="/profile" className="nav-link-register" onClick={closeMenu}>
-                    <span>Profile</span>
+                    Profile
                   </NavLink>
                 </li>
                 <li>
@@ -123,9 +122,8 @@ function Navbar({ theme, onToggleTheme }) {
             aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
             title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
           >
-            <span className={`theme-icon ${theme === 'dark' ? 'dark-active' : ''}`}>
-              {theme === 'light' ? '🌙' : '☀️'}
-            </span>
+            <Icon name={theme === 'light' ? 'moon' : 'sun'} size={14} />
+            <span className="theme-toggle-label">{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
           </button>
 
           <button
@@ -135,8 +133,7 @@ function Navbar({ theme, onToggleTheme }) {
             aria-expanded={isMenuOpen}
             onClick={toggleMenu}
           >
-            <span className={`toggle-bar ${isMenuOpen ? 'open' : ''}`} />
-            <span className={`toggle-bar ${isMenuOpen ? 'open' : ''}`} />
+            <Icon name={isMenuOpen ? 'close' : 'menu'} size={18} />
           </button>
         </div>
       </div>

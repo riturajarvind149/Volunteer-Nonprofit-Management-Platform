@@ -39,8 +39,8 @@
 .card-spots {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #16a34a;
-  background-color: rgba(34, 197, 94, 0.12);
+  color: var(--color-primary);
+  background-color: rgba(120, 61, 75, 0.08);
   padding: 0.3rem 0.65rem;
   border-radius: 6px;
 }

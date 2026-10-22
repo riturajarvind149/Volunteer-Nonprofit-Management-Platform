@@ -54,33 +54,7 @@ function Login() {
             Every hour you give creates real change. Sign in to continue your volunteering journey.
           </p>
 
-          <ul className="login-stats-list">
-            <li>
-              <span className="login-stat-icon">👥</span>
-              <span>2,400+ active volunteers across Bengaluru</span>
-            </li>
-            <li>
-              <span className="login-stat-icon">✓</span>
-              <span>18,500+ officially verified volunteer hours</span>
-            </li>
-            <li>
-              <span className="login-stat-icon">🏢</span>
-              <span>48 trusted nonprofit partners</span>
-            </li>
-          </ul>
 
-          <blockquote className="login-testimonial">
-            <p>"ServeHub made it so easy to find opportunities I actually care about — and the verified hours feature is a game changer."</p>
-            <footer>
-              <div className="testimonial-avatar">MN</div>
-              <div>
-                <strong>Meera Nair</strong>
-                <span>Volunteer, Indiranagar</span>
-              </div>
-            </footer>
-          </blockquote>
-
-          <p className="login-copyright">© 2024 ServeHub</p>
         </div>
       </div>
 
@@ -140,19 +114,6 @@ function Login() {
               {loading ? 'Signing in...' : 'Sign In →'}
             </button>
           </form>
-
-          <div className="login-demo-section">
-            <p className="login-demo-title">Demo — Quick Access</p>
-            <p className="login-demo-subtitle">Jump straight to any role view:</p>
-            <div className="login-demo-btns">
-              <Link to="/opportunities" className="login-demo-role-btn">
-                🌿 Volunteer View
-              </Link>
-              <Link to="/manage-opportunities" className="login-demo-role-btn">
-                📋 Coordinator View
-              </Link>
-            </div>
-          </div>
         </div>
       </div>
     </div>
