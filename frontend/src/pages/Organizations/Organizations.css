@@ -1,10 +1,12 @@
 .organizations-page {
-  background-color: var(--bg-primary);
+  width: 100%;
 }
 
 .organizations-container {
   max-width: 1100px;
   width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
 }
 
 .organizations-header {
@@ -139,7 +141,7 @@
   font-weight: 600;
   text-transform: uppercase;
   color: var(--color-primary);
-  background-color: rgba(22, 163, 74, 0.08);
+  background-color: rgba(120, 61, 75, 0.08);
   padding: 0.2rem 0.6rem;
   border-radius: 12px;
   margin-bottom: 0.5rem;

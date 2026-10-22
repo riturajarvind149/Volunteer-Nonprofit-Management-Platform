@@ -202,7 +202,7 @@
 }
 
 .spots-available {
-  color: #16a34a;
+  color: var(--color-primary);
 }
 
 .showcase-footer {
@@ -450,7 +450,7 @@
   background-color: var(--color-primary);
   padding: 0.35rem 0.85rem;
   border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+  box-shadow: 0 4px 12px rgba(120, 61, 75, 0.3);
 }
 
 .magazine-hero-card .opportunity-card {

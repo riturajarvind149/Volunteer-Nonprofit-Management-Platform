@@ -75,31 +75,33 @@ function AppInner() {
   return (
     <div className="app">
       <Navbar theme={theme} onToggleTheme={toggleTheme} />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/opportunities" element={<Opportunities />} />
-        <Route path="/opportunities/:id" element={<OpportunityDetails />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/organizations" element={<Organizations />} />
-        <Route path="/organizations/:id" element={<OrganizationDetails />} />
-        <Route path="/opportunities/create" element={<ManageOpportunities initialMode="create" />} />
-        <Route path="/opportunities/:id/edit" element={<ManageOpportunities initialMode="edit" />} />
-        <Route path="/opportunities/:id/attendees" element={<OpportunityAttendees />} />
-        <Route path="/manage-opportunities" element={<ManageOpportunities />} />
-        <Route path="/my-signups" element={<MySignups />} />
-        <Route path="/my-hours" element={<VolunteerHours />} />
-        <Route path="/coordinator-hours" element={<CoordinatorHours />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/organization-profile" element={<OrgProfile />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <div className="public-page-content">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/opportunities" element={<Opportunities />} />
+          <Route path="/opportunities/:id" element={<OpportunityDetails />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/organizations" element={<Organizations />} />
+          <Route path="/organizations/:id" element={<OrganizationDetails />} />
+          <Route path="/opportunities/create" element={<ManageOpportunities initialMode="create" />} />
+          <Route path="/opportunities/:id/edit" element={<ManageOpportunities initialMode="edit" />} />
+          <Route path="/opportunities/:id/attendees" element={<OpportunityAttendees />} />
+          <Route path="/manage-opportunities" element={<ManageOpportunities />} />
+          <Route path="/my-signups" element={<MySignups />} />
+          <Route path="/my-hours" element={<VolunteerHours />} />
+          <Route path="/coordinator-hours" element={<CoordinatorHours />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/organization-profile" element={<OrgProfile />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
       <Footer />
     </div>
   )

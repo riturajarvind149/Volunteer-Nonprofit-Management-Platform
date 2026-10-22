@@ -133,13 +133,6 @@
   position: relative;
 }
 
-.dash-stat-delta {
-  font-size: 0.7rem;
-  color: var(--color-primary);
-  font-weight: 600;
-  display: block;
-  margin-bottom: 0.4rem;
-}
 
 .dash-stat-value {
   font-size: 1.85rem;
@@ -170,33 +163,6 @@
   margin-top: 0.2rem;
 }
 
-/* Coordinator metrics bar */
-.dash-coord-metrics {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 1rem 1.5rem;
-  display: flex;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.dash-metric-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.metric-label {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.metric-value {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
 
 /* Volunteer main grid */
 .dash-main-grid {
@@ -288,8 +254,8 @@
 }
 
 .badge-confirmed {
-  background-color: rgba(22, 163, 74, 0.12);
-  color: #15803d;
+  background-color: rgba(120, 61, 75, 0.1);
+  color: var(--color-primary);
 }
 
 .badge-registered {
@@ -385,82 +351,6 @@
   margin-top: 0.1rem;
 }
 
-/* Charts row */
-.dash-charts-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.875rem;
-}
-
-.dash-chart-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 1.1rem 1.25rem;
-}
-
-.chart-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.chart-header h2 {
-  font-size: 0.92rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.chart-total {
-  font-size: 0.78rem;
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
-.simple-chart {
-  width: 100%;
-}
-
-.line-chart-svg {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.chart-x-labels {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 2px;
-  margin-top: 0.3rem;
-}
-
-.chart-x-labels span {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-}
-
-.bar-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 80px;
-  padding: 0 2px;
-}
-
-.bar-col {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-}
-
-.bar-fill {
-  width: 100%;
-  background-color: var(--color-primary);
-  border-radius: 3px 3px 0 0;
-  min-height: 4px;
-  transition: height 0.3s ease;
-}
 
 /* Quick action links */
 .dash-quick-links {
@@ -509,10 +399,6 @@
 
 @media (max-width: 800px) {
   .dash-main-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dash-charts-row {
     grid-template-columns: 1fr;
   }
 }

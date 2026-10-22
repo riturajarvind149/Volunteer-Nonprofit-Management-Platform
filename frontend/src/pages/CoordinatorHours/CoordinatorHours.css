@@ -208,12 +208,12 @@
   border-radius: 99px;
 }
 
-.badge-pending { background-color: rgba(217, 119, 6, 0.12); color: #d97706; }
+.badge-pending { background-color: rgba(147, 101, 29, 0.12); color: #93651D; }
 .badge-recorded { background-color: rgba(2, 132, 199, 0.12); color: #0284c7; }
-.badge-verified { background-color: rgba(22, 163, 74, 0.12); color: #15803d; }
+.badge-verified { background-color: rgba(120, 61, 75, 0.1); color: var(--color-primary); }
 
-[data-theme="dark"] .badge-verified { color: #4ade80; }
-[data-theme="dark"] .badge-pending { color: #fbbf24; }
+[data-theme="dark"] .badge-verified { color: #C4778A; }
+[data-theme="dark"] .badge-pending { color: #D4A052; }
 
 /* Status action buttons */
 .status-actions {
@@ -242,11 +242,11 @@
 .status-pending:hover { background-color: rgba(217, 119, 6, 0.08); }
 
 .status-verified {
-  border-color: rgba(22, 163, 74, 0.3);
-  color: #16a34a;
+  border-color: rgba(120, 61, 75, 0.3);
+  color: var(--color-primary);
 }
 
-.status-verified:hover { background-color: rgba(22, 163, 74, 0.08); }
+.status-verified:hover { background-color: rgba(120, 61, 75, 0.06); }
 
 .status-recorded {
   border-color: rgba(2, 132, 199, 0.3);
@@ -285,25 +285,25 @@
 }
 
 .alert-success {
-  background-color: rgba(22, 163, 74, 0.08);
-  border: 1px solid rgba(22, 163, 74, 0.25);
-  color: #15803d;
+  background-color: rgba(40, 118, 83, 0.08);
+  border: 1px solid rgba(40, 118, 83, 0.25);
+  color: #287653;
   padding: 0.7rem 1rem;
   border-radius: 8px;
   font-size: 0.88rem;
 }
 
 .alert-error {
-  background-color: rgba(220, 38, 38, 0.07);
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  color: #dc2626;
+  background-color: rgba(180, 35, 50, 0.08);
+  border: 1px solid rgba(180, 35, 50, 0.25);
+  color: #B42332;
   padding: 0.7rem 1rem;
   border-radius: 8px;
   font-size: 0.88rem;
 }
 
-[data-theme="dark"] .alert-success { color: #4ade80; }
-[data-theme="dark"] .alert-error { color: #f87171; }
+[data-theme="dark"] .alert-success { color: #34d399; background-color: rgba(52, 211, 153, 0.1); border-color: rgba(52, 211, 153, 0.25); }
+[data-theme="dark"] .alert-error { color: #F07070; background-color: rgba(240, 112, 112, 0.1); border-color: rgba(240, 112, 112, 0.25); }
 
 @media (max-width: 700px) {
   .hours-summary-grid {

@@ -239,18 +239,18 @@
 }
 
 .badge-active {
-  background-color: rgba(22, 163, 74, 0.12);
-  color: #15803d;
+  background-color: rgba(120, 61, 75, 0.1);
+  color: var(--color-primary);
 }
 
 .badge-pending {
-  background-color: rgba(217, 119, 6, 0.12);
-  color: #d97706;
+  background-color: rgba(147, 101, 29, 0.12);
+  color: #93651D;
 }
 
 .badge-verified {
-  background-color: rgba(22, 163, 74, 0.12);
-  color: #15803d;
+  background-color: rgba(120, 61, 75, 0.1);
+  color: var(--color-primary);
 }
 
 .report-fill-bar-row {

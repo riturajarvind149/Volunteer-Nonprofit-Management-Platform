@@ -4,25 +4,6 @@ import { useAuth } from '../../context/AuthContext'
 import { getDashboardStatsApi, getOrganizationHoursSummaryApi } from '../../services/api'
 import './Analytics.css'
 
-const MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
-const HOURS_DATA = [100, 160, 140, 220, 320, 280]
-const REG_DATA = [30, 42, 38, 52, 65, 55]
-const CATEGORY_DATA = [
-  { label: 'Environment', pct: 39, color: '#16a34a' },
-  { label: 'Food & Hunger', pct: 25, color: '#f59e0b' },
-  { label: 'Education', pct: 15, color: '#0284c7' },
-  { label: 'Animal Welfare', pct: 13, color: '#a855f7' },
-  { label: 'Health', pct: 8, color: '#f87171' },
-]
-const OPP_DATA = [
-  { label: 'Lake Cleanup', value: 32 },
-  { label: 'Food Distrib.', value: 28 },
-  { label: 'Tree Plant.', value: 44 },
-  { label: 'Kids Coding', value: 18 },
-  { label: 'Health Drive', value: 25 },
-  { label: 'Tree Ops', value: 14 },
-]
-
 function LineChart({ data, color = 'var(--color-primary)' }) {
   const max = Math.max(...data)
   const w = 320
@@ -151,12 +132,22 @@ function Analytics() {
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />
   if (user.role !== 'COORDINATOR') return <Navigate to="/dashboard" replace />
 
-  const totalVols = stats?.total_volunteers_registered || 312
-  const activeVols = 78
-  const totalReg = 420
-  const totalHours = Number(hoursSum?.total_hours || 1840)
-  const completedEvents = 24
-  const avgParticipation = 18.4
+  const totalVols = stats?.total_volunteers_registered ?? null
+  const activeOpps = stats?.active_opportunities ?? null
+  const completedEvents = stats?.completed_count ?? null
+  const totalHours = hoursSum?.total_hours != null ? Number(hoursSum.total_hours) : null
+  const totalReg = stats?.total_registrations ?? null
+  const categoryData = hoursSum?.by_category || null
+  const monthlyHours = hoursSum?.by_month || null
+  const oppBreakdown = hoursSum?.by_opportunity || null
+
+  const summaryStats = [
+    { label: 'Total Volunteers', value: totalVols },
+    { label: 'Active Opportunities', value: activeOpps },
+    { label: 'Total Registrations', value: totalReg },
+    { label: 'Volunteer Hours', value: totalHours != null ? totalHours.toLocaleString() : null },
+    { label: 'Completed Events', value: completedEvents },
+  ].filter(s => s.value != null)
 
   return (
     <div className="analytics-page">
@@ -176,89 +167,60 @@ function Analytics() {
               {p === '7days' ? 'Last 7 days' : p === '30days' ? 'Last 30 days' : p === '3months' ? 'Last 3 months' : 'Last year'}
             </button>
           ))}
-          <button type="button" className="analytics-export-btn">↓ Export</button>
         </div>
       </div>
 
-      <div className="analytics-stats-row">
-        {[
-          { label: 'Total Volunteers', value: totalVols.toLocaleString(), delta: '+28' },
-          { label: 'Active Volunteers', value: activeVols, delta: '+12' },
-          { label: 'Total Registrations', value: totalReg, delta: '+65' },
-          { label: 'Volunteer Hours', value: totalHours.toLocaleString(), delta: '+960' },
-          { label: 'Completed Events', value: completedEvents, delta: '+3' },
-          { label: 'Avg. Participation', value: avgParticipation, delta: '+1.5' },
-        ].map((s) => (
-          <div key={s.label} className="analytics-stat-card">
-            <div className="analytics-stat-value">{s.value}</div>
-            <div className="analytics-stat-label">{s.label}</div>
-            {s.delta && <div className="analytics-stat-delta">{s.delta.startsWith('+') ? '↑' : '↓'} {s.delta}</div>}
-          </div>
-        ))}
-      </div>
-
-      <div className="analytics-charts-grid">
-        <div className="analytics-chart-card">
-          <div className="analytics-chart-header">
-            <h2>Volunteer Hours by Month</h2>
-            <span className="analytics-chart-total">1,840 total hrs</span>
-          </div>
-          <LineChart data={HOURS_DATA} />
-          <div className="analytics-x-labels">
-            {MONTHS.map((m) => <span key={m}>{m}</span>)}
-          </div>
+      {loading ? (
+        <div className="loading-container"><div className="loading-spinner" /></div>
+      ) : summaryStats.length === 0 ? (
+        <div className="analytics-empty">
+          <p>No analytics data available yet. Analytics will appear once your organization has volunteers and events.</p>
         </div>
-
-        <div className="analytics-chart-card">
-          <div className="analytics-chart-header">
-            <h2>Registrations by Month</h2>
-          </div>
-          <BarChart data={REG_DATA} />
-          <div className="analytics-x-labels">
-            {MONTHS.map((m) => <span key={m}>{m}</span>)}
-          </div>
-        </div>
-
-        <div className="analytics-chart-card">
-          <div className="analytics-chart-header">
-            <h2>Volunteers per Opportunity</h2>
-          </div>
-          <HorizBarChart data={OPP_DATA} />
-        </div>
-
-        <div className="analytics-chart-card">
-          <div className="analytics-chart-header">
-            <h2>By Category</h2>
-          </div>
-          <DonutChart data={CATEGORY_DATA} />
-        </div>
-      </div>
-
-      <div className="analytics-events-card">
-        <h2>Completed vs Upcoming Events</h2>
-        <div className="analytics-events-row">
-          <div className="analytics-event-item">
-            <div className="event-item-label">Completed</div>
-            <div className="event-item-bar-row">
-              <div className="event-item-bar-track">
-                <div className="event-item-bar completed-bar" style={{ width: `${(completedEvents / (completedEvents + 5)) * 100}%` }} />
+      ) : (
+        <>
+          <div className="analytics-stats-row">
+            {summaryStats.map((s) => (
+              <div key={s.label} className="analytics-stat-card">
+                <div className="analytics-stat-value">{s.value}</div>
+                <div className="analytics-stat-label">{s.label}</div>
               </div>
-              <strong>{completedEvents}</strong>
-            </div>
-            <span className="event-item-pct">83% of all events</span>
+            ))}
           </div>
-          <div className="analytics-event-item">
-            <div className="event-item-label">Upcoming</div>
-            <div className="event-item-bar-row">
-              <div className="event-item-bar-track">
-                <div className="event-item-bar upcoming-bar" style={{ width: `${(5 / (completedEvents + 5)) * 100}%` }} />
+
+          <div className="analytics-charts-grid">
+            {monthlyHours && monthlyHours.length > 1 && (
+              <div className="analytics-chart-card">
+                <div className="analytics-chart-header">
+                  <h2>Volunteer Hours by Month</h2>
+                  {totalHours != null && <span className="analytics-chart-total">{totalHours.toLocaleString()} total hrs</span>}
+                </div>
+                <LineChart data={monthlyHours.map(m => m.hours || 0)} />
+                <div className="analytics-x-labels">
+                  {monthlyHours.map((m) => <span key={m.month}>{m.month}</span>)}
+                </div>
               </div>
-              <strong>5</strong>
-            </div>
-            <span className="event-item-pct">17% of all events</span>
+            )}
+
+            {categoryData && categoryData.length > 0 && (
+              <div className="analytics-chart-card">
+                <div className="analytics-chart-header">
+                  <h2>By Category</h2>
+                </div>
+                <DonutChart data={categoryData} />
+              </div>
+            )}
+
+            {oppBreakdown && oppBreakdown.length > 0 && (
+              <div className="analytics-chart-card">
+                <div className="analytics-chart-header">
+                  <h2>Volunteers per Opportunity</h2>
+                </div>
+                <HorizBarChart data={oppBreakdown.map(o => ({ label: o.title || o.label, value: o.volunteer_count || o.value || 0 }))} />
+              </div>
+            )}
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   )
 }

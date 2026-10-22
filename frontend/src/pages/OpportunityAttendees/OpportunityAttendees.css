@@ -239,18 +239,18 @@
 
 /* Alerts */
 .alert-error {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #dc2626;
+  background: rgba(180, 35, 50, 0.08);
+  border: 1px solid rgba(180, 35, 50, 0.25);
+  color: #B42332;
   padding: 0.875rem 1.25rem;
   border-radius: 10px;
   font-size: 0.92rem;
 }
 
 .alert-success {
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  color: #059669;
+  background: rgba(40, 118, 83, 0.08);
+  border: 1px solid rgba(40, 118, 83, 0.25);
+  color: #287653;
   padding: 0.875rem 1.25rem;
   border-radius: 10px;
   font-size: 0.92rem;
