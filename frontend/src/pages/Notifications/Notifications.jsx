@@ -28,7 +28,7 @@ function Notifications() {
         <div>
           <h2>In-app notifications aren’t available yet</h2>
           <p>
-            ServeHub doesn’t generate notifications at the moment, so nothing will appear here.
+            The server doesn’t yet provide an endpoint for reading notifications, so nothing can appear here.
             Until it does, these pages always reflect the latest changes:
           </p>
         </div>
