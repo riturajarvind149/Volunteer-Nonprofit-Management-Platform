@@ -1,109 +1,102 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Navigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { getOrganizationsApi } from '../../services/api'
+import { getOrganizationsApi, getManagedOpportunitiesApi } from '../../services/api'
+import Icon from '../../components/Icon'
+import { PageHeader, LoadingState, EmptyState, Alert, OrgInitials } from '../../components/ui'
+import { formatDate, isUpcoming } from '../../utils/format'
 import './OrgProfile.css'
 
 function OrgProfile() {
-  const { user, token, isAuthenticated, loading: authLoading } = useAuth()
-  const [org, setOrg] = useState(null)
+  const { user, token } = useAuth()
+  const [organizations, setOrganizations] = useState([])
+  const [opportunities, setOpportunities] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   const load = useCallback(async () => {
-    if (!token) return
-    setLoading(true)
+    setError('')
     try {
-      const res = await getOrganizationsApi(token)
-      const orgs = res?.data?.organizations || []
-      const mine = orgs.find((o) => o.coordinator_id === user?.id)
-      setOrg(mine || null)
-    } catch {
-      setOrg(null)
+      const [orgsRes, oppsRes] = await Promise.all([getOrganizationsApi(token), getManagedOpportunitiesApi(token)])
+      setOrganizations((orgsRes?.data?.organizations || []).filter((org) => org.coordinator_id === user.id))
+      setOpportunities(oppsRes?.data?.opportunities || [])
+    } catch (err) {
+      setError(err.message || 'Your organizations could not be loaded.')
     } finally {
       setLoading(false)
     }
-  }, [token, user])
+  }, [token, user.id])
 
   useEffect(() => { load() }, [load])
 
-  if (authLoading) return <div className="loading-container"><div className="loading-spinner" /></div>
-  if (!isAuthenticated || !user) return <Navigate to="/login" replace />
-  if (user.role !== 'COORDINATOR') return <Navigate to="/dashboard" replace />
-
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner" />
-        <p>Loading organization profile...</p>
-      </div>
-    )
+  const statsFor = (orgId) => {
+    const own = opportunities.filter((o) => o.organization_id === orgId)
+    return [
+      { label: 'Upcoming events', value: own.filter((o) => isUpcoming(o.event_date) && o.status === 'PUBLISHED').length },
+      { label: 'Drafts', value: own.filter((o) => o.status === 'DRAFT').length },
+      { label: 'Active registrations', value: own.reduce((sum, o) => sum + Number(o.active_signups || 0), 0) },
+      { label: 'Opportunities in total', value: own.length },
+    ]
   }
-
-  if (!org) {
-    return (
-      <div className="orgprofile-page">
-        <div className="orgprofile-empty">
-          <h2>No Organization Found</h2>
-          <p>You haven't created an organization yet.</p>
-          <Link to="/organizations" className="orgprofile-create-btn">Create Organization</Link>
-        </div>
-      </div>
-    )
-  }
-
-  const initials = org.name?.slice(0, 2).toUpperCase() || 'VO'
-  const createdYear = org.created_at ? new Date(org.created_at).getFullYear() : null
 
   return (
-    <div className="orgprofile-page">
-      <div className="orgprofile-header-row">
-        <h1>Organization Profile</h1>
-        <Link to="/manage-opportunities" className="orgprofile-edit-btn">
-          Manage Opportunities →
-        </Link>
-      </div>
-      <p className="orgprofile-subtext">Your nonprofit's profile as seen by volunteers.</p>
+    <div className="page">
+      <PageHeader
+        title="My organizations"
+        description="The organizations you coordinate. Volunteers see each one’s name and description on its public page."
+        actions={organizations.length > 0 && (
+          <Link to="/organizations?new=1" className="btn btn-secondary"><Icon name="plus" size={15} />New organization</Link>
+        )}
+      />
 
-      <div className="orgprofile-grid">
-        <div className="orgprofile-left">
-          <div className="orgprofile-logo-section">
-            <div className="orgprofile-logo">{initials}</div>
-            <h2 className="orgprofile-name">{org.name}</h2>
-            <span className="orgprofile-type-badge">NONPROFIT ORGANIZATION</span>
-            {createdYear && <span className="orgprofile-since">Since {createdYear}</span>}
+      {error && <Alert onRetry={load}>{error}</Alert>}
+
+      {loading ? (
+        <LoadingState label="Loading organizations…" />
+      ) : organizations.length === 0 ? (
+        !error && (
+          <div className="panel">
+            <EmptyState
+              icon="building"
+              title="You don’t manage an organization yet"
+              action={<Link to="/organizations?new=1" className="btn btn-primary">Create an organization</Link>}
+            >
+              Opportunities are always published under an organization, so start by creating one.
+            </EmptyState>
           </div>
-
-          <div className="orgprofile-public-preview">
-            <span className="preview-icon">👁</span>
-            <p>
-              <strong>Public Profile</strong><br />
-              <span>Volunteers see your organization profile when browsing opportunities.</span>
+        )
+      ) : (
+        organizations.map((org) => (
+          <article key={org.id} className="panel org-card" aria-labelledby={`org-${org.id}`}>
+            <header className="org-card-header">
+              <OrgInitials name={org.name} />
+              <div className="org-card-title">
+                <h2 id={`org-${org.id}`}>{org.name}</h2>
+                <p className="muted">Created {formatDate(org.created_at, { month: 'long' })}</p>
+              </div>
+              <div className="org-card-actions">
+                <Link to={`/organizations/${org.id}`} className="btn btn-ghost">Public page</Link>
+                <Link to={`/opportunities/create?org=${org.id}`} className="btn btn-primary"><Icon name="plus" size={15} />New opportunity</Link>
+              </div>
+            </header>
+            <p className={`org-card-desc${org.description ? '' : ' muted'}`}>
+              {org.description || 'No description yet. Volunteers will see an empty About section.'}
             </p>
-          </div>
-        </div>
+            <dl className="org-card-stats">
+              {statsFor(org.id).map((stat) => (
+                <div key={stat.label}>
+                  <dt>{stat.label}</dt>
+                  <dd className="num">{stat.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </article>
+        ))
+      )}
 
-        <div className="orgprofile-right">
-          <div className="orgprofile-section-card">
-            <h3>About</h3>
-            {org.description ? (
-              <p className="orgprofile-about-text">{org.description}</p>
-            ) : (
-              <p className="orgprofile-about-text orgprofile-about-empty">
-                No description provided. Edit your organization to add a description.
-              </p>
-            )}
-          </div>
-
-          <div className="orgprofile-section-card">
-            <h3>Quick Links</h3>
-            <div className="orgprofile-quick-links">
-              <Link to="/manage-opportunities" className="btn btn-secondary btn-sm">Manage Opportunities</Link>
-              <Link to="/coordinator-hours" className="btn btn-secondary btn-sm">Volunteer Hours</Link>
-              <Link to="/analytics" className="btn btn-secondary btn-sm">Analytics</Link>
-            </div>
-          </div>
-        </div>
-      </div>
+      {organizations.length > 0 && (
+        <p className="muted org-note">Organization names and descriptions can’t be edited yet — the server has no update endpoint for organizations.</p>
+      )}
     </div>
   )
 }

@@ -1,119 +1,125 @@
-import { NavLink, useNavigate, Link } from 'react-router-dom'
+import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Icon from '../Icon'
-import './Sidebar.css'
+import { Brand, ThemeToggle } from '../ui'
 
-const VolunteerNav = [
-  { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/opportunities', label: 'Browse', icon: 'browse' },
-  { to: '/my-signups', label: 'My Registrations', icon: 'registrations' },
-  { to: '/my-hours', label: 'My Hours', icon: 'hours' },
-  { to: '/notifications', label: 'Notifications', icon: 'notifications' },
-  { to: '/profile', label: 'Profile', icon: 'profile' },
+const VOLUNTEER_NAV = [
+  { items: [{ to: '/dashboard', label: 'Overview', icon: 'dashboard' }] },
+  {
+    label: 'Volunteering',
+    items: [
+      { to: '/opportunities', label: 'Browse opportunities', icon: 'search' },
+      { to: '/my-signups', label: 'My registrations', icon: 'registrations' },
+      { to: '/my-hours', label: 'My hours', icon: 'clock' },
+    ],
+  },
+  { label: 'Directory', items: [{ to: '/organizations', label: 'Organizations', icon: 'building' }] },
+  {
+    label: 'Account',
+    items: [
+      { to: '/notifications', label: 'Notifications', icon: 'bell' },
+      { to: '/profile', label: 'Profile', icon: 'user' },
+    ],
+  },
 ]
 
-const CoordinatorNav = [
-  { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/manage-opportunities', label: 'Opportunities', icon: 'manage' },
-  { to: '/volunteers', label: 'Volunteers', icon: 'volunteers' },
-  { to: '/coordinator-hours', label: 'Hours & Attendance', icon: 'hours' },
-  { to: '/analytics', label: 'Analytics', icon: 'analytics' },
-  { to: '/reports', label: 'Reports', icon: 'reports' },
-  { to: '/notifications', label: 'Notifications', icon: 'notifications' },
-  { to: '/organization-profile', label: 'Organization', icon: 'organization' },
+const COORDINATOR_NAV = [
+  { items: [{ to: '/dashboard', label: 'Overview', icon: 'dashboard' }] },
+  {
+    label: 'Operations',
+    items: [
+      { to: '/manage-opportunities', label: 'Opportunities', icon: 'layers' },
+      { to: '/volunteers', label: 'Rosters', icon: 'users' },
+      { to: '/coordinator-hours', label: 'Hours & attendance', icon: 'clock' },
+    ],
+  },
+  {
+    label: 'Insights',
+    items: [
+      { to: '/analytics', label: 'Analytics', icon: 'chart' },
+      { to: '/reports', label: 'Reports', icon: 'file-text' },
+    ],
+  },
+  {
+    label: 'Organization',
+    items: [
+      { to: '/organization-profile', label: 'My organizations', icon: 'building' },
+      { to: '/organizations', label: 'Directory', icon: 'search' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { to: '/notifications', label: 'Notifications', icon: 'bell' },
+      { to: '/profile', label: 'Profile', icon: 'user' },
+    ],
+  },
 ]
 
-function NavItem({ to, label, icon, onClick }) {
-  return (
-    <li>
-      <NavLink
-        to={to}
-        className={({ isActive }) => `sidebar-nav-link${isActive ? ' active' : ''}`}
-        onClick={onClick}
-        end={to === '/dashboard'}
-      >
-        <Icon name={icon} size={15} className="sidebar-nav-icon" />
-        <span className="sidebar-nav-label">{label}</span>
-      </NavLink>
-    </li>
-  )
-}
-
-function Sidebar({ onClose, theme, onToggleTheme }) {
+function Sidebar({ onNavigate, theme, onToggleTheme }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const isCoordinator = user?.role === 'COORDINATOR'
-  const navItems = isCoordinator ? CoordinatorNav : VolunteerNav
+  const groups = isCoordinator ? COORDINATOR_NAV : VOLUNTEER_NAV
 
-  const handleLogout = () => {
-    if (onClose) onClose()
+  const handleSignOut = () => {
+    onNavigate()
     logout()
     navigate('/login')
   }
 
-  const userName = user?.full_name || 'User'
-  const roleLabel = isCoordinator ? 'Coordinator' : 'Volunteer'
-  const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  const name = user?.full_name || 'Account'
+  const initials = name.split(' ').filter(Boolean).map((part) => part[0]).join('').toUpperCase().slice(0, 2)
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-brand">
-        <Link to="/" className="sidebar-logo-link">
-          <div className="sidebar-logo-icon">
-            <Icon name="heart" size={14} />
-          </div>
-          <div>
-            <span className="sidebar-app-name">ServeHub</span>
-            <span className="sidebar-role-label">{roleLabel} Platform</span>
-          </div>
-        </Link>
-      </div>
-
-      <div className="sidebar-user-card">
-        <div className="sidebar-avatar">{initials}</div>
-        <div className="sidebar-user-info">
-          <span className="sidebar-user-role">{roleLabel}</span>
-          <span className="sidebar-user-name">{userName}</span>
-        </div>
+    <div className="sidebar">
+      <div className="sidebar-top">
+        <Brand to="/dashboard" onClick={onNavigate} />
+        <span className="sidebar-role">{isCoordinator ? 'Coordinator' : 'Volunteer'}</span>
       </div>
 
       {isCoordinator && (
-        <div className="sidebar-cta">
-          <Link to="/opportunities/create" className="sidebar-new-opp-btn" onClick={onClose}>
-            <Icon name="plus" size={13} />
-            New Opportunity
-          </Link>
-        </div>
+        <Link to="/opportunities/create" className="btn btn-primary sidebar-cta" onClick={onNavigate}>
+          <Icon name="plus" size={15} />
+          New opportunity
+        </Link>
       )}
 
-      <nav className="sidebar-nav">
-        <ul>
-          {navItems.map((item) => (
-            <NavItem key={item.to} {...item} onClick={onClose} />
-          ))}
-        </ul>
+      <nav className="sidebar-nav" aria-label="Main">
+        {groups.map((group, index) => (
+          <div key={group.label || index} className="sidebar-group">
+            {group.label && <p className="sidebar-group-label">{group.label}</p>}
+            <ul role="list">
+              {group.items.map((item) => (
+                <li key={item.to}>
+                  <NavLink to={item.to} end={item.to === '/dashboard'} className="sidebar-link" onClick={onNavigate}>
+                    <Icon name={item.icon} size={16} />
+                    {item.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </nav>
 
       <div className="sidebar-footer">
-        <button
-          type="button"
-          className="sidebar-theme-btn"
-          onClick={onToggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          <Icon name={theme === 'light' ? 'moon' : 'sun'} size={14} />
-          <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
-        </button>
-        <button
-          type="button"
-          className="sidebar-logout-btn"
-          onClick={handleLogout}
-        >
-          <Icon name="log-out" size={14} />
-          <span>Sign Out</span>
-        </button>
+        <Link to="/profile" className="sidebar-user" onClick={onNavigate}>
+          <span className="sidebar-avatar" aria-hidden="true">{initials}</span>
+          <span className="sidebar-user-text">
+            <span className="sidebar-user-name">{name}</span>
+            <span className="sidebar-user-email">{user?.email}</span>
+          </span>
+        </Link>
+        <div className="sidebar-footer-actions">
+          <ThemeToggle theme={theme} onToggle={onToggleTheme} className="sidebar-action" />
+          <button type="button" className="sidebar-action" onClick={handleSignOut}>
+            <Icon name="log-out" size={16} />
+            <span>Sign out</span>
+          </button>
+        </div>
       </div>
-    </aside>
+    </div>
   )
 }
 

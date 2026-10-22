@@ -4,9 +4,28 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="ServeHub — Discover volunteer opportunities, manage signups, and track your hours in one place. A platform for volunteers and nonprofit organizations." />
-    <meta name="theme-color" content="#121417" />
+    <meta name="description" content="ServeHub helps volunteers find and register for nonprofit opportunities, and helps coordinators publish opportunities, manage signups and verify volunteer hours." />
+    <meta name="theme-color" content="#F6F5F1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121614" media="(prefers-color-scheme: dark)" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap"
+    />
     <title>ServeHub – Volunteer & Nonprofit Management</title>
+    <script>
+      // Applied before React mounts so the stored theme is used on first paint.
+      try {
+        var stored = localStorage.getItem('servehub_theme')
+        var theme = stored === 'dark' || stored === 'light'
+          ? stored
+          : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        document.documentElement.setAttribute('data-theme', theme)
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light')
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
