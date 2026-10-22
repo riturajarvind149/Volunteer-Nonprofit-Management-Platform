@@ -1,0 +1,98 @@
+.opp-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.opp-form-section {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-5);
+}
+
+.opp-form-section + .opp-form-section {
+  border-top: 1px solid var(--line);
+}
+
+.opp-form-intro h2 {
+  font-size: var(--text-base);
+  margin-bottom: var(--space-1);
+}
+
+.opp-form-intro p {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.opp-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 600px;
+}
+
+.opp-form-capacity {
+  max-width: 160px;
+}
+
+.opp-form-status {
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.opp-form-status legend {
+  margin-bottom: var(--space-2);
+}
+
+.status-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.status-option:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.status-option input {
+  margin-top: 4px;
+  accent-color: var(--brand);
+}
+
+.status-option > span {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--text-sm);
+}
+
+.opp-form-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+@media (max-width: 860px) {
+  .opp-form-section {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-4);
+  }
+
+  .opp-form-footer {
+    padding: var(--space-3) var(--space-4);
+  }
+}

@@ -1,222 +1,89 @@
-.orgprofile-page {
-  max-width: 960px;
-  width: 100%;
+.org-card {
+  display: flex;
+  flex-direction: column;
 }
 
-.orgprofile-header-row {
+.org-card-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.25rem;
-  gap: 1rem;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-5) var(--space-5) 0;
 }
 
-.orgprofile-header-row h1 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--text-primary);
+.org-card-title {
+  flex: 1;
+  min-width: 200px;
 }
 
-.orgprofile-subtext {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  margin-bottom: 1.5rem;
+.org-card-title h2 {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
 }
 
-.orgprofile-edit-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border: 1.5px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-card);
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: inherit;
-  transition: background-color 0.13s;
+.org-card-title p {
+  font-size: var(--text-sm);
 }
 
-.orgprofile-edit-btn:hover {
-  background-color: var(--bg-secondary);
+.org-card-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
-.orgprofile-grid {
+.org-card-desc {
+  padding: var(--space-4) var(--space-5);
+  color: var(--ink-2);
+  white-space: pre-line;
+}
+
+.org-card-stats {
   display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 1rem;
-  align-items: start;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line);
 }
 
-.orgprofile-logo-section {
+.org-card-stats > div {
+  padding: var(--space-3) var(--space-5);
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 1.5rem 1rem 1rem;
-  margin-bottom: 0.875rem;
+  flex-direction: column-reverse;
 }
 
-.orgprofile-logo {
-  width: 5rem;
-  height: 5rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #783D4B, #60303C);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 0.875rem;
+.org-card-stats > div + div {
+  border-left: 1px solid var(--line);
 }
 
-.orgprofile-name {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 0.4rem;
-  text-align: center;
+.org-card-stats dt {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
 }
 
-.orgprofile-type-badge {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 0.2rem 0.6rem;
-  border-radius: 99px;
-  background-color: rgba(120, 61, 75, 0.1);
-  color: var(--color-primary);
-  letter-spacing: 0.06em;
-}
-
-.orgprofile-since {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin-top: 0.4rem;
-}
-
-.orgprofile-public-preview {
-  background-color: rgba(120, 61, 75, 0.05);
-  border: 1px solid rgba(120, 61, 75, 0.15);
-  border-radius: 8px;
-  padding: 0.875rem;
-  display: flex;
-  gap: 0.6rem;
-}
-
-.preview-icon {
-  font-size: 1.1rem;
-  flex-shrink: 0;
-  margin-top: 0.1rem;
-}
-
-.orgprofile-public-preview p {
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.orgprofile-public-preview strong {
-  color: var(--text-primary);
-}
-
-/* Right column */
-.orgprofile-right {
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-}
-
-.orgprofile-section-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 1.1rem 1.25rem;
-}
-
-.orgprofile-section-card h3 {
-  font-size: 0.9rem;
+.org-card-stats dd {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
   font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.75rem;
 }
 
-.orgprofile-about-text {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
+.org-note {
+  font-size: var(--text-xs);
 }
 
-.orgprofile-about-empty {
-  font-style: italic;
-  opacity: 0.75;
-}
+@media (max-width: 640px) {
+  .org-card-stats {
+    grid-template-columns: 1fr 1fr;
+  }
 
-.orgprofile-about-input {
-  width: 100%;
-  padding: 0.65rem 0.875rem;
-  border: 1.5px solid var(--border-color);
-  border-radius: 7px;
-  font-size: 0.88rem;
-  background-color: var(--input-bg);
-  color: var(--text-primary);
-  resize: vertical;
-  font-family: inherit;
-  outline: none;
-}
+  .org-card-stats > div:nth-child(3) {
+    border-left: none;
+  }
 
-.orgprofile-about-input:focus {
-  border-color: var(--color-primary);
-}
+  .org-card-stats > div:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
 
-.orgprofile-quick-links {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-/* Empty state */
-.orgprofile-empty {
-  text-align: center;
-  padding: 3rem 2rem;
-  background-color: var(--bg-card);
-  border: 1px dashed var(--border-color);
-  border-radius: 12px;
-}
-
-.orgprofile-empty h2 {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-}
-
-.orgprofile-empty p {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 1.25rem;
-}
-
-.orgprofile-create-btn {
-  display: inline-flex;
-  padding: 0.6rem 1.25rem;
-  background-color: var(--color-primary);
-  color: #fff;
-  font-weight: 600;
-  font-size: 0.9rem;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: background-color 0.15s;
-}
-
-.orgprofile-create-btn:hover {
-  background-color: var(--color-primary-hover);
-}
-
-@media (max-width: 768px) {
-  .orgprofile-grid {
-    grid-template-columns: 1fr;
+  .org-card-header,
+  .org-card-desc {
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
   }
 }

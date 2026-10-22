@@ -1,23 +1,27 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import './NotFound.css'
 
 function NotFound() {
   const { pathname } = useLocation()
+  const { isAuthenticated } = useAuth()
 
   return (
-    <main className="not-found-page">
-      <div className="not-found-container">
-        <div className="not-found-code">404</div>
-        <h1>Page not found</h1>
-        <p>
-          The page at <code className="not-found-path">{pathname}</code> doesn't exist or has been moved.
-        </p>
-        <div className="not-found-actions">
-          <Link to="/" className="btn btn-primary">Go to Home</Link>
-          <Link to="/opportunities" className="btn btn-secondary">Browse Opportunities</Link>
-        </div>
+    <div className="not-found">
+      <p className="not-found-code">Error 404</p>
+      <h1>This page doesn’t exist</h1>
+      <p>
+        Nothing is available at <code>{pathname}</code>. The link may be mistyped, or the page may have been removed.
+      </p>
+      <div className="not-found-actions">
+        {isAuthenticated ? (
+          <Link to="/dashboard" className="btn btn-primary">Go to your overview</Link>
+        ) : (
+          <Link to="/" className="btn btn-primary">Go to the home page</Link>
+        )}
+        <Link to="/opportunities" className="btn btn-secondary">Browse opportunities</Link>
       </div>
-    </main>
+    </div>
   )
 }
 
