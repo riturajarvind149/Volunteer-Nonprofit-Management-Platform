@@ -2,16 +2,29 @@ import { Link } from 'react-router-dom'
 import Icon from './Icon'
 import { DateBlock, CapacityMeter } from './ui'
 import { formatTime, spotsLabel } from '../utils/format'
+import { opportunityPhoto } from '../utils/photos'
 import './OpportunityRow.css'
 
 function OpportunityRow({ opportunity, registered = false, showOrganization = true }) {
   const time = formatTime(opportunity.start_time, opportunity.end_time)
   const spots = spotsLabel(opportunity)
   const isFull = spots === 'Full'
+  const photo = opportunityPhoto(opportunity)
 
   return (
     <Link to={`/opportunities/${opportunity.id}`} className="opp-row">
       <DateBlock date={opportunity.event_date} />
+      <img
+        className="opp-row-photo"
+        src={photo.src}
+        srcSet={photo.srcSet}
+        sizes="120px"
+        alt={photo.alt}
+        width="120"
+        height="80"
+        loading="lazy"
+        decoding="async"
+      />
       <div className="opp-row-main">
         {opportunity.category && <span className="tag">{opportunity.category}</span>}
         <h3 className="opp-row-title">{opportunity.title}</h3>
