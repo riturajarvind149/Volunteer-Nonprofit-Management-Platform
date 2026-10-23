@@ -19,6 +19,15 @@
   max-width: 760px;
 }
 
+.detail-cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 8 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+
 .detail-kicker {
   display: flex;
   align-items: center;
