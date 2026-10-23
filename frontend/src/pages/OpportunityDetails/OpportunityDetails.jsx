@@ -6,6 +6,7 @@ import { getOpportunityByIdApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import { StatusBadge, LoadingState, EmptyState, Alert, CapacityMeter } from '../../components/ui'
 import { formatDate, formatTime, isUpcoming, spotsLabel } from '../../utils/format'
+import { opportunityPhoto } from '../../utils/photos'
 import './OpportunityDetails.css'
 
 function SignupPanel({ opportunity, onChanged }) {
@@ -153,6 +154,7 @@ function OpportunityDetails() {
 
   const time = formatTime(opportunity.start_time, opportunity.end_time)
   const spots = spotsLabel(opportunity)
+  const photo = opportunityPhoto(opportunity)
 
   return (
     <div className="page">
@@ -173,6 +175,16 @@ function OpportunityDetails() {
           </p>
         )}
       </header>
+
+      <img
+        className="detail-cover"
+        src={photo.src}
+        srcSet={photo.srcSet}
+        sizes="(max-width: 1280px) 100vw, 1280px"
+        alt={photo.alt}
+        width="1280"
+        height="480"
+      />
 
       <div className="detail-layout">
         <article className="detail-main">
