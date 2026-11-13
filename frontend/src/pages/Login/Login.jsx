@@ -4,12 +4,13 @@ import { loginApi } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import Icon from '../../components/Icon'
 import { Alert } from '../../components/ui'
+import { ResendVerification } from '../VerifyEmail/VerifyEmail'
 import '../Auth.css'
 
 function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, sessionNotice } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,6 +18,7 @@ function Login() {
   const [loading, setLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
+  const [needsVerification, setNeedsVerification] = useState(false)
 
   const redirectTo = location.state?.from || '/dashboard'
   const infoMessage = location.state?.message || ''
@@ -33,6 +35,7 @@ function Login() {
     if (Object.keys(errors).length) return
 
     setError('')
+    setNeedsVerification(false)
     setLoading(true)
     try {
       const response = await loginApi({ email: trimmedEmail, password })
@@ -40,6 +43,7 @@ function Login() {
       navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err.message || 'Sign in failed. Check your email and password.')
+      setNeedsVerification(err.code === 'EMAIL_NOT_VERIFIED')
       setLoading(false)
     }
   }
@@ -53,10 +57,12 @@ function Login() {
         </div>
 
         {infoMessage && !error && <Alert tone="success">{infoMessage}</Alert>}
-        {location.state?.from && !infoMessage && !error && (
+        {sessionNotice && !infoMessage && !error && <Alert tone="info">{sessionNotice}</Alert>}
+        {location.state?.from && !infoMessage && !sessionNotice && !error && (
           <Alert tone="info">Sign in to continue to that page.</Alert>
         )}
         {error && <Alert>{error}</Alert>}
+        {needsVerification && <ResendVerification initialEmail={email.trim()} />}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <div className="field">
@@ -77,7 +83,12 @@ function Login() {
           </div>
 
           <div className="field">
-            <label className="field-label" htmlFor="password">Password</label>
+            <div className="field-label-row">
+              <label className="field-label" htmlFor="password">Password</label>
+              <Link to="/forgot-password" state={{ email: email.trim() }} className="field-link">
+                Forgot password?
+              </Link>
+            </div>
             <div className="password-field">
               <input
                 id="password"
