@@ -49,6 +49,7 @@ const isValidDateString = (dateStr) => {
  * Server-side validation middleware for creating an opportunity
  */
 const validateCreateOpportunity = (req, res, next) => {
+  const rawSkills = req.body?.skills_required;
   const {
     organization_id,
     title,
@@ -189,7 +190,36 @@ const validateCreateOpportunity = (req, res, next) => {
     status: normalizedStatus,
   };
 
+  const skills = sanitizeSkills(rawSkills);
+  if (skills.error) return next(new AppError(skills.error, 400));
+  if (skills.value !== undefined) req.body.skills_required = skills.value;
+
   next();
+};
+
+
+/**
+ * Validate optional skills_required (array of short strings).
+ * @returns {{value?: string[]|null, error?: string}}
+ */
+const sanitizeSkills = (raw) => {
+  if (raw === undefined) return {};
+  if (raw === null) return { value: null };
+  if (!Array.isArray(raw)) return { error: 'skills_required must be an array of strings' };
+  const skills = [...new Set(raw.map((s) => (typeof s === 'string' ? s.trim() : '')).filter(Boolean))];
+  if (skills.length > 20 || skills.some((s) => s.length > 50)) {
+    return { error: 'skills_required may contain up to 20 skills of at most 50 characters' };
+  }
+  return { value: skills };
+};
+
+const sanitizeReason = (raw) => {
+  if (raw === undefined) return {};
+  if (raw === null || raw === '') return { value: null };
+  if (typeof raw !== 'string' || raw.trim().length > 1000) {
+    return { error: 'cancellation_reason must be text of at most 1000 characters' };
+  }
+  return { value: raw.trim() };
 };
 
 /**
@@ -221,6 +251,8 @@ const validateUpdateOpportunity = (req, res, next) => {
     'address',
     'capacity',
     'status',
+    'skills_required',
+    'cancellation_reason',
   ];
 
   const hasAtLeastOneField = updateKeys.some((k) => req.body && req.body[k] !== undefined);
@@ -362,6 +394,14 @@ const validateUpdateOpportunity = (req, res, next) => {
     }
     sanitized.status = normalizedStatus;
   }
+
+  const skills = sanitizeSkills(req.body?.skills_required);
+  if (skills.error) return next(new AppError(skills.error, 400));
+  if (skills.value !== undefined) sanitized.skills_required = skills.value;
+
+  const reason = sanitizeReason(req.body?.cancellation_reason);
+  if (reason.error) return next(new AppError(reason.error, 400));
+  if (reason.value !== undefined) sanitized.cancellation_reason = reason.value;
 
   // Strip client-supplied ownership or immutable identifiers
   if (req.body) {

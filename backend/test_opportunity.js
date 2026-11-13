@@ -620,9 +620,15 @@ const runTests = async () => {
     // Test 21: GET /api/opportunities/:id returns correct opportunity -> 200
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 21: GET /api/opportunities/:id returns correct opportunity${colors.reset}`);
-    const res21 = await fetch(`${baseUrl}/api/opportunities/${createdOpportunityId}`, {
+    // The created opportunity is a DRAFT: hidden from volunteers, visible to the owning coordinator.
+    const res21Vol = await fetch(`${baseUrl}/api/opportunities/${createdOpportunityId}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${tokenVol}` },
+    });
+    assert(res21Vol.status === 404, 'Draft opportunity is hidden from volunteers (404)', `Status: ${res21Vol.status}`);
+    const res21 = await fetch(`${baseUrl}/api/opportunities/${createdOpportunityId}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${tokenCoord1}` },
     });
     const data21 = await res21.json();
     assert(

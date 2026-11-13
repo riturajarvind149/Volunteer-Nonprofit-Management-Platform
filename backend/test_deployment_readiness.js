@@ -93,10 +93,10 @@ const runTests = async () => {
   // 2. Database Schema and initDb Tests
   console.log(`\n--> Section 2: Database Schema & initDb Path Resolution...`);
 
-  const schemaPath = path.join(__dirname, 'src', 'db', 'schema.sql');
+  const schemaPath = path.join(__dirname, 'src', 'db', 'migrations', '001_initial_schema.sql');
   assert(
     fs.existsSync(schemaPath),
-    'schema.sql exists at resolved path src/db/schema.sql'
+    'Initial migration exists at src/db/migrations/001_initial_schema.sql'
   );
 
   const schemaContent = fs.readFileSync(schemaPath, 'utf8');

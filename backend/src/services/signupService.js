@@ -1,7 +1,12 @@
 const signupRepository = require('../repositories/signupRepository');
 const opportunityRepository = require('../repositories/opportunityRepository');
 const organizationRepository = require('../repositories/organizationRepository');
+const userRepository = require('../repositories/userRepository');
 const notificationService = require('./notificationService');
+const waitlistService = require('./waitlistService');
+const templates = require('./emailTemplates');
+const { icsAttachment } = require('../utils/ical');
+const { config } = require('../config/env');
 const AppError = require('../utils/AppError');
 
 /**
@@ -20,13 +25,16 @@ const createSignup = async (opportunityId, volunteerId) => {
   // Non-blocking notification dispatch
   try {
     const opp = await opportunityRepository.findOpportunityByIdWithCoordinator(opportunityId);
-    if (opp) {
-      await notificationService.createNotification({
-        user_id: volunteerId,
+    const volunteer = await userRepository.findById(volunteerId);
+    if (opp && volunteer) {
+      await notificationService.notify({
+        user: volunteer,
         title: 'Registration Confirmed',
         message: `You successfully registered for ${opp.title} on ${opp.event_date}`,
         type: 'REGISTRATION',
         reference_id: opp.id,
+        email: templates.signupConfirmed({ name: volunteer.full_name, opp }),
+        attachments: [icsAttachment(opp)],
       });
 
       if (opp.coordinator_id) {
@@ -116,7 +124,9 @@ const cancelSignup = async (signupId, volunteerId) => {
     throw new AppError('Signup is already cancelled', 400);
   }
 
-  return await signupRepository.updateStatus(signupId, 'CANCELLED');
+  const cancelled = await signupRepository.updateStatus(signupId, 'CANCELLED');
+  await waitlistService.promoteAndNotify(signup.opportunity_id);
+  return cancelled;
 };
 
 /**
@@ -148,10 +158,12 @@ const getOpportunityAttendees = async (opportunityId, coordinatorId) => {
 
   // 3. Fetch attendees joined with user, opportunity, and organization details
   const attendees = await signupRepository.findAttendeesByOpportunityId(opportunityId);
+  const waitlist = await require('../repositories/waitlistRepository').findByOpportunity(opportunityId);
 
   return {
     opportunity,
     attendees,
+    waitlist,
   };
 };
 
@@ -188,7 +200,11 @@ const updateSignupStatus = async (id, status, coordinatorId) => {
   }
 
   // 4. Update status in database
-  return await signupRepository.updateStatus(id, status);
+  const updated = await signupRepository.updateStatus(id, status);
+  if (status === 'CANCELLED' && signup.status !== 'CANCELLED') {
+    await waitlistService.promoteAndNotify(signup.opportunity_id);
+  }
+  return updated;
 };
 
 /**
@@ -215,10 +231,41 @@ const cancelSignupByOpportunity = async (opportunityId, volunteerId) => {
     throw new AppError('Signup is already cancelled', 400);
   }
 
-  return await signupRepository.updateStatus(signup.id, 'CANCELLED');
+  const cancelled = await signupRepository.updateStatus(signup.id, 'CANCELLED');
+  await waitlistService.promoteAndNotify(opportunityId);
+  return cancelled;
+};
+
+/**
+ * Volunteer self check-in using the code shown at the venue.
+ */
+const checkIn = async (opportunityId, volunteerId, code) => {
+  return await signupRepository.checkIn(opportunityId, volunteerId, code, config.timezone);
+};
+
+/**
+ * Coordinator marks a volunteer as present / absent.
+ */
+const setAttendance = async (signupId, attendanceStatus, coordinatorId) => {
+  const allowed = ['PRESENT', 'ABSENT', null];
+  const normalized = attendanceStatus === null || attendanceStatus === '' ? null : String(attendanceStatus).toUpperCase();
+  if (!allowed.includes(normalized)) {
+    throw new AppError('attendance_status must be PRESENT, ABSENT or null', 400);
+  }
+  const signup = await signupRepository.findByIdWithCoordinator(signupId);
+  if (!signup) throw new AppError('Signup not found', 404);
+  if (signup.coordinator_id !== coordinatorId) {
+    throw new AppError('You do not have permission to update this signup', 403);
+  }
+  if (signup.status === 'CANCELLED') {
+    throw new AppError('Cannot mark attendance for a cancelled signup', 400);
+  }
+  return await signupRepository.setAttendance(signupId, normalized);
 };
 
 module.exports = {
+  checkIn,
+  setAttendance,
   createSignup,
   getMySignups,
   getSignupById,

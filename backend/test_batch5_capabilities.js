@@ -453,6 +453,15 @@ const runTests = async () => {
     });
     assert(changePassSuccessRes.status === 200, 'Change password with correct credentials returns 200');
 
+    // Changing the password revokes old sessions and returns a fresh token
+    const changePassBody = await changePassSuccessRes.json();
+    const revokedRes = await fetch(`${baseUrl}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${volunteerToken}` },
+    });
+    assert(revokedRes.status === 401, 'Old token is revoked after password change');
+    assert(typeof changePassBody.data?.token === 'string', 'Password change returns a fresh token');
+    volunteerToken = changePassBody.data.token;
+
     // Verify login with new password
     const loginNewPassRes = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',

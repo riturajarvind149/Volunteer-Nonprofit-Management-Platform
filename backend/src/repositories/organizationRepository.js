@@ -1,5 +1,8 @@
 const pool = require('../config/db');
 
+const ORG_COLUMNS =
+  'id, name, description, coordinator_id, phone, email, website, address, social_links, logo_url, verification_status, verification_note, verified_at, created_at, updated_at';
+
 /**
  * Data-access repository for organizations table.
  * Uses parameterized queries to prevent SQL injection.
@@ -13,29 +16,85 @@ const pool = require('../config/db');
  * @param {string} orgData.coordinator_id
  * @returns {Promise<Object>} Created organization record
  */
-const create = async ({ name, description, coordinator_id }) => {
+const create = async ({ name, description, coordinator_id, verification_status = 'PENDING' }) => {
   const query = `
-    INSERT INTO organizations (name, description, coordinator_id)
-    VALUES ($1, $2, $3)
-    RETURNING id, name, description, coordinator_id, created_at, updated_at
+    INSERT INTO organizations (name, description, coordinator_id, verification_status, verified_at)
+    VALUES ($1, $2, $3, $4::varchar, CASE WHEN $4::varchar = 'APPROVED' THEN CURRENT_TIMESTAMP ELSE NULL END)
+    RETURNING ${ORG_COLUMNS}
   `;
-  const values = [name, description || null, coordinator_id];
+  const values = [name, description || null, coordinator_id, verification_status];
   const { rows } = await pool.query(query, values);
   return rows[0];
 };
 
 /**
- * Retrieve all organizations ordered by creation date descending
- * @returns {Promise<Array>} List of organizations
+ * Search organizations with visibility rules applied.
+ * @param {Object} opts
+ * @param {string} [opts.q] - name/description search
+ * @param {string[]} [opts.statuses] - allowed verification statuses (undefined = any)
+ * @param {string} [opts.includeCoordinatorId] - always include this coordinator's own orgs
+ * @param {number} opts.limit
+ * @param {number} opts.offset
  */
-const findAll = async () => {
-  const query = `
-    SELECT id, name, description, coordinator_id, phone, email, website, address, social_links, logo_url, created_at, updated_at
-    FROM organizations
-    ORDER BY created_at DESC
-  `;
-  const { rows } = await pool.query(query);
+const search = async ({ q, statuses, includeCoordinatorId, limit = 100, offset = 0 }) => {
+  const values = [];
+  const visibility = [];
+  if (statuses) {
+    values.push(statuses);
+    visibility.push(`verification_status = ANY($${values.length})`);
+  }
+  if (includeCoordinatorId) {
+    values.push(includeCoordinatorId);
+    visibility.push(`coordinator_id = $${values.length}`);
+  }
+  const where = [];
+  if (visibility.length) where.push(`(${visibility.join(' OR ')})`);
+  if (q) {
+    values.push(`%${q}%`);
+    where.push(`(name ILIKE $${values.length} OR description ILIKE $${values.length})`);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const total = (await pool.query(`SELECT COUNT(*)::int AS n FROM organizations ${whereSql}`, values)).rows[0].n;
+  values.push(limit, offset);
+  const { rows } = await pool.query(
+    `SELECT ${ORG_COLUMNS},
+            (SELECT COUNT(*)::int FROM opportunities o
+              WHERE o.organization_id = organizations.id AND o.status = 'PUBLISHED' AND o.event_date >= CURRENT_DATE) AS open_opportunities
+       FROM organizations ${whereSql}
+      ORDER BY created_at DESC
+      LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values
+  );
+  return { organizations: rows, total };
+};
+
+/** Backwards-compatible: all organizations (admin use). */
+const findAll = async () => (await search({ limit: 10000 })).organizations;
+
+/** Organizations owned by a coordinator. */
+const findByCoordinatorId = async (coordinatorId) => {
+  const { rows } = await pool.query(
+    `SELECT ${ORG_COLUMNS} FROM organizations WHERE coordinator_id = $1 ORDER BY created_at ASC`,
+    [coordinatorId]
+  );
   return rows;
+};
+
+/** Set verification status (admin). */
+const setVerification = async (id, { status, note, adminId }) => {
+  const { rows } = await pool.query(
+    `UPDATE organizations
+        SET verification_status = $2::varchar,
+            verification_note = $3,
+            verified_at = CASE WHEN $2::varchar = 'APPROVED' THEN CURRENT_TIMESTAMP ELSE verified_at END,
+            verified_by = $4,
+            updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING ${ORG_COLUMNS}`,
+    [id, status, note || null, adminId]
+  );
+  return rows[0] || null;
 };
 
 /**
@@ -45,7 +104,7 @@ const findAll = async () => {
  */
 const findById = async (id) => {
   const query = `
-    SELECT id, name, description, coordinator_id, phone, email, website, address, social_links, logo_url, created_at, updated_at
+    SELECT ${ORG_COLUMNS}
     FROM organizations
     WHERE id = $1
   `;
@@ -61,7 +120,7 @@ const findById = async (id) => {
  */
 const findByIdAndCoordinatorId = async (id, coordinator_id) => {
   const query = `
-    SELECT id, name, description, coordinator_id, phone, email, website, address, social_links, logo_url, created_at, updated_at
+    SELECT ${ORG_COLUMNS}
     FROM organizations
     WHERE id = $1
       AND coordinator_id = $2
@@ -101,7 +160,7 @@ const update = async (id, updateFields) => {
     UPDATE organizations
     SET ${setClauses.join(', ')}
     WHERE id = $${paramIndex}
-    RETURNING id, name, description, coordinator_id, phone, email, website, address, social_links, logo_url, created_at, updated_at
+    RETURNING ${ORG_COLUMNS}
   `;
 
   const { rows } = await pool.query(query, values);
@@ -181,5 +240,9 @@ module.exports = {
   findByIdAndCoordinatorId,
   update,
   getOrganizationImpactStats,
+  search,
+  findByCoordinatorId,
+  setVerification,
+  ORG_COLUMNS,
 };
 
