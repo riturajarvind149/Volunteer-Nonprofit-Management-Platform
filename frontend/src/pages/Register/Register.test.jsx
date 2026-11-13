@@ -68,6 +68,29 @@ describe('Register page', () => {
     })
   })
 
+  it('requires a letter and a number in the password', async () => {
+    renderRegister()
+    await fill({ password: 'onlyletters' })
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(screen.getByText('Include at least one letter and one number.')).toBeInTheDocument()
+    expect(registerApi).not.toHaveBeenCalled()
+  })
+
+  it('sends the user to "check your inbox" when email verification is required', async () => {
+    registerApi.mockResolvedValue({ status: 'success', data: { requires_email_verification: true } })
+    renderWithProviders(<Register />, {
+      route: '/register',
+      path: '/register',
+      routes: [{ path: '/verify-email', element: <h1>Verify page</h1> }],
+    })
+    await fill()
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
+
+    expect(await screen.findByRole('heading', { name: 'Verify page' })).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/verify-email')
+  })
+
   it('shows the server error, e.g. an email that is already registered', async () => {
     registerApi.mockRejectedValue(new Error('Email is already registered'))
     renderRegister()

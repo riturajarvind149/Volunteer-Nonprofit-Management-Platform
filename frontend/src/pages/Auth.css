@@ -137,3 +137,16 @@
     padding: var(--space-4);
   }
 }
+
+/* Label with an inline action on the right, e.g. "Password · Forgot password?" */
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.field-link {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { registerApi } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Alert } from '../../components/ui'
+import { passwordError, PASSWORD_HINT } from '../../utils/password'
 import '../Auth.css'
 
 const ROLES = [
@@ -13,7 +14,7 @@ const ROLES = [
 const FIELDS = [
   { id: 'name', label: 'Full name', type: 'text', autoComplete: 'name' },
   { id: 'email', label: 'Email address', type: 'email', autoComplete: 'email' },
-  { id: 'password', label: 'Password', type: 'password', autoComplete: 'new-password', hint: 'At least 8 characters.' },
+  { id: 'password', label: 'Password', type: 'password', autoComplete: 'new-password', hint: PASSWORD_HINT },
   { id: 'confirmPassword', label: 'Confirm password', type: 'password', autoComplete: 'new-password' },
 ]
 
@@ -21,7 +22,8 @@ function validate(form) {
   const errors = {}
   if (form.name.trim().length < 2) errors.name = 'Enter your full name (at least 2 characters).'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = 'Enter a valid email address.'
-  if (form.password.length < 8) errors.password = 'Use at least 8 characters.'
+  const pwError = passwordError(form.password)
+  if (pwError) errors.password = pwError
   if (!form.confirmPassword) errors.confirmPassword = 'Re-enter your password.'
   else if (form.password !== form.confirmPassword) errors.confirmPassword = 'Passwords don’t match.'
   return errors
@@ -59,13 +61,18 @@ function Register() {
     setServerError('')
     setLoading(true)
     try {
-      await registerApi({
+      const email = form.email.trim()
+      const response = await registerApi({
         full_name: form.name.trim(),
-        email: form.email.trim(),
+        email,
         password: form.password,
         role: form.role,
       })
-      navigate('/login', { state: { message: 'Your account was created. Sign in to continue.' } })
+      if (response?.data?.requires_email_verification) {
+        navigate('/verify-email', { state: { email } })
+      } else {
+        navigate('/login', { state: { message: 'Your account was created. Sign in to continue.' } })
+      }
     } catch (err) {
       setServerError(err.message || 'Registration failed. Please try again.')
       setLoading(false)
