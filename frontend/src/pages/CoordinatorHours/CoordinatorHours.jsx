@@ -12,10 +12,13 @@ import { formatDate, formatHours, pluralize } from '../../utils/format'
 import './CoordinatorHours.css'
 
 const QUEUE_FILTERS = [
-  { key: 'review', label: 'Needs review', match: (r) => r.status !== 'VERIFIED' },
+  { key: 'review', label: 'Needs review', match: (r) => r.status === 'PENDING' || r.status === 'RECORDED' },
   { key: 'verified', label: 'Verified', match: (r) => r.status === 'VERIFIED' },
+  { key: 'rejected', label: 'Not approved', match: (r) => r.status === 'REJECTED' },
   { key: 'all', label: 'All entries', match: () => true },
 ]
+
+const STATUS_WORDS = { VERIFIED: 'verified', REJECTED: 'not approved', RECORDED: 'recorded', PENDING: 'pending' }
 
 function CoordinatorHours() {
   const { token } = useAuth()
@@ -27,6 +30,7 @@ function CoordinatorHours() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [updatingId, setUpdatingId] = useState(null)
+  const [rejectingId, setRejectingId] = useState(null)
   const [notice, setNotice] = useState(null)
 
   const load = useCallback(async () => {
@@ -55,7 +59,12 @@ function CoordinatorHours() {
     try {
       await updateHoursStatusApi(record.id, status, token)
       setRecords((prev) => prev.map((r) => (r.id === record.id ? { ...r, status } : r)))
-      setNotice({ tone: 'success', text: `${formatHours(record.hours)} hours for ${record.volunteer_name} marked as ${status.toLowerCase()}.` })
+      setRejectingId(null)
+      setNotice({
+        tone: 'success',
+        text: `${formatHours(record.hours)} hours for ${record.volunteer_name} marked as ${STATUS_WORDS[status] || status.toLowerCase()}.`
+          + (status === 'VERIFIED' || status === 'REJECTED' ? ' The volunteer has been notified.' : ''),
+      })
       const [summaryRes, oppsRes] = await Promise.all([
         getOrganizationHoursSummaryApi(token),
         getOrganizationOpportunitiesSummaryApi(token),
@@ -78,7 +87,7 @@ function CoordinatorHours() {
     <div className="page">
       <PageHeader
         title="Hours & attendance"
-        description="Hours you log on a roster land here. Verify them so they count toward each volunteer’s total."
+        description="Hours you log on a roster and hours volunteers submit themselves land here. Verify them so they count toward each volunteer’s total and certificate."
         actions={<Link to="/volunteers" className="btn btn-secondary">Go to rosters</Link>}
       />
 
@@ -155,29 +164,45 @@ function CoordinatorHours() {
                           <span className="cell-primary">{r.volunteer_name}</span>
                           <span className="cell-sub">{r.volunteer_email}</span>
                         </td>
-                        <td data-label="Opportunity">
+                        <td data-label="Opportunity" className="cell-lead">
                           <Link to={`/opportunities/${r.opportunity_id}/attendees`}>{r.opportunity_title}</Link>
+                          {r.self_reported && <span className="cell-sub">Submitted by volunteer</span>}
+                          {r.notes && <span className="cell-sub hours-note">“{r.notes}”</span>}
                         </td>
                         <td data-label="Logged on" className="num">{formatDate(r.created_at)}</td>
                         <td data-label="Hours" className="cell-num">{formatHours(r.hours)}</td>
                         <td data-label="Status"><StatusBadge status={r.status} /></td>
                         <td data-label="">
-                          <div className="hours-actions">
-                            {r.status !== 'VERIFIED' ? (
-                              <button type="button" className="btn btn-primary btn-sm" onClick={() => updateStatus(r, 'VERIFIED')} disabled={busy}>
-                                {busy ? 'Saving…' : 'Verify'}
+                          {rejectingId === r.id ? (
+                            <div className="hours-actions" role="group" aria-label="Confirm rejection">
+                              <span className="hours-confirm-text">Reject these hours? The volunteer can submit them again.</span>
+                              <button type="button" className="btn btn-danger btn-sm" onClick={() => updateStatus(r, 'REJECTED')} disabled={busy}>
+                                {busy ? 'Saving…' : 'Yes, reject'}
                               </button>
-                            ) : (
-                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(r, 'RECORDED')} disabled={busy}>
-                                {busy ? 'Saving…' : 'Undo verification'}
-                              </button>
-                            )}
-                            {r.status === 'RECORDED' && (
-                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(r, 'PENDING')} disabled={busy}>
-                                Mark pending
-                              </button>
-                            )}
-                          </div>
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRejectingId(null)} disabled={busy}>Keep</button>
+                            </div>
+                          ) : (
+                            <div className="hours-actions">
+                              {r.status === 'VERIFIED' ? (
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(r, 'RECORDED')} disabled={busy}>
+                                  {busy ? 'Saving…' : 'Undo verification'}
+                                </button>
+                              ) : r.status === 'REJECTED' ? (
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateStatus(r, 'PENDING')} disabled={busy}>
+                                  {busy ? 'Saving…' : 'Reopen'}
+                                </button>
+                              ) : (
+                                <>
+                                  <button type="button" className="btn btn-primary btn-sm" onClick={() => updateStatus(r, 'VERIFIED')} disabled={busy}>
+                                    {busy ? 'Saving…' : 'Verify'}
+                                  </button>
+                                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setNotice(null); setRejectingId(r.id) }} disabled={busy}>
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )
