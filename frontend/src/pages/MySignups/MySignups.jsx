@@ -2,21 +2,24 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
-import { getMySignupsApi } from '../../services/api'
+import { getMySignupsApi, getMyWaitlistApi, leaveWaitlistApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, DateBlock, StatusBadge } from '../../components/ui'
-import { formatDate, formatTime, isUpcoming, compareByDate } from '../../utils/format'
+import { formatDate, formatTime, isUpcoming, isToday, compareByDate } from '../../utils/format'
+import { CheckInForm, LogHoursForm } from './SignupActions'
 import './MySignups.css'
 
 const TABS = [
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'past', label: 'Past' },
+  { key: 'waitlist', label: 'Waitlist' },
   { key: 'cancelled', label: 'Cancelled' },
 ]
 
 const EMPTY_COPY = {
   upcoming: { title: 'No upcoming registrations', body: 'When you register for an opportunity, it will appear here until the day it takes place.' },
-  past: { title: 'No past shifts yet', body: 'Shifts move here once their date has passed. Hours for them are logged by the coordinator.' },
+  past: { title: 'No past shifts yet', body: 'Shifts move here once their date has passed. Log your hours here so the coordinator can verify them.' },
+  waitlist: { title: 'You’re not on any waitlists', body: 'When an opportunity is full you can join its waitlist. You’ll be registered automatically if a spot opens up.' },
   cancelled: { title: 'No cancelled registrations', body: 'Registrations you or a coordinator cancel are kept here for reference.' },
 }
 
@@ -24,19 +27,29 @@ function MySignups() {
   const { token } = useAuth()
   const { cancelSignUp } = useOpportunities()
   const [signups, setSignups] = useState([])
+  const [waitlist, setWaitlist] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [tab, setTab] = useState('upcoming')
   const [confirmingId, setConfirmingId] = useState(null)
   const [cancellingId, setCancellingId] = useState(null)
+  const [leavingId, setLeavingId] = useState(null)
   const [notice, setNotice] = useState(null)
 
   const load = useCallback(async () => {
     setError('')
     try {
-      const res = await getMySignupsApi(token)
-      const rows = (res?.data?.signups || []).map((s) => ({ ...s, event_date: s.opportunity_event_date }))
+      const [signupRes, waitlistRes] = await Promise.all([
+        getMySignupsApi(token),
+        getMyWaitlistApi(token).catch(() => null),
+      ])
+      const rows = (signupRes?.data?.signups || []).map((s) => ({ ...s, event_date: s.opportunity_event_date }))
       setSignups(rows)
+      setWaitlist(
+        (waitlistRes?.data?.waitlist || [])
+          .map((w) => ({ ...w, event_date: w.opportunity_event_date }))
+          .sort(compareByDate)
+      )
     } catch (err) {
       setError(err.message || 'Your registrations could not be loaded.')
     } finally {
@@ -45,6 +58,32 @@ function MySignups() {
   }, [token])
 
   useEffect(() => { load() }, [load])
+
+  const patchSignup = (id, patch) => setSignups((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
+
+  const handleCheckedIn = (id, updated) => {
+    patchSignup(id, { attendance_status: 'PRESENT', checked_in_at: updated?.checked_in_at })
+    setNotice({ tone: 'success', text: 'You’re checked in. Thank you for volunteering!' })
+  }
+
+  const handleLogged = (id, record) => {
+    patchSignup(id, { hours_status: record?.status || 'PENDING', hours_logged: record?.hours })
+    setNotice({ tone: 'success', text: 'Your hours were submitted. The coordinator will review them soon.' })
+  }
+
+  const handleLeaveWaitlist = async (entry) => {
+    setLeavingId(entry.id)
+    setNotice(null)
+    try {
+      await leaveWaitlistApi(entry.opportunity_id, token)
+      setWaitlist((prev) => prev.filter((w) => w.id !== entry.id))
+      setNotice({ tone: 'success', text: `You left the waitlist for “${entry.opportunity_title}”.` })
+    } catch (err) {
+      setNotice({ tone: 'error', text: err.message || 'Could not leave the waitlist.' })
+    } finally {
+      setLeavingId(null)
+    }
+  }
 
   const handleCancel = async (signup) => {
     setCancellingId(signup.id)
@@ -64,6 +103,7 @@ function MySignups() {
   const groups = {
     upcoming: signups.filter((s) => s.status !== 'CANCELLED' && isUpcoming(s.event_date)).sort(compareByDate),
     past: signups.filter((s) => s.status !== 'CANCELLED' && !isUpcoming(s.event_date)).sort((a, b) => compareByDate(b, a)),
+    waitlist,
     cancelled: signups.filter((s) => s.status === 'CANCELLED'),
   }
   const rows = groups[tab]
@@ -105,6 +145,39 @@ function MySignups() {
             {EMPTY_COPY[tab].body}
           </EmptyState>
         </div>
+      ) : tab === 'waitlist' ? (
+        <ul role="list" className="panel reg-list" aria-label="Waitlist">
+          {rows.map((w) => {
+            const time = formatTime(w.opportunity_start_time, w.opportunity_end_time)
+            return (
+              <li key={w.id} className="reg-item">
+                <DateBlock date={w.event_date} />
+                <div className="reg-main">
+                  <h2 className="reg-title">
+                    <Link to={`/opportunities/${w.opportunity_id}`}>{w.opportunity_title}</Link>
+                  </h2>
+                  <div className="meta-line">
+                    {w.organization_name && <span><Icon name="building" size={14} />{w.organization_name}</span>}
+                    {time && <span><Icon name="clock" size={14} />{time}</span>}
+                    {w.opportunity_location && <span><Icon name="map-pin" size={14} />{w.opportunity_location}</span>}
+                  </div>
+                  <p className="reg-registered">Joined the waitlist {formatDate(w.created_at)}</p>
+                </div>
+                <div className="reg-side">
+                  <StatusBadge status="WAITLISTED" label={`#${w.position} on waitlist`} />
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => handleLeaveWaitlist(w)}
+                    disabled={leavingId === w.id}
+                  >
+                    {leavingId === w.id ? 'Leaving…' : 'Leave'}
+                  </button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
       ) : (
         <ul role="list" className="panel reg-list" aria-label={`${TABS.find((t) => t.key === tab).label} registrations`}>
           {rows.map((s) => {
@@ -124,6 +197,17 @@ function MySignups() {
                   </div>
                   <p className="reg-registered">Registered {formatDate(s.created_at)}</p>
 
+                  {tab === 'upcoming' && s.status === 'REGISTERED' && isToday(s.event_date) && s.opportunity_status !== 'CANCELLED' && (
+                    <div className="reg-action">
+                      <CheckInForm signup={s} onCheckedIn={handleCheckedIn} />
+                    </div>
+                  )}
+                  {tab === 'past' && s.opportunity_status !== 'CANCELLED' && (
+                    <div className="reg-action">
+                      <LogHoursForm signup={s} onLogged={handleLogged} />
+                    </div>
+                  )}
+
                   {confirming && (
                     <div className="reg-confirm" role="group" aria-label="Confirm cancellation">
                       <p>Cancel this registration? Your spot will be released.</p>
@@ -140,7 +224,7 @@ function MySignups() {
                 </div>
                 <div className="reg-side">
                   <StatusBadge status={s.status} />
-                  {tab === 'upcoming' && !confirming && (
+                  {tab === 'upcoming' && !confirming && s.attendance_status !== 'PRESENT' && (
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setNotice(null); setConfirmingId(s.id) }}>
                       Cancel
                     </button>
@@ -154,7 +238,8 @@ function MySignups() {
 
       {tab === 'past' && groups.past.length > 0 && (
         <p className="muted reg-footnote">
-          Hours for past shifts are recorded by the coordinator. Follow them on <Link to="/my-hours">My hours</Link>.
+          Log hours for past shifts here — the coordinator verifies them (or may record them for you).
+          Verified hours count toward your certificate on <Link to="/my-hours">My hours</Link>.
         </p>
       )}
     </div>

@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { getMyHoursApi, getMyHoursSummaryApi } from '../../services/api'
+import { getMyHoursApi, getMyHoursSummaryApi, downloadCertificateApi } from '../../services/api'
+import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge } from '../../components/ui'
+import './VolunteerHours.css'
 import DateRangeForm from '../../components/DateRangeForm'
 import { formatDate, formatHours, pluralize } from '../../utils/format'
 
@@ -11,7 +13,46 @@ const STATUS_FILTERS = [
   { key: 'PENDING', label: 'Pending' },
   { key: 'RECORDED', label: 'Recorded' },
   { key: 'VERIFIED', label: 'Verified' },
+  { key: 'REJECTED', label: 'Not approved' },
 ]
+
+function CertificateButton({ verifiedHours }) {
+  const { token } = useAuth()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const hasVerified = Number(verifiedHours) > 0
+
+  const download = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      await downloadCertificateApi(token)
+    } catch (err) {
+      setError(err.message || 'The certificate could not be generated.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="hours-certificate">
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={download}
+        disabled={!hasVerified || busy}
+        aria-describedby="certificate-hint"
+      >
+        <Icon name="download" size={15} />
+        {busy ? 'Preparing…' : 'Download certificate'}
+      </button>
+      <span id="certificate-hint" className="field-hint">
+        {hasVerified ? 'PDF of all your verified hours.' : 'Available once you have verified hours.'}
+      </span>
+      {error && <Alert>{error}</Alert>}
+    </div>
+  )
+}
 
 function VolunteerHours() {
   const { token } = useAuth()
@@ -46,7 +87,8 @@ function VolunteerHours() {
     <div className="page">
       <PageHeader
         title="My hours"
-        description="Hours are logged by the coordinator of each opportunity. They count toward your total once verified."
+        description="Log hours for past shifts from My registrations, or the coordinator records them for you. They count toward your total and certificate once verified."
+        actions={<CertificateButton verifiedHours={summary?.verified_hours} />}
       />
 
       <section className="figures" aria-label="Hours summary">
@@ -98,7 +140,7 @@ function VolunteerHours() {
             action={records.length === 0 && !hasRange && <Link to="/my-signups" className="btn btn-secondary">View my registrations</Link>}
           >
             {records.length === 0 && !hasRange
-              ? 'After you volunteer, the coordinator records your hours and they appear here.'
+              ? 'After you volunteer, log your hours from My registrations (or the coordinator records them) and they appear here.'
               : 'Try a different status or date range.'}
           </EmptyState>
         ) : (
@@ -117,7 +159,10 @@ function VolunteerHours() {
                   <tr key={r.id}>
                     <td data-label="Opportunity" className="cell-lead">
                       <Link to={`/opportunities/${r.opportunity_id}`}>{r.opportunity_title}</Link>
-                      <span className="cell-sub">{r.organization_name}</span>
+                      <span className="cell-sub">
+                        {r.organization_name}
+                        {r.self_reported ? ' · Logged by you' : ''}
+                      </span>
                     </td>
                     <td data-label="Logged on" className="num">{formatDate(r.created_at)}</td>
                     <td data-label="Status"><StatusBadge status={r.status} /></td>
