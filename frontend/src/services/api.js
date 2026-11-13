@@ -136,6 +136,19 @@ export const logOwnHoursApi = (signupId, payload, token) =>
   authFetch('/signups/' + signupId + '/hours/self', { method: 'POST', body: payload, token })
 export const downloadCertificateApi = (token) => downloadFile('/hours/my/certificate', token, 'volunteer-certificate.pdf')
 
+// ---- Admin console (ADMIN role only) ----
+export const getAdminStatsApi = (token) => authFetch('/admin/stats', { token })
+/** params: status (PENDING|APPROVED|REJECTED|SUSPENDED), q, page, limit */
+export const getAdminOrganizationsApi = (token, params = {}) => authFetch('/admin/organizations' + toQuery(params), { token })
+/** status: APPROVED | REJECTED | SUSPENDED | PENDING; note required for REJECTED/SUSPENDED */
+export const reviewOrganizationApi = (id, status, note, token) =>
+  authFetch('/admin/organizations/' + id + '/verification', { method: 'PATCH', body: { status, note }, token })
+/** params: q, role, page, limit */
+export const getAdminUsersApi = (token, params = {}) => authFetch('/admin/users' + toQuery(params), { token })
+export const setUserActiveApi = (id, isActive, token) =>
+  authFetch('/admin/users/' + id, { method: 'PATCH', body: { is_active: isActive }, token })
+export const getAuditLogsApi = (token, params = {}) => authFetch('/admin/audit-logs' + toQuery(params), { token })
+
 // ---- Coordinator tools ----
 /** attendance: 'PRESENT' | 'ABSENT' | null (clear) */
 export const setAttendanceApi = (signupId, attendance, token) =>

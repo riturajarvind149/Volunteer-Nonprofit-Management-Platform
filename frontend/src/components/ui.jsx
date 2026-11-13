@@ -15,6 +15,9 @@ const STATUS_TONES = {
   WAITLISTED: 'warning',
   PRESENT: 'success',
   ABSENT: 'danger',
+  APPROVED: 'success',
+  SUSPENDED: 'danger',
+  ACTIVE: 'success',
 }
 
 const STATUS_LABELS = {
@@ -30,6 +33,9 @@ const STATUS_LABELS = {
   WAITLISTED: 'Waitlisted',
   PRESENT: 'Checked in',
   ABSENT: 'Absent',
+  APPROVED: 'Approved',
+  SUSPENDED: 'Suspended',
+  ACTIVE: 'Active',
 }
 
 export function Brand({ to = '/', onClick }) {
