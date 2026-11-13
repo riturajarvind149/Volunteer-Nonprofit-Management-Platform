@@ -1,29 +1,74 @@
 const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 const API_BASE_URL = rawApiUrl.endsWith('/api') ? rawApiUrl : rawApiUrl + '/api'
 
-const handleResponse = async (response) => {
+/**
+ * Error thrown for any failed request. `status` is the HTTP status (0 for network
+ * failures) and `code` is the backend's machine-readable code when it sends one
+ * (e.g. EMAIL_NOT_VERIFIED, SESSION_REVOKED, TOKEN_EXPIRED, ORG_NOT_VERIFIED).
+ */
+export class ApiError extends Error {
+  constructor(message, { status = 0, code } = {}) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+  }
+}
+
+// Session codes that mean "this token will never work again — sign the user out".
+const DEAD_SESSION_CODES = new Set(['TOKEN_EXPIRED', 'SESSION_REVOKED', 'ACCOUNT_SUSPENDED'])
+
+let sessionExpiredHandler = null
+
+/**
+ * AuthContext registers a callback here so that any authenticated request that
+ * comes back with a dead session signs the user out, wherever it happened.
+ */
+export const setSessionExpiredHandler = (handler) => {
+  sessionExpiredHandler = handler
+}
+
+const handleResponse = async (response, { sentToken }) => {
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(data.message || 'Request failed with status ' + response.status)
+    const error = new ApiError(data.message || 'Request failed with status ' + response.status, {
+      status: response.status,
+      code: data.code,
+    })
+    const sessionDead = response.status === 401 || DEAD_SESSION_CODES.has(data.code)
+    if (sentToken && sessionDead && sessionExpiredHandler) {
+      sessionExpiredHandler(error)
+    }
+    throw error
   }
   return data
 }
 
 const authFetch = async (endpoint, options = {}) => {
   const { method = 'GET', body, token } = options
-  const headers = { 'Content-Type': 'application/json' }
+  const headers = {}
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = 'Bearer ' + token
   const config = { method, headers }
-  if (body) config.body = JSON.stringify(body)
-  const response = await fetch(API_BASE_URL + endpoint, config)
-  return handleResponse(response)
+  if (body !== undefined) config.body = JSON.stringify(body)
+
+  let response
+  try {
+    response = await fetch(API_BASE_URL + endpoint, config)
+  } catch {
+    throw new ApiError('Can’t reach the server. Check your internet connection and try again.', { status: 0 })
+  }
+  return handleResponse(response, { sentToken: Boolean(token) })
 }
 
+// ---- Auth ----
 export const registerApi = (payload) => authFetch('/auth/register', { method: 'POST', body: payload })
 export const loginApi = (payload) => authFetch('/auth/login', { method: 'POST', body: payload })
 export const getMeApi = (token) => authFetch('/auth/me', { token })
-export const testCoordinatorApi = (token) => authFetch('/auth/coordinator-test', { token })
-export const testVolunteerApi = (token) => authFetch('/auth/volunteer-test', { token })
+export const verifyEmailApi = (token) => authFetch('/auth/verify-email', { method: 'POST', body: { token } })
+export const resendVerificationApi = (email) => authFetch('/auth/resend-verification', { method: 'POST', body: { email } })
+export const forgotPasswordApi = (email) => authFetch('/auth/forgot-password', { method: 'POST', body: { email } })
+export const resetPasswordApi = (token, password) => authFetch('/auth/reset-password', { method: 'POST', body: { token, password } })
 
 export const getOrganizationsApi = (token) => authFetch('/organizations', { token })
 export const getOrganizationByIdApi = (id, token) => authFetch('/organizations/' + id, { token })
