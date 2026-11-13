@@ -1,4 +1,9 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+// Return PostgreSQL DATE columns as plain 'YYYY-MM-DD' strings instead of JS Date
+// objects created at local midnight, which shift by a day across time zones.
+const PG_DATE_OID = 1082;
+types.setTypeParser(PG_DATE_OID, (value) => value);
 
 /**
  * Resolve PostgreSQL SSL configuration based on environment variables.
@@ -41,6 +46,9 @@ const sslConfig = getSslConfig();
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL,
+  max: parseInt(process.env.DATABASE_POOL_MAX || '10', 10),
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 };
 
 if (sslConfig !== false) {

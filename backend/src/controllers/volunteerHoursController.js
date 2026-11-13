@@ -189,7 +189,43 @@ const getOrganizationOpportunitiesSummary = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/signups/:signupId/hours/self  { hours, notes }
+ */
+const logOwnHours = async (req, res, next) => {
+  try {
+    const record = await volunteerHoursService.logOwnHours(
+      { signupId: req.params.signupId, hours: req.body.hours, notes: req.body.notes },
+      req.user.id
+    );
+    res.status(201).json({
+      status: 'success',
+      message: 'Hours submitted for review',
+      data: { volunteer_hours: record },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/hours/my/certificate — PDF certificate of verified hours
+ */
+const getMyCertificate = async (req, res, next) => {
+  try {
+    const { generateVolunteerCertificate } = require('../services/certificateService');
+    const { buffer, filename } = await generateVolunteerCertificate(req.user.id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.status(200).send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
+  logOwnHours,
+  getMyCertificate,
   recordHours,
   getMyHours,
   getOrganizationHours,

@@ -3,56 +3,24 @@ const signupController = require('../controllers/signupController');
 const volunteerHoursController = require('../controllers/volunteerHoursController');
 const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
-const {
-  validateSignupId,
-  validateUpdateSignupStatus,
-} = require('../middleware/validateSignup');
+const { validateSignupId, validateUpdateSignupStatus } = require('../middleware/validateSignup');
 const { validateRecordHours } = require('../middleware/validateVolunteerHours');
 
 const router = express.Router();
 
-/**
- * @route   GET /api/signups/my
- * @desc    Get all signups of the authenticated volunteer
- * @access  Protected (VOLUNTEER only)
- */
-router.get(
-  '/my',
-  authenticate,
-  authorizeRoles('VOLUNTEER'),
-  signupController.getMySignups
-);
+/** GET /api/signups/my — volunteer's signups */
+router.get('/my', authenticate, authorizeRoles('VOLUNTEER'), signupController.getMySignups);
 
-/**
- * @route   GET /api/signups/:id
- * @desc    Get a single signup by ID (owner only)
- * @access  Protected (Any authenticated user, scoped by ownership)
- */
-router.get(
-  '/:id',
-  authenticate,
-  validateSignupId,
-  signupController.getSignupById
-);
+/** GET /api/signups/my/waitlist — volunteer's waitlist positions */
+router.get('/my/waitlist', authenticate, authorizeRoles('VOLUNTEER'), signupController.getMyWaitlist);
 
-/**
- * @route   PATCH /api/signups/:id/cancel
- * @desc    Cancel a volunteer signup (Owner only)
- * @access  Protected (VOLUNTEER only)
- */
-router.patch(
-  '/:id/cancel',
-  authenticate,
-  authorizeRoles('VOLUNTEER'),
-  validateSignupId,
-  signupController.cancelSignup
-);
+/** GET /api/signups/:id */
+router.get('/:id', authenticate, validateSignupId, signupController.getSignupById);
 
-/**
- * @route   PATCH /api/signups/:id/status
- * @desc    Update volunteer signup status (Coordinator owner only)
- * @access  Protected (COORDINATOR only)
- */
+/** PATCH /api/signups/:id/cancel — volunteer cancels own signup */
+router.patch('/:id/cancel', authenticate, authorizeRoles('VOLUNTEER'), validateSignupId, signupController.cancelSignup);
+
+/** PATCH /api/signups/:id/status — coordinator changes status */
 router.patch(
   '/:id/status',
   authenticate,
@@ -61,17 +29,30 @@ router.patch(
   signupController.updateSignupStatus
 );
 
-/**
- * @route   POST /api/signups/:signupId/hours
- * @desc    Record volunteer hours for a signup (Coordinator owner only)
- * @access  Protected (COORDINATOR only)
- */
+/** PATCH /api/signups/:id/attendance — coordinator marks PRESENT / ABSENT */
+router.patch(
+  '/:id/attendance',
+  authenticate,
+  authorizeRoles('COORDINATOR'),
+  validateSignupId,
+  signupController.setAttendance
+);
+
+/** POST /api/signups/:signupId/hours — coordinator records hours */
 router.post(
   '/:signupId/hours',
   authenticate,
   authorizeRoles('COORDINATOR'),
   validateRecordHours,
   volunteerHoursController.recordHours
+);
+
+/** POST /api/signups/:signupId/hours/self — volunteer logs own hours for review */
+router.post(
+  '/:signupId/hours/self',
+  authenticate,
+  authorizeRoles('VOLUNTEER'),
+  volunteerHoursController.logOwnHours
 );
 
 module.exports = router;

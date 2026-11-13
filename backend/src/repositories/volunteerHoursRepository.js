@@ -239,6 +239,9 @@ const findByVolunteerId = async (volunteerId, { from_date, to_date } = {}) => {
       vh.hours,
       vh.status,
       vh.recorded_by,
+      vh.notes,
+      vh.self_reported,
+      o.event_date AS opportunity_event_date,
       vh.created_at,
       vh.updated_at
     FROM volunteer_hours vh
@@ -275,6 +278,9 @@ const findByCoordinatorId = async (coordinatorId) => {
       vh.hours,
       vh.status,
       vh.recorded_by,
+      vh.notes,
+      vh.self_reported,
+      o.event_date AS opportunity_event_date,
       vh.created_at,
       vh.updated_at
     FROM volunteer_hours vh
@@ -305,7 +311,9 @@ const findByIdWithCoordinator = async (id) => {
       vh.created_at,
       vh.updated_at,
       org.coordinator_id,
-      org.id AS organization_id
+      org.id AS organization_id,
+      s.volunteer_id,
+      o.title AS opportunity_title
     FROM volunteer_hours vh
     JOIN signups s ON vh.signup_id = s.id
     JOIN opportunities o ON s.opportunity_id = o.id
@@ -438,7 +446,61 @@ const getOpportunitySummaryByCoordinatorId = async (coordinatorId, { from_date, 
 };
 
 
+/**
+ * Insert a volunteer's own (self-reported) hours as PENDING.
+ * Rejects if the signup already has a non-rejected hours record.
+ */
+const createSelfReported = async ({ signup_id, hours, notes, volunteer_id }) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Serialise per signup to avoid duplicate submissions
+    await client.query('SELECT id FROM signups WHERE id = $1 FOR UPDATE', [signup_id]);
+    const existing = await client.query(
+      "SELECT id FROM volunteer_hours WHERE signup_id = $1 AND status != 'REJECTED' LIMIT 1",
+      [signup_id]
+    );
+    if (existing.rows.length) {
+      throw new AppError('Hours have already been logged for this signup', 409);
+    }
+    const { rows } = await client.query(
+      `INSERT INTO volunteer_hours (signup_id, hours, status, recorded_by, notes, self_reported)
+       VALUES ($1, $2, 'PENDING', $3, $4, TRUE)
+       RETURNING id, signup_id, hours, status, recorded_by, notes, self_reported, created_at, updated_at`,
+      [signup_id, hours, volunteer_id, notes || null]
+    );
+    await client.query('COMMIT');
+    return rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Verified hours for a volunteer, grouped per opportunity (for certificates).
+ */
+const findVerifiedForCertificate = async (volunteerId) => {
+  const { rows } = await pool.query(
+    `SELECT o.title AS opportunity_title, o.event_date, org.name AS organization_name,
+            SUM(vh.hours)::numeric(8,2) AS hours
+       FROM volunteer_hours vh
+       JOIN signups s ON s.id = vh.signup_id
+       JOIN opportunities o ON o.id = s.opportunity_id
+       JOIN organizations org ON org.id = o.organization_id
+      WHERE s.volunteer_id = $1 AND vh.status = 'VERIFIED'
+      GROUP BY o.id, o.title, o.event_date, org.name
+      ORDER BY o.event_date ASC`,
+    [volunteerId]
+  );
+  return rows.map((r) => ({ ...r, hours: parseFloat(r.hours) }));
+};
+
 module.exports = {
+  createSelfReported,
+  findVerifiedForCertificate,
   create,
   findBySignupId,
   findById,
