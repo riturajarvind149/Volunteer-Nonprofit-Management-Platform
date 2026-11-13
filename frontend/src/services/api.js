@@ -135,6 +135,13 @@ export const checkInApi = (opportunityId, code, token) =>
 export const logOwnHoursApi = (signupId, payload, token) =>
   authFetch('/signups/' + signupId + '/hours/self', { method: 'POST', body: payload, token })
 export const downloadCertificateApi = (token) => downloadFile('/hours/my/certificate', token, 'volunteer-certificate.pdf')
+
+// ---- Coordinator tools ----
+/** attendance: 'PRESENT' | 'ABSENT' | null (clear) */
+export const setAttendanceApi = (signupId, attendance, token) =>
+  authFetch('/signups/' + signupId + '/attendance', { method: 'PATCH', body: { attendance_status: attendance }, token })
+export const getParticipationReportApi = (token, params = {}) =>
+  authFetch('/reports/volunteer-participation' + toQuery({ from_date: params.from_date, to_date: params.to_date }), { token })
 export const getManagedOpportunitiesApi = (token) => authFetch('/opportunities?managed=true', { token })
 export const getOpportunityByIdApi = (id, token) => authFetch('/opportunities/' + id, { token })
 export const createOpportunityApi = (payload, token) => authFetch('/opportunities', { method: 'POST', body: payload, token })

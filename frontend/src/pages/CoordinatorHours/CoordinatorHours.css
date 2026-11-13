@@ -4,3 +4,13 @@
   justify-content: flex-end;
   flex-wrap: wrap;
 }
+
+.hours-note {
+  font-style: italic;
+}
+
+.hours-confirm-text {
+  flex-basis: 100%;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}

@@ -6,6 +6,7 @@ import { getMyOrganizationsApi, getOpportunityByIdApi } from '../../services/api
 import { CATEGORIES } from '../../utils/categories'
 import { PageHeader, LoadingState, EmptyState, Alert } from '../../components/ui'
 import { toInputDate } from '../../utils/format'
+import { parseSkills } from '../../utils/skills'
 import './OpportunityForm.css'
 
 
@@ -21,6 +22,8 @@ const BLANK = {
   address: '',
   capacity: '10',
   status: 'PUBLISHED',
+  skills: '',
+  cancellation_reason: '',
 }
 
 function fromOpportunity(o) {
@@ -36,6 +39,8 @@ function fromOpportunity(o) {
     address: o.address || '',
     capacity: String(o.capacity ?? ''),
     status: o.status || 'DRAFT',
+    skills: (o.skills_required || []).join(', '),
+    cancellation_reason: o.cancellation_reason || '',
   }
 }
 
@@ -50,6 +55,9 @@ function validate(form, { isEdit, activeSignups }) {
   const capacity = Number(form.capacity)
   if (!Number.isInteger(capacity) || capacity < 1) errors.capacity = 'Enter a whole number of 1 or more.'
   else if (isEdit && capacity < activeSignups) errors.capacity = `${activeSignups} volunteers are already registered, so capacity can’t go below that.`
+  const skills = parseSkills(form.skills)
+  if (skills.some((s) => s.length > 50)) errors.skills = 'Keep each skill under 50 characters.'
+  if (form.cancellation_reason.length > 1000) errors.cancellation_reason = 'Keep the reason under 1000 characters.'
   return errors
 }
 
@@ -102,8 +110,13 @@ function OpportunityForm() {
           setOriginal(opportunity)
           if (opportunity) setForm(fromOpportunity(opportunity))
         } else {
-          const preselected = mine.find((org) => org.id === orgParam)
-          setForm({ ...BLANK, organization_id: preselected?.id || mine[0]?.id || '' })
+          const preselected = mine.find((org) => org.id === orgParam) || mine[0]
+          setForm({
+            ...BLANK,
+            organization_id: preselected?.id || '',
+            // Unverified organizations can only save drafts.
+            status: preselected && preselected.verification_status && preselected.verification_status !== 'APPROVED' ? 'DRAFT' : 'PUBLISHED',
+          })
         }
       } catch (err) {
         if (active) setLoadError(err.message || 'The form could not be loaded.')
@@ -159,10 +172,28 @@ function OpportunityForm() {
   }
 
   const activeSignups = Number(original?.active_signups || 0)
+  const selectedOrg = organizations.find((org) => org.id === (isEdit ? original?.organization_id : form.organization_id))
+  const orgVerified = !selectedOrg?.verification_status || selectedOrg.verification_status === 'APPROVED'
+  const canPublish = orgVerified || original?.status === 'PUBLISHED'
+  const cancelling = isEdit && form.status === 'CANCELLED' && original?.status !== 'CANCELLED'
+  const scheduleChanged = isEdit && original && (
+    form.event_date !== toInputDate(original.event_date)
+    || form.start_time !== (original.start_time || '').slice(0, 5)
+    || form.end_time !== (original.end_time || '').slice(0, 5)
+    || form.location.trim() !== fromOpportunity(original).location
+  )
 
   const setField = (field) => (e) => {
     const value = e.target.value
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      // Switching to an unverified organization can't keep "Published".
+      if (field === 'organization_id') {
+        const org = organizations.find((o) => o.id === value)
+        if (org?.verification_status && org.verification_status !== 'APPROVED' && next.status === 'PUBLISHED') next.status = 'DRAFT'
+      }
+      return next
+    })
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }))
   }
 
@@ -197,12 +228,22 @@ function OpportunityForm() {
       address: form.address.trim() || null,
       capacity: Number(form.capacity),
       status: form.status,
+      skills_required: parseSkills(form.skills),
+    }
+    if (isEdit && form.status === 'CANCELLED') {
+      payload.cancellation_reason = form.cancellation_reason.trim() || null
     }
     try {
       if (isEdit) await updateOpportunity(id, payload)
       else await createOpportunity({ ...payload, organization_id: form.organization_id })
       navigate('/manage-opportunities', {
-        state: { notice: isEdit ? `Changes to “${payload.title}” were saved.` : `“${payload.title}” was created.` },
+        state: {
+          notice: cancelling
+            ? `“${payload.title}” was cancelled. Registered volunteers have been notified.`
+            : isEdit
+              ? `Changes to “${payload.title}” were saved.${scheduleChanged && activeSignups > 0 ? ' Registered volunteers were notified of the new details.' : ''}`
+              : `“${payload.title}” was ${payload.status === 'DRAFT' ? 'saved as a draft' : 'created'}.`,
+        },
       })
     } catch (err) {
       setSubmitError(err.message || 'The opportunity could not be saved. Check the details and try again.')
@@ -247,6 +288,15 @@ function OpportunityForm() {
             <Field id="description" label="Description" optional hint="Tasks, what to bring, who to ask for on arrival.">
               <textarea className="textarea" rows={6} maxLength={5000} {...inputProps('description')} />
             </Field>
+            <Field
+              id="skills"
+              label="Helpful skills"
+              optional
+              error={errors.skills}
+              hint="Separate with commas, e.g. First aid, Lifting, Hindi. Volunteers can filter by these."
+            >
+              <input className="input" maxLength={1000} {...inputProps('skills')} />
+            </Field>
           </div>
         </section>
 
@@ -273,6 +323,11 @@ function OpportunityForm() {
             <Field id="address" label="Street address" optional>
               <input className="input" {...inputProps('address')} />
             </Field>
+            {scheduleChanged && activeSignups > 0 && form.status === 'PUBLISHED' && (
+              <Alert tone="info">
+                {activeSignups} registered {activeSignups === 1 ? 'volunteer' : 'volunteers'} will be emailed about the new date, time or place when you save.
+              </Alert>
+            )}
           </div>
         </section>
 
@@ -300,23 +355,55 @@ function OpportunityForm() {
                   { value: 'COMPLETED', label: 'Completed', desc: 'The event has taken place.' },
                   { value: 'CANCELLED', label: 'Cancelled', desc: 'The event won’t go ahead. Registration closes.' },
                 ] : []),
-              ].map((option) => (
-                <label key={option.value} className="status-option">
-                  <input type="radio" name="status" value={option.value} checked={form.status === option.value} onChange={setField('status')} />
-                  <span>
-                    <strong>{option.label}</strong>
-                    <span className="muted">{option.desc}</span>
-                  </span>
-                </label>
-              ))}
+              ].map((option) => {
+                const locked = option.value === 'PUBLISHED' && !canPublish
+                return (
+                  <label key={option.value} className={`status-option${locked ? ' is-disabled' : ''}`}>
+                    <input
+                      type="radio"
+                      name="status"
+                      value={option.value}
+                      checked={form.status === option.value}
+                      onChange={setField('status')}
+                      disabled={locked}
+                    />
+                    <span>
+                      <strong>{option.label}</strong>
+                      <span className="muted">
+                        {locked
+                          ? 'Available once an administrator verifies your organization. Save as a draft for now.'
+                          : option.desc}
+                      </span>
+                    </span>
+                  </label>
+                )
+              })}
             </fieldset>
+            {cancelling && (
+              <div className="opp-form-cancel">
+                <Alert tone="info">
+                  {activeSignups > 0
+                    ? `${activeSignups} registered ${activeSignups === 1 ? 'volunteer' : 'volunteers'} will be emailed that this event is cancelled.`
+                    : 'Nobody is registered yet, so no one needs to be notified.'}
+                </Alert>
+                <Field
+                  id="cancellation_reason"
+                  label="Reason for cancelling"
+                  optional
+                  error={errors.cancellation_reason}
+                  hint="Included in the email and shown on the listing, e.g. “Heavy rain forecast”."
+                >
+                  <textarea className="textarea" rows={3} maxLength={1000} {...inputProps('cancellation_reason')} />
+                </Field>
+              </div>
+            )}
           </div>
         </section>
 
         <div className="opp-form-footer">
           <Link to="/manage-opportunities" className="btn btn-ghost">Cancel</Link>
-          <button type="submit" className="btn btn-primary btn-lg" disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Save changes' : form.status === 'DRAFT' ? 'Save draft' : 'Publish opportunity'}
+          <button type="submit" className={`btn btn-lg ${cancelling ? 'btn-danger' : 'btn-primary'}`} disabled={saving}>
+            {saving ? 'Saving…' : cancelling ? 'Cancel this event' : isEdit ? 'Save changes' : form.status === 'DRAFT' ? 'Save draft' : 'Publish opportunity'}
           </button>
         </div>
       </form>
