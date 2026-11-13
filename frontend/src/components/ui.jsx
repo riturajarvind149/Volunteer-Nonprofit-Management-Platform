@@ -11,6 +11,10 @@ const STATUS_TONES = {
   DRAFT: '',
   COMPLETED: '',
   CANCELLED: 'danger',
+  REJECTED: 'danger',
+  WAITLISTED: 'warning',
+  PRESENT: 'success',
+  ABSENT: 'danger',
 }
 
 const STATUS_LABELS = {
@@ -22,6 +26,10 @@ const STATUS_LABELS = {
   DRAFT: 'Draft',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
+  REJECTED: 'Not approved',
+  WAITLISTED: 'Waitlisted',
+  PRESENT: 'Checked in',
+  ABSENT: 'Absent',
 }
 
 export function Brand({ to = '/', onClick }) {
