@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const AppError = require('../utils/AppError');
+const { config } = require('../config/env');
 
 /**
  * Data-access repository for signups table.
@@ -19,10 +20,13 @@ const createSignupTransaction = async (opportunityId, volunteerId) => {
 
     // 1. Lock opportunity row for update to prevent race conditions on capacity
     const oppQuery = `
-      SELECT id, title, capacity, status
-      FROM opportunities
-      WHERE id = $1
-      FOR UPDATE
+      SELECT o.id, o.title, o.capacity, o.status,
+             (o.event_date >= CURRENT_DATE) AS upcoming,
+             org.verification_status AS organization_verification_status
+      FROM opportunities o
+      JOIN organizations org ON org.id = o.organization_id
+      WHERE o.id = $1
+      FOR UPDATE OF o
     `;
     const oppResult = await client.query(oppQuery, [opportunityId]);
 
@@ -38,6 +42,12 @@ const createSignupTransaction = async (opportunityId, volunteerId) => {
         'Cannot sign up for an opportunity that is not published',
         400
       );
+    }
+    if (!opportunity.upcoming) {
+      throw new AppError('This opportunity has already taken place', 400);
+    }
+    if (config.requireOrgApproval && opportunity.organization_verification_status !== 'APPROVED') {
+      throw new AppError('This organization is not verified yet', 400);
     }
 
     // 3. Check for existing signup by this volunteer
@@ -101,6 +111,12 @@ const createSignupTransaction = async (opportunityId, volunteerId) => {
       signupRecord = insertResult.rows[0];
     }
 
+    // A volunteer who gets a spot no longer needs a waitlist place.
+    await client.query('DELETE FROM waitlist_entries WHERE opportunity_id = $1 AND volunteer_id = $2', [
+      opportunityId,
+      volunteerId,
+    ]);
+
     await client.query('COMMIT');
     return signupRecord;
   } catch (err) {
@@ -136,10 +152,13 @@ const reactivateSignupTransaction = async (signupId, opportunityId) => {
     // 1. Lock opportunity row for update to prevent race conditions on capacity
     // Follows the identical lock ordering as createSignupTransaction
     const oppQuery = `
-      SELECT id, title, capacity, status
-      FROM opportunities
-      WHERE id = $1
-      FOR UPDATE
+      SELECT o.id, o.title, o.capacity, o.status,
+             (o.event_date >= CURRENT_DATE) AS upcoming,
+             org.verification_status AS organization_verification_status
+      FROM opportunities o
+      JOIN organizations org ON org.id = o.organization_id
+      WHERE o.id = $1
+      FOR UPDATE OF o
     `;
     const oppResult = await client.query(oppQuery, [opportunityId]);
 
@@ -208,13 +227,17 @@ const reactivateSignupTransaction = async (signupId, opportunityId) => {
 const findByVolunteerId = async (volunteerId) => {
   const query = `
     SELECT s.id, s.volunteer_id, s.opportunity_id, s.status, s.created_at, s.updated_at,
+           s.attendance_status, s.checked_in_at,
            o.title AS opportunity_title,
            o.event_date AS opportunity_event_date,
            o.start_time AS opportunity_start_time,
            o.end_time AS opportunity_end_time,
            o.location AS opportunity_location,
+           o.status AS opportunity_status,
            o.organization_id AS opportunity_organization_id,
-           org.name AS organization_name
+           org.name AS organization_name,
+           (SELECT vh.status FROM volunteer_hours vh WHERE vh.signup_id = s.id ORDER BY vh.created_at DESC LIMIT 1) AS hours_status,
+           (SELECT vh.hours FROM volunteer_hours vh WHERE vh.signup_id = s.id ORDER BY vh.created_at DESC LIMIT 1) AS hours_logged
     FROM signups s
     JOIN opportunities o ON s.opportunity_id = o.id
     JOIN organizations org ON o.organization_id = org.id
@@ -301,6 +324,12 @@ const findAttendeesByOpportunityId = async (opportunityId) => {
       s.created_at AS signup_created_at,
       s.updated_at,
       s.updated_at AS signup_updated_at,
+      s.attendance_status,
+      s.checked_in_at,
+      u.phone AS volunteer_phone,
+      (SELECT vh.id FROM volunteer_hours vh WHERE vh.signup_id = s.id ORDER BY vh.created_at DESC LIMIT 1) AS hours_id,
+      (SELECT vh.hours FROM volunteer_hours vh WHERE vh.signup_id = s.id ORDER BY vh.created_at DESC LIMIT 1) AS hours_logged,
+      (SELECT vh.status FROM volunteer_hours vh WHERE vh.signup_id = s.id ORDER BY vh.created_at DESC LIMIT 1) AS hours_status,
       o.id AS opportunity_id,
       o.title AS opportunity_title,
       org.id AS organization_id,
@@ -366,11 +395,65 @@ const countActiveSignupsByOpportunityId = async (opportunityId) => {
  */
 const findByVolunteerAndOpportunity = async (volunteerId, opportunityId) => {
   const query = `
-    SELECT id, volunteer_id, opportunity_id, status, created_at, updated_at
+    SELECT id, volunteer_id, opportunity_id, status, attendance_status, checked_in_at, created_at, updated_at
     FROM signups
     WHERE volunteer_id = $1 AND opportunity_id = $2
   `;
   const { rows } = await pool.query(query, [volunteerId, opportunityId]);
+  return rows[0] || null;
+};
+
+/**
+ * Self check-in with the event's code, only inside the check-in window
+ * (1 hour before start until 3 hours after end, in the app time zone).
+ */
+const checkIn = async (opportunityId, volunteerId, code, timezone) => {
+  const { rows } = await pool.query(
+    `SELECT s.id, s.status, s.checked_in_at, o.check_in_code, o.status AS opportunity_status,
+            NOW() >= ((o.event_date + o.start_time) AT TIME ZONE $3) - INTERVAL '1 hour' AS window_open,
+            NOW() <= ((CASE WHEN o.end_time > o.start_time THEN o.event_date + o.end_time
+                            ELSE o.event_date + INTERVAL '1 day' + o.end_time END) AT TIME ZONE $3) + INTERVAL '3 hours' AS window_not_closed
+       FROM signups s
+       JOIN opportunities o ON o.id = s.opportunity_id
+      WHERE s.opportunity_id = $1 AND s.volunteer_id = $2`,
+    [opportunityId, volunteerId, timezone]
+  );
+  const row = rows[0];
+  if (!row || row.status !== 'REGISTERED') {
+    throw new AppError('You are not registered for this opportunity', 404);
+  }
+  if (row.opportunity_status === 'CANCELLED') {
+    throw new AppError('This opportunity was cancelled', 400);
+  }
+  if (!row.window_open || !row.window_not_closed) {
+    throw new AppError('Check-in opens 1 hour before the event starts and closes 3 hours after it ends', 400, 'CHECK_IN_CLOSED');
+  }
+  if (!code || String(code).trim().toUpperCase() !== String(row.check_in_code || '').toUpperCase()) {
+    throw new AppError('Invalid check-in code', 400, 'INVALID_CODE');
+  }
+  if (row.checked_in_at) {
+    return { id: row.id, already: true };
+  }
+  const updated = await pool.query(
+    `UPDATE signups SET attendance_status = 'PRESENT', checked_in_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING id, volunteer_id, opportunity_id, status, attendance_status, checked_in_at`,
+    [row.id]
+  );
+  return updated.rows[0];
+};
+
+/** Coordinator marks attendance (PRESENT / ABSENT / null to clear). */
+const setAttendance = async (signupId, attendanceStatus) => {
+  const { rows } = await pool.query(
+    `UPDATE signups
+        SET attendance_status = $2::varchar,
+            checked_in_at = CASE WHEN $2::varchar = 'PRESENT' THEN COALESCE(checked_in_at, CURRENT_TIMESTAMP) ELSE NULL END,
+            updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING id, volunteer_id, opportunity_id, status, attendance_status, checked_in_at`,
+    [signupId, attendanceStatus]
+  );
   return rows[0] || null;
 };
 
@@ -384,4 +467,6 @@ module.exports = {
   countActiveSignupsByOpportunityId,
   updateStatus,
   findAttendeesByOpportunityId,
+  checkIn,
+  setAttendance,
 };

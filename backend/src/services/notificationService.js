@@ -76,7 +76,30 @@ const createNotification = async ({ user_id, title, message, type = 'INFO', refe
   }
 };
 
+/**
+ * Create an in-app notification and (optionally) send a matching email.
+ * Emails respect the user's `email_notifications` preference unless `force` is set
+ * (used for critical messages such as cancellations).
+ *
+ * @param {Object} params
+ * @param {{id: string, email?: string, email_notifications?: boolean}} params.user
+ * @param {Object} [params.email] - output of an emailTemplates builder
+ * @param {Array} [params.attachments]
+ * @param {boolean} [params.force]
+ */
+const notify = async ({ user, title, message, type = 'INFO', reference_id = null, email, attachments, force = false }) => {
+  if (!user?.id) return null;
+  const created = await createNotification({ user_id: user.id, title, message, type, reference_id });
+  if (email && user.email && (force || user.email_notifications !== false)) {
+    // Lazy require avoids a circular import at module load
+    const emailService = require('./emailService');
+    emailService.queueEmail({ to: user.email, ...email, attachments });
+  }
+  return created;
+};
+
 module.exports = {
+  notify,
   getUserNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,

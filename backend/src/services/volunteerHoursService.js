@@ -1,7 +1,10 @@
 const volunteerHoursRepository = require('../repositories/volunteerHoursRepository');
 const signupRepository = require('../repositories/signupRepository');
 const organizationRepository = require('../repositories/organizationRepository');
+const userRepository = require('../repositories/userRepository');
 const notificationService = require('./notificationService');
+const templates = require('./emailTemplates');
+const { isUuid } = require('../utils/validators');
 const AppError = require('../utils/AppError');
 
 /**
@@ -121,13 +124,20 @@ const updateStatus = async (id, status, coordinatorId) => {
 
   // 4. Notify volunteer when hours are verified
   try {
-    if (status === 'VERIFIED' && record.volunteer_id) {
-      await notificationService.createNotification({
-        user_id: record.volunteer_id,
-        title: 'Hours Verified',
-        message: `Your ${record.hours} volunteer hours for ${record.opportunity_title || 'event'} have been verified!`,
+    if (['VERIFIED', 'REJECTED'].includes(status) && record.volunteer_id && record.status !== status) {
+      const volunteer = await userRepository.findById(record.volunteer_id);
+      await notificationService.notify({
+        user: volunteer || { id: record.volunteer_id },
+        title: status === 'VERIFIED' ? 'Hours Verified' : 'Hours Not Approved',
+        message:
+          status === 'VERIFIED'
+            ? `Your ${record.hours} volunteer hours for ${record.opportunity_title || 'event'} have been verified!`
+            : `Your ${record.hours} hours for ${record.opportunity_title || 'event'} were not approved. Contact the organizer for details.`,
         type: 'HOURS',
         reference_id: id,
+        email: volunteer
+          ? templates.hoursReviewed({ name: volunteer.full_name, hours: record.hours, title: record.opportunity_title, status })
+          : undefined,
       });
     }
   } catch (notifErr) {
@@ -165,7 +175,62 @@ const getOpportunityHoursSummary = async (coordinatorId, filters = {}) => {
   return await volunteerHoursRepository.getOpportunitySummaryByCoordinatorId(coordinatorId, filters);
 };
 
+/**
+ * Volunteer logs their own hours for a past event; a coordinator then verifies or rejects.
+ */
+const logOwnHours = async ({ signupId, hours, notes }, volunteerId) => {
+  if (!isUuid(signupId)) {
+    throw new AppError('Invalid signup ID format. Expected a valid UUID', 400);
+  }
+  if (typeof hours !== 'number' || !Number.isFinite(hours) || hours <= 0 || hours > 24) {
+    throw new AppError('Hours must be a number greater than 0 and at most 24', 400);
+  }
+  if (Math.round(hours * 100) !== hours * 100) {
+    throw new AppError('Hours cannot have more than 2 decimal places', 400);
+  }
+  if (notes !== undefined && notes !== null && (typeof notes !== 'string' || notes.length > 1000)) {
+    throw new AppError('Notes must be text of at most 1000 characters', 400);
+  }
+
+  const signup = await signupRepository.findById(signupId);
+  if (!signup || signup.volunteer_id !== volunteerId) {
+    throw new AppError('Signup not found', 404);
+  }
+  if (signup.status === 'CANCELLED') {
+    throw new AppError('Cannot log hours for a cancelled signup', 400);
+  }
+  const eventPassed =
+    signup.opportunity_status === 'COMPLETED' ||
+    String(signup.opportunity_event_date).slice(0, 10) <=
+      new Date().toLocaleDateString('en-CA', { timeZone: require('../config/env').config.timezone });
+  if (!eventPassed) {
+    throw new AppError('You can log hours once the event has taken place', 400);
+  }
+
+  const record = await volunteerHoursRepository.createSelfReported({
+    signup_id: signupId,
+    hours,
+    notes: typeof notes === 'string' ? notes.trim() : null,
+    volunteer_id: volunteerId,
+  });
+
+  try {
+    await notificationService.createNotification({
+      user_id: signup.coordinator_id,
+      title: 'Hours awaiting review',
+      message: `${signup.volunteer_name} logged ${hours} hours for ${signup.opportunity_title}.`,
+      type: 'HOURS',
+      reference_id: record.id,
+    });
+  } catch {
+    // non-blocking
+  }
+
+  return record;
+};
+
 module.exports = {
+  logOwnHours,
   recordHours,
   getMyHours,
   getOrganizationHours,

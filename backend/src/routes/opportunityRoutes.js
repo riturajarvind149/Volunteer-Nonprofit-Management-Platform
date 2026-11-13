@@ -1,49 +1,24 @@
 const express = require('express');
 const opportunityController = require('../controllers/opportunityController');
 const signupController = require('../controllers/signupController');
-const authenticate = require('../middleware/authenticate');
+const { authenticate, optionalAuthenticate } = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
 const {
   validateCreateOpportunity,
   validateUpdateOpportunity,
   validateOpportunityId,
 } = require('../middleware/validateOpportunity');
-const {
-  validateSignupOpportunityId,
-} = require('../middleware/validateSignup');
+const { validateSignupOpportunityId } = require('../middleware/validateSignup');
 
 const router = express.Router();
 
-/**
- * @route   POST /api/opportunities
- * @desc    Create a new volunteer opportunity (Coordinator only, must own organization)
- * @access  Protected (COORDINATOR)
- */
-router.post(
-  '/',
-  authenticate,
-  authorizeRoles('COORDINATOR'),
-  validateCreateOpportunity,
-  opportunityController.create
-);
+/** POST /api/opportunities — coordinator creates an opportunity */
+router.post('/', authenticate, authorizeRoles('COORDINATOR'), validateCreateOpportunity, opportunityController.create);
 
-/**
- * @route   GET /api/opportunities
- * @desc    Get all volunteer opportunities
- * @access  Protected (VOLUNTEER, COORDINATOR)
- */
-router.get(
-  '/',
-  authenticate,
-  authorizeRoles('VOLUNTEER', 'COORDINATOR'),
-  opportunityController.getAll
-);
+/** GET /api/opportunities — public search (filters + pagination); ?managed=true for coordinators */
+router.get('/', optionalAuthenticate, opportunityController.getAll);
 
-/**
- * @route   GET /api/opportunities/dashboard-stats
- * @desc    Get dashboard statistics for authenticated user (Volunteer or Coordinator)
- * @access  Protected (VOLUNTEER, COORDINATOR)
- */
+/** GET /api/opportunities/dashboard-stats */
 router.get(
   '/dashboard-stats',
   authenticate,
@@ -51,47 +26,24 @@ router.get(
   opportunityController.getDashboardStats
 );
 
-/**
- * @route   POST /api/opportunities/process-completions
- * @desc    Trigger automatic opportunity completion check and attendee notifications
- * @access  Protected (COORDINATOR)
- */
+/** POST /api/opportunities/process-completions — manual trigger of the completion job */
 router.post(
   '/process-completions',
   authenticate,
-  authorizeRoles('COORDINATOR'),
+  authorizeRoles('COORDINATOR', 'ADMIN'),
   opportunityController.processCompletions
 );
 
-/**
- * @route   GET /api/opportunities/my-signups
- * @desc    Get all signups of the authenticated volunteer (alias)
- * @access  Protected (VOLUNTEER)
- */
-router.get(
-  '/my-signups',
-  authenticate,
-  authorizeRoles('VOLUNTEER'),
-  signupController.getMySignups
-);
+/** GET /api/opportunities/my-signups */
+router.get('/my-signups', authenticate, authorizeRoles('VOLUNTEER'), signupController.getMySignups);
 
-/**
- * @route   GET /api/opportunities/:id
- * @desc    Get a single volunteer opportunity by UUID
- * @access  Protected (Any authenticated user)
- */
-router.get(
-  '/:id',
-  authenticate,
-  validateOpportunityId,
-  opportunityController.getById
-);
+/** GET /api/opportunities/:id — public for published opportunities of verified orgs */
+router.get('/:id', optionalAuthenticate, validateOpportunityId, opportunityController.getById);
 
-/**
- * @route   PATCH /api/opportunities/:id
- * @desc    Partially update an opportunity (Coordinator owner only)
- * @access  Protected (COORDINATOR)
- */
+/** GET /api/opportunities/:id/calendar.ics — add to calendar */
+router.get('/:id/calendar.ics', optionalAuthenticate, validateOpportunityId, opportunityController.getCalendar);
+
+/** PATCH /api/opportunities/:id — owner coordinator only */
 router.patch(
   '/:id',
   authenticate,
@@ -101,11 +53,7 @@ router.patch(
   opportunityController.update
 );
 
-/**
- * @route   GET /api/opportunities/:id/signups
- * @desc    Get all attendees who signed up for an opportunity (Coordinator owner only)
- * @access  Protected (COORDINATOR)
- */
+/** GET /api/opportunities/:id/signups — attendees + waitlist (owner coordinator) */
 router.get(
   '/:id/signups',
   authenticate,
@@ -114,11 +62,14 @@ router.get(
   signupController.getOpportunityAttendees
 );
 
-/**
- * @route   POST /api/opportunities/:opportunityId/signup
- * @desc    Sign up for an opportunity (Volunteer only)
- * @access  Protected (VOLUNTEER)
- */
+/** POST /api/opportunities/:id/check-in — volunteer self check-in with event code */
+router.post('/:id/check-in', authenticate, authorizeRoles('VOLUNTEER'), validateOpportunityId, signupController.checkIn);
+
+/** POST / DELETE /api/opportunities/:id/waitlist */
+router.post('/:id/waitlist', authenticate, authorizeRoles('VOLUNTEER'), validateOpportunityId, signupController.joinWaitlist);
+router.delete('/:id/waitlist', authenticate, authorizeRoles('VOLUNTEER'), validateOpportunityId, signupController.leaveWaitlist);
+
+/** POST /api/opportunities/:opportunityId/signup */
 router.post(
   '/:opportunityId/signup',
   authenticate,
@@ -127,11 +78,7 @@ router.post(
   signupController.createSignup
 );
 
-/**
- * @route   DELETE /api/opportunities/:opportunityId/signup
- * @desc    Cancel a volunteer signup by opportunity ID (Volunteer only)
- * @access  Protected (VOLUNTEER)
- */
+/** DELETE /api/opportunities/:opportunityId/signup */
 router.delete(
   '/:opportunityId/signup',
   authenticate,

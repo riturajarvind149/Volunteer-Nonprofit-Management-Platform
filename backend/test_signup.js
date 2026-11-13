@@ -194,7 +194,7 @@ const runTests = async () => {
           title,
           description: `Description for ${title}`,
           category: 'Community',
-          event_date: '2026-10-15',
+          event_date: '2027-10-15',
           start_time: '09:00:00',
           end_time: '12:00:00',
           location: 'Community Park',
@@ -761,7 +761,7 @@ const runTests = async () => {
       body: JSON.stringify({
         organization_id: org2Id,
         title: 'Coord 2 Private Opportunity',
-        event_date: '2026-11-15',
+        event_date: '2027-11-15',
         start_time: '10:00:00',
         end_time: '14:00:00',
         location: 'Downtown Center',
@@ -983,7 +983,7 @@ const runTests = async () => {
       body: JSON.stringify({
         title: `Re-reg Cap 1 Opp ${timestamp}`,
         description: 'Testing re-registration when capacity full',
-        event_date: '2026-11-20',
+        event_date: '2027-11-20',
         start_time: '10:00:00',
         end_time: '12:00:00',
         location: 'Community Park',
@@ -1061,7 +1061,7 @@ const runTests = async () => {
       body: JSON.stringify({
         title: `Re-reg Race Opp ${timestamp}`,
         description: 'Testing concurrent re-registration',
-        event_date: '2026-11-21',
+        event_date: '2027-11-21',
         start_time: '14:00:00',
         end_time: '16:00:00',
         location: 'City Hall',

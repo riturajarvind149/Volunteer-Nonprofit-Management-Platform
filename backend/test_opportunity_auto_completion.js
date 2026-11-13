@@ -170,21 +170,30 @@ const runTests = async () => {
     const pastOppId = pastOppRes.rows[0].id;
     assert(Boolean(pastOppId), 'Past published opportunity created');
 
-    // Alice registers (status = REGISTERED)
-    const signupAliceRes = await fetch(`${baseUrl}/api/opportunities/${pastOppId}/signup`, {
+    // The API rejects new signups for events that already happened, so the
+    // historical signups are seeded directly in the database.
+    const pastSignupViaApi = await fetch(`${baseUrl}/api/opportunities/${pastOppId}/signup`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${aliceToken}` },
     });
-    const signupAliceBody = await signupAliceRes.json();
-    const aliceSignupId = signupAliceBody.data?.signup?.id;
-    assert(signupAliceRes.status === 201 && aliceSignupId, 'Alice signs up for past opportunity');
+    assert(pastSignupViaApi.status === 400, 'API rejects signups for past events');
 
-    // Bob registers and then cancels (status = CANCELLED)
-    const signupBobRes = await fetch(`${baseUrl}/api/opportunities/${pastOppId}/signup`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${bobToken}` },
-    });
-    const bobSignupId = (await signupBobRes.json()).data?.signup?.id;
+    // Alice registered (status = REGISTERED)
+    const aliceSignupId = (
+      await pool.query(
+        "INSERT INTO signups (volunteer_id, opportunity_id, status) VALUES ($1, $2, 'REGISTERED') RETURNING id",
+        [aliceUser.id, pastOppId]
+      )
+    ).rows[0].id;
+    assert(Boolean(aliceSignupId), 'Alice signs up for past opportunity');
+
+    // Bob registered and then cancelled (status = CANCELLED)
+    const bobSignupId = (
+      await pool.query(
+        "INSERT INTO signups (volunteer_id, opportunity_id, status) VALUES ($1, $2, 'REGISTERED') RETURNING id",
+        [bobUser.id, pastOppId]
+      )
+    ).rows[0].id;
 
     const cancelBobRes = await fetch(`${baseUrl}/api/signups/${bobSignupId}/cancel`, {
       method: 'PATCH',

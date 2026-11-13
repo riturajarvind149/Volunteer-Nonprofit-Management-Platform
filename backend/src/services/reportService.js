@@ -23,7 +23,9 @@ const convertToCSV = (rows, columns) => {
         let val = row[col.key];
         if (val === null || val === undefined) val = '';
         if (val instanceof Date) val = val.toISOString();
-        const str = String(val).replace(/"/g, '""');
+        let str = String(val).replace(/"/g, '""');
+        // Neutralise spreadsheet formula injection (=, +, -, @, tab, CR) in user-supplied text
+        if (typeof val === 'string' && /^[=+\-@\t\r]/.test(str)) str = `'${str}`;
         return `"${str}"`;
       })
       .join(',');

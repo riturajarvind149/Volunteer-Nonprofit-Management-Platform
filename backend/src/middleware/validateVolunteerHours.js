@@ -110,10 +110,10 @@ const validateUpdateHoursStatus = (req, res, next) => {
   }
 
   const normalizedStatus = status.trim().toUpperCase();
-  if (!ALLOWED_STATUSES.includes(normalizedStatus)) {
+  if (![...ALLOWED_STATUSES, 'REJECTED'].includes(normalizedStatus)) {
     return next(
       new AppError(
-        'Invalid status. Status must be one of: PENDING, RECORDED, VERIFIED',
+        'Invalid status. Status must be one of: PENDING, RECORDED, VERIFIED, REJECTED',
         400
       )
     );
