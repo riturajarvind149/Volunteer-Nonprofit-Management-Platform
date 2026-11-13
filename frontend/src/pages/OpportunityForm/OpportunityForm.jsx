@@ -2,20 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
-import { getOrganizationsApi, getOpportunityByIdApi } from '../../services/api'
+import { getMyOrganizationsApi, getOpportunityByIdApi } from '../../services/api'
+import { CATEGORIES } from '../../utils/categories'
 import { PageHeader, LoadingState, EmptyState, Alert } from '../../components/ui'
 import { toInputDate } from '../../utils/format'
 import './OpportunityForm.css'
 
-const CATEGORIES = [
-  'Community Support',
-  'Hunger & Food',
-  'Education',
-  'Environment',
-  'Animal Welfare',
-  'Health & Wellness',
-  'Arts & Culture',
-]
 
 const BLANK = {
   organization_id: '',
@@ -99,7 +91,7 @@ function OpportunityForm() {
     const load = async () => {
       try {
         const [orgsRes, oppRes] = await Promise.all([
-          getOrganizationsApi(token),
+          getMyOrganizationsApi(token),
           isEdit ? getOpportunityByIdApi(id, token) : Promise.resolve(null),
         ])
         if (!active) return

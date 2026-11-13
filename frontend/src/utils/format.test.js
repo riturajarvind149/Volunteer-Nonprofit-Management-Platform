@@ -26,6 +26,10 @@ describe('spotsLabel (capacity display)', () => {
     expect(spotsLabel({ spots_remaining: -1, capacity: 10 })).toBe('Full')
   })
 
+  it('mentions the waitlist when a full opportunity has people waiting', () => {
+    expect(spotsLabel({ spots_remaining: 0, capacity: 10, waitlist_count: 3 })).toBe('Full · 3 on waitlist')
+  })
+
   it('returns null when the API sent no capacity info', () => {
     expect(spotsLabel({ capacity: 10 })).toBeNull()
   })

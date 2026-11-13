@@ -38,6 +38,37 @@
   white-space: pre-line;
 }
 
+.org-profile-about > section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.org-profile-about {
+  gap: var(--space-5);
+}
+
+.org-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.org-contact-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.org-contact-list svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--ink-3);
+}
+
 .org-upcoming-title {
   margin-bottom: var(--space-3);
 }

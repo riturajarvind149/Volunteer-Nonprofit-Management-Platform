@@ -68,6 +68,13 @@ function RequireAuth({ roles }) {
   return <Outlet />
 }
 
+// Public pages (browse/detail) use the app shell when signed in and the marketing shell otherwise.
+function LayoutForVisitor(themeProps) {
+  const { isAuthenticated, loading } = useAuth()
+  if (loading) return <LoadingState />
+  return isAuthenticated ? <AppLayout {...themeProps} /> : <PublicLayout {...themeProps} />
+}
+
 function AppRoutes() {
   const { isAuthenticated, loading } = useAuth()
   const [theme, toggleTheme] = useTheme()
@@ -86,13 +93,17 @@ function AppRoutes() {
         <Route path="/terms" element={<Terms />} />
       </Route>
 
+      {/* Discoverable without an account */}
+      <Route element={<LayoutForVisitor {...themeProps} />}>
+        <Route path="/opportunities" element={<Opportunities />} />
+        <Route path="/opportunities/:id" element={<OpportunityDetails />} />
+        <Route path="/organizations" element={<Organizations />} />
+        <Route path="/organizations/:id" element={<OrganizationDetails />} />
+      </Route>
+
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout {...themeProps} />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/opportunities" element={<Opportunities />} />
-          <Route path="/opportunities/:id" element={<OpportunityDetails />} />
-          <Route path="/organizations" element={<Organizations />} />
-          <Route path="/organizations/:id" element={<OrganizationDetails />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/profile" element={<Profile />} />
 

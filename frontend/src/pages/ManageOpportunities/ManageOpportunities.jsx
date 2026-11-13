@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { getManagedOpportunitiesApi, getOrganizationsApi } from '../../services/api'
+import { getManagedOpportunitiesApi, getMyOrganizationsApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge, CapacityMeter } from '../../components/ui'
 import { formatDate, formatTime, compareByDate } from '../../utils/format'
@@ -30,7 +30,7 @@ function ManageOpportunities() {
   const load = useCallback(async () => {
     setError('')
     try {
-      const [oppsRes, orgsRes] = await Promise.all([getManagedOpportunitiesApi(token), getOrganizationsApi(token)])
+      const [oppsRes, orgsRes] = await Promise.all([getManagedOpportunitiesApi(token), getMyOrganizationsApi(token)])
       setOpportunities(oppsRes?.data?.opportunities || [])
       setHasOrganization((orgsRes?.data?.organizations || []).some((org) => org.coordinator_id === user.id))
     } catch (err) {

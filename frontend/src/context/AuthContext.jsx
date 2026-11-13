@@ -64,8 +64,8 @@ export function AuthProvider({ children }) {
           setUser(response.data.user)
         }
       } catch (error) {
-        // Network errors keep the token so a flaky connection doesn't sign people out.
-        if (isMounted && error.status) {
+        // Network failures (status 0) keep the token so a flaky connection doesn't sign people out.
+        if (isMounted && error.status !== 0) {
           writeToken(null)
           setToken(null)
           setUser(null)
