@@ -1,0 +1,13 @@
+.hours-certificate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  max-width: 320px;
+}
+
+@media (max-width: 640px) {
+  .hours-certificate {
+    align-items: flex-start;
+  }
+}
