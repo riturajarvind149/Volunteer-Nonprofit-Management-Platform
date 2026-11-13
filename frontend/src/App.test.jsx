@@ -40,6 +40,19 @@ describe('Role-based routing', () => {
     expect(screen.getByText('Sign in to continue to that page.')).toBeInTheDocument()
   })
 
+  it('lets signed-out visitors browse opportunities and organizations', async () => {
+    renderApp('/opportunities')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Browse opportunities' })).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/opportunities')
+    expect(screen.getByRole('navigation', { name: 'Site' })).toBeInTheDocument()
+  })
+
+  it('shows public pages inside the app shell when signed in', async () => {
+    renderApp('/organizations', VOLUNTEER)
+    expect(await screen.findByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/organizations')
+  })
+
   it('drops an invalid saved session and asks the user to sign in', async () => {
     localStorage.setItem(TOKEN_KEY, 'expired-token')
     api.getMeApi.mockRejectedValue(new Error('Token has expired'))

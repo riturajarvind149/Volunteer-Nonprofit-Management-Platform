@@ -113,3 +113,10 @@
     padding: 0 var(--space-3);
   }
 }
+
+/* Browse links move to the footer on small phones to keep the header on one line. */
+@media (max-width: 720px) {
+  .public-nav-browse {
+    display: none;
+  }
+}

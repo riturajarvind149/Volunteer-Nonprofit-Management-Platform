@@ -100,3 +100,10 @@
     display: none;
   }
 }
+
+.org-row-open {
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--brand-ink);
+}

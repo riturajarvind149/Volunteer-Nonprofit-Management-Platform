@@ -17,6 +17,36 @@
   flex: 0 1 200px;
 }
 
+.browse-toolbar .browse-location {
+  flex: 0 1 200px;
+}
+
+.browse-dates {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.browse-dates label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.browse-date-label {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.browse-dates .input {
+  width: auto;
+}
+
+.browse-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
 .browse-summary {
   display: flex;
   align-items: center;
@@ -74,7 +104,18 @@
 }
 
 @media (max-width: 640px) {
-  .browse-category {
+  .browse-category,
+  .browse-toolbar .browse-location,
+  .browse-dates {
     flex: 1 1 100%;
+  }
+
+  .browse-dates label {
+    flex: 1;
+  }
+
+  .browse-dates .input {
+    width: 100%;
+    min-width: 0;
   }
 }

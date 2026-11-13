@@ -70,11 +70,36 @@ export const resendVerificationApi = (email) => authFetch('/auth/resend-verifica
 export const forgotPasswordApi = (email) => authFetch('/auth/forgot-password', { method: 'POST', body: { email } })
 export const resetPasswordApi = (token, password) => authFetch('/auth/reset-password', { method: 'POST', body: { token, password } })
 
-export const getOrganizationsApi = (token) => authFetch('/organizations', { token })
+/** Build "?a=1&b=2" from an object, skipping empty values. Arrays become comma lists. */
+const toQuery = (params = {}) => {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '' || value === false) continue
+    query.set(key, Array.isArray(value) ? value.join(',') : String(value))
+  }
+  const qs = query.toString()
+  return qs ? '?' + qs : ''
+}
+
+// ---- Organizations (list/detail are public; token optional) ----
+export const getOrganizationsApi = (token, params = {}) => authFetch('/organizations' + toQuery(params), { token })
+export const getMyOrganizationsApi = (token) => authFetch('/organizations/mine', { token })
 export const getOrganizationByIdApi = (id, token) => authFetch('/organizations/' + id, { token })
+export const getOrganizationOpportunitiesApi = (id, token, params = {}) =>
+  authFetch('/organizations/' + id + '/opportunities' + toQuery(params), { token })
 export const createOrganizationApi = (payload, token) => authFetch('/organizations', { method: 'POST', body: payload, token })
 
-export const getOpportunitiesApi = (token) => authFetch('/opportunities', { token })
+// ---- Opportunities (search/detail are public; token optional) ----
+/**
+ * Server-side search. params: q, category, location, from_date, to_date, skills,
+ * available, upcoming, sort (date|newest|spots), organization_id, page, limit.
+ * Response: { data: { opportunities, pagination: { page, limit, total, total_pages } } }
+ */
+export const getOpportunitiesApi = (token, params = {}) => authFetch('/opportunities' + toQuery(params), { token })
+export const opportunityCalendarUrl = (id) => API_BASE_URL + '/opportunities/' + id + '/calendar.ics'
+export const joinWaitlistApi = (opportunityId, token) => authFetch('/opportunities/' + opportunityId + '/waitlist', { method: 'POST', token })
+export const leaveWaitlistApi = (opportunityId, token) => authFetch('/opportunities/' + opportunityId + '/waitlist', { method: 'DELETE', token })
+export const getMyWaitlistApi = (token) => authFetch('/signups/my/waitlist', { token })
 export const getManagedOpportunitiesApi = (token) => authFetch('/opportunities?managed=true', { token })
 export const getOpportunityByIdApi = (id, token) => authFetch('/opportunities/' + id, { token })
 export const createOpportunityApi = (payload, token) => authFetch('/opportunities', { method: 'POST', body: payload, token })

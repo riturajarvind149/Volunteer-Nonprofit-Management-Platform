@@ -156,3 +156,29 @@
     order: -1;
   }
 }
+
+.detail-share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  margin-left: calc(var(--space-3) * -1);
+}
+
+.detail-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.signup-waitlisted {
+  align-items: flex-start;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.signup-waitlisted svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
+}
