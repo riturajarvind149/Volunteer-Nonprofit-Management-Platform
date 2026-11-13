@@ -61,6 +61,34 @@ const authFetch = async (endpoint, options = {}) => {
   return handleResponse(response, { sentToken: Boolean(token) })
 }
 
+/**
+ * Download a protected file (PDF, CSV…) and hand it to the browser as a download.
+ * Errors from the server arrive as JSON and are thrown as ApiError like any other call.
+ */
+export const downloadFile = async (endpoint, token, fallbackName) => {
+  let response
+  try {
+    response = await fetch(API_BASE_URL + endpoint, { headers: token ? { Authorization: 'Bearer ' + token } : {} })
+  } catch {
+    throw new ApiError('Can’t reach the server. Check your internet connection and try again.', { status: 0 })
+  }
+  if (!response.ok) return handleResponse(response, { sentToken: Boolean(token) })
+
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const match = disposition.match(/filename="?([^";]+)"?/i)
+  const filename = match ? match[1] : fallbackName
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return { filename }
+}
+
 // ---- Auth ----
 export const registerApi = (payload) => authFetch('/auth/register', { method: 'POST', body: payload })
 export const loginApi = (payload) => authFetch('/auth/login', { method: 'POST', body: payload })
@@ -100,6 +128,13 @@ export const opportunityCalendarUrl = (id) => API_BASE_URL + '/opportunities/' +
 export const joinWaitlistApi = (opportunityId, token) => authFetch('/opportunities/' + opportunityId + '/waitlist', { method: 'POST', token })
 export const leaveWaitlistApi = (opportunityId, token) => authFetch('/opportunities/' + opportunityId + '/waitlist', { method: 'DELETE', token })
 export const getMyWaitlistApi = (token) => authFetch('/signups/my/waitlist', { token })
+
+// ---- Volunteer activity ----
+export const checkInApi = (opportunityId, code, token) =>
+  authFetch('/opportunities/' + opportunityId + '/check-in', { method: 'POST', body: { code }, token })
+export const logOwnHoursApi = (signupId, payload, token) =>
+  authFetch('/signups/' + signupId + '/hours/self', { method: 'POST', body: payload, token })
+export const downloadCertificateApi = (token) => downloadFile('/hours/my/certificate', token, 'volunteer-certificate.pdf')
 export const getManagedOpportunitiesApi = (token) => authFetch('/opportunities?managed=true', { token })
 export const getOpportunityByIdApi = (id, token) => authFetch('/opportunities/' + id, { token })
 export const createOpportunityApi = (payload, token) => authFetch('/opportunities', { method: 'POST', body: payload, token })

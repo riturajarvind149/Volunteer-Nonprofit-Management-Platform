@@ -47,6 +47,11 @@ export function isUpcoming(value) {
   return Boolean(date) && date >= startOfToday()
 }
 
+export function isToday(value) {
+  const date = parseDate(value)
+  return Boolean(date) && date.getTime() === startOfToday().getTime()
+}
+
 // 'YYYY-MM-DD' for <input type="date">
 export function toInputDate(value) {
   const date = parseDate(value)
