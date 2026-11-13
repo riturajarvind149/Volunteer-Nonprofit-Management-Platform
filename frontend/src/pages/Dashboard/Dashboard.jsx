@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
 import {
@@ -339,6 +339,8 @@ function CoordinatorDashboard({ user, token }) {
 
 function Dashboard() {
   const { user, token } = useAuth()
+  // Admins have their own console; the volunteer/coordinator dashboards call role-specific APIs.
+  if (user.role === 'ADMIN') return <Navigate to="/admin" replace />
   return user.role === 'COORDINATOR'
     ? <CoordinatorDashboard user={user} token={token} />
     : <VolunteerDashboard user={user} token={token} />

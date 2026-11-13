@@ -1,0 +1,177 @@
+/* ---------- Shared admin layout ---------- */
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-search {
+  flex: 0 1 320px;
+}
+
+.admin-count {
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+
+.admin-you {
+  margin-left: var(--space-2);
+}
+
+.admin-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.admin-na {
+  display: block;
+  text-align: right;
+}
+
+.admin-audit-details {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Overview ---------- */
+.admin-figures {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.admin-pending-list li,
+.admin-org-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+}
+
+.admin-pending-list li + li,
+.admin-org-list > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.admin-pending-main,
+.admin-org-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---------- Organization review ---------- */
+.admin-org-row {
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-org-row:hover {
+  background: var(--surface-hover);
+}
+
+.admin-org-row:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+.admin-org-chevron {
+  color: var(--ink-3);
+  transition: transform 0.15s ease;
+}
+
+.admin-org-list > li.is-open .admin-org-chevron {
+  transform: rotate(90deg);
+}
+
+.admin-org-date {
+  font-size: var(--text-sm);
+}
+
+.admin-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--line);
+}
+
+.admin-review-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.admin-review-facts dt {
+  color: var(--ink-3);
+  font-weight: 600;
+}
+
+.admin-review-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-review-desc,
+.admin-review-prev {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  white-space: pre-line;
+}
+
+.admin-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ---------- Pagination ---------- */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.pagination-status {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+@media (max-width: 640px) {
+  .admin-org-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .admin-org-date,
+  .admin-org-chevron {
+    display: none;
+  }
+
+  .admin-pending-list li {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .admin-review {
+    padding: var(--space-4);
+  }
+
+  .admin-search {
+    flex: 1 1 100%;
+  }
+}
