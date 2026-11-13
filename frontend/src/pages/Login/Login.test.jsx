@@ -62,6 +62,28 @@ describe('Login page', () => {
     expect(password).toHaveAttribute('type', 'text')
   })
 
+  it('offers to resend the verification email when the address is not verified', async () => {
+    loginApi.mockRejectedValue(
+      Object.assign(new Error('Please verify your email address before logging in.'), {
+        status: 403,
+        code: 'EMAIL_NOT_VERIFIED',
+      })
+    )
+    renderLogin()
+    await userEvent.type(screen.getByLabelText('Email address'), 'asha@example.org')
+    await userEvent.type(screen.getByLabelText('Password'), 'Secret123!')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('verify your email')
+    expect(screen.getByRole('button', { name: 'Resend verification email' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Email address', { selector: '#resend-email' })).toHaveValue('asha@example.org')
+  })
+
+  it('links to the forgot-password page', () => {
+    renderLogin()
+    expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password')
+  })
+
   it('shows the success message passed from registration', () => {
     renderLogin({ initialState: { message: 'Your account was created. Sign in to continue.' } })
     expect(screen.getByRole('status')).toHaveTextContent('Your account was created.')
