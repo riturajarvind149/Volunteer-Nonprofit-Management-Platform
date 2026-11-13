@@ -113,9 +113,16 @@ const getOpportunityAttendees = async (req, res, next) => {
         opportunity: {
           id: result.opportunity.id,
           title: result.opportunity.title,
+          event_date: result.opportunity.event_date,
+          start_time: result.opportunity.start_time,
+          end_time: result.opportunity.end_time,
+          capacity: result.opportunity.capacity,
+          status: result.opportunity.status,
+          check_in_code: result.opportunity.check_in_code,
         },
         signups: result.attendees,
         attendees: result.attendees,
+        waitlist: result.waitlist,
       },
     });
   } catch (error) {
@@ -177,7 +184,80 @@ const cancelSignupByOpportunity = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/opportunities/:id/check-in  { code }
+ */
+const checkIn = async (req, res, next) => {
+  try {
+    const result = await signupService.checkIn(req.params.id, req.user.id, req.body?.code);
+    res.status(200).json({
+      status: 'success',
+      message: result.already ? 'You are already checked in' : 'Checked in successfully. Thank you for volunteering!',
+      data: { signup: result },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/signups/:id/attendance  { attendance_status }
+ */
+const setAttendance = async (req, res, next) => {
+  try {
+    const signup = await signupService.setAttendance(req.params.id, req.body?.attendance_status ?? null, req.user.id);
+    res.status(200).json({ status: 'success', message: 'Attendance updated', data: { signup } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/signups/my/waitlist
+ */
+const getMyWaitlist = async (req, res, next) => {
+  try {
+    const waitlist = await require('../services/waitlistService').getMyWaitlist(req.user.id);
+    res.status(200).json({ status: 'success', data: { waitlist } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/opportunities/:id/waitlist
+ */
+const joinWaitlist = async (req, res, next) => {
+  try {
+    const entry = await require('../services/waitlistService').joinWaitlist(req.params.id, req.user.id);
+    res.status(201).json({
+      status: 'success',
+      message: `You're #${entry.position} on the waitlist. We'll email you if a spot opens up.`,
+      data: { waitlist_entry: entry },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /api/opportunities/:id/waitlist
+ */
+const leaveWaitlist = async (req, res, next) => {
+  try {
+    await require('../services/waitlistService').leaveWaitlist(req.params.id, req.user.id);
+    res.status(200).json({ status: 'success', message: 'Removed from the waitlist' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
+  checkIn,
+  setAttendance,
+  getMyWaitlist,
+  joinWaitlist,
+  leaveWaitlist,
   createSignup,
   getMySignups,
   getSignupById,

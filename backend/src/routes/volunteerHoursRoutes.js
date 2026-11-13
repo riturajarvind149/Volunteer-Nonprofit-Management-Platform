@@ -28,6 +28,13 @@ router.get(
  * @access  Protected (VOLUNTEER only)
  */
 router.get(
+  '/my/certificate',
+  authenticate,
+  authorizeRoles('VOLUNTEER'),
+  volunteerHoursController.getMyCertificate
+);
+
+router.get(
   '/my/summary',
   authenticate,
   authorizeRoles('VOLUNTEER'),
