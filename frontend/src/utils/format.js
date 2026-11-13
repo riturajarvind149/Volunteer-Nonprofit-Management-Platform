@@ -67,7 +67,10 @@ export function compareByDate(a, b, key = 'event_date') {
 export function spotsLabel(opportunity) {
   if (opportunity.spots_remaining == null) return null
   const left = Number(opportunity.spots_remaining)
-  if (left <= 0) return 'Full'
+  if (left <= 0) {
+    const waiting = Number(opportunity.waitlist_count) || 0
+    return waiting > 0 ? `Full · ${waiting} on waitlist` : 'Full'
+  }
   return `${left} of ${opportunity.capacity} spots left`
 }
 

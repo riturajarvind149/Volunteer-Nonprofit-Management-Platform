@@ -9,6 +9,9 @@ import {
   getOpportunityByIdApi,
   signUpForOpportunityApi,
   cancelSignUpApi,
+  joinWaitlistApi,
+  leaveWaitlistApi,
+  opportunityCalendarUrl,
 } from '../../services/api'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import { TOKEN_KEY, VOLUNTEER, COORDINATOR } from '../../test/fixtures'
@@ -62,7 +65,7 @@ describe('Opportunity sign-up panel', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Register for this opportunity' }))
 
     expect(signUpForOpportunityApi).toHaveBeenCalledWith('opp-1', 'test-token')
-    expect(await screen.findByText(/You’re registered\. It’s now listed under My registrations\./)).toBeInTheDocument()
+    expect(await screen.findByText(/You’re registered\. A confirmation email/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel registration' })).toBeInTheDocument()
   })
 
@@ -75,12 +78,49 @@ describe('Opportunity sign-up panel', () => {
     expect(screen.getByRole('button', { name: 'Register for this opportunity' })).toBeEnabled()
   })
 
-  it('closes registration when the opportunity is at exact capacity', async () => {
-    setup({ opportunity: { ...OPEN, active_signups: 10, spots_remaining: 0 } })
+  it('offers the waitlist when the opportunity is at exact capacity', async () => {
+    joinWaitlistApi.mockResolvedValue({ message: 'You’re #2 on the waitlist. We’ll email you if a spot opens up.' })
+    setup({ opportunity: { ...OPEN, active_signups: 10, spots_remaining: 0, waitlist_count: 1 } })
 
-    expect(await screen.findByRole('button', { name: 'Registration closed' })).toBeDisabled()
-    expect(screen.getByText('Every spot has been taken.')).toBeInTheDocument()
+    expect(await screen.findByText('Full · 1 on waitlist')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Register for this opportunity' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Join the waitlist' }))
+
+    expect(joinWaitlistApi).toHaveBeenCalledWith('opp-1', 'test-token')
+    expect(await screen.findByText(/You’re #2 on the waitlist/)).toBeInTheDocument()
+  })
+
+  it('shows the waitlist position and lets the volunteer leave', async () => {
+    leaveWaitlistApi.mockResolvedValue({ status: 'success' })
+    setup({ opportunity: { ...OPEN, spots_remaining: 0, my_signup: null, my_waitlist_position: 3 } })
+
+    expect(await screen.findByText(/You’re #3 on the waitlist/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Leave waitlist' }))
+    expect(leaveWaitlistApi).toHaveBeenCalledWith('opp-1', 'test-token')
+  })
+
+  it('asks signed-out visitors to sign in, remembering the page', async () => {
+    getOpportunityByIdApi.mockResolvedValue({ data: { opportunity: OPEN } })
+    renderWithProviders(<OpportunityDetails />, { route: '/opportunities/opp-1', path: '/opportunities/:id' })
+
+    const link = await screen.findByRole('link', { name: 'Sign in to register' })
+    expect(link).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('link', { name: /Create a free volunteer account/ })).toHaveAttribute('href', '/register')
+    expect(getOpportunityByIdApi).toHaveBeenCalledWith('opp-1', null)
+  })
+
+  it('offers add-to-calendar and share for published opportunities', async () => {
+    opportunityCalendarUrl.mockReturnValue('http://api.test/api/opportunities/opp-1/calendar.ics')
+    setup()
+    const calendar = await screen.findByRole('link', { name: /Add to calendar/ })
+    expect(calendar).toHaveAttribute('href', 'http://api.test/api/opportunities/opp-1/calendar.ics')
+    expect(screen.getByRole('button', { name: /Share/ })).toBeInTheDocument()
+  })
+
+  it('explains why a cancelled opportunity was cancelled', async () => {
+    setup({ opportunity: { ...OPEN, status: 'CANCELLED', cancellation_reason: 'Heavy rain forecast' } })
+    expect(await screen.findByText(/Reason: Heavy rain forecast/)).toBeInTheDocument()
+    expect(screen.getByText('This opportunity was cancelled by the organizer.', { selector: '.signup-note' })).toBeInTheDocument()
   })
 
   it('closes registration for past dates', async () => {
@@ -114,10 +154,12 @@ describe('Opportunity sign-up panel', () => {
     expect(screen.getByRole('button', { name: 'Cancel registration' })).toBeInTheDocument()
   })
 
-  it('blocks a second registration after a cancelled one (duplicate sign-up rule)', async () => {
-    setup({ signups: [{ opportunity_id: 'opp-1', status: 'CANCELLED' }] })
-    expect(await screen.findByRole('button', { name: 'Registration closed' })).toBeDisabled()
-    expect(screen.getByText(/Your registration was cancelled\./)).toBeInTheDocument()
+  it('lets a volunteer register again after cancelling', async () => {
+    setup({ opportunity: { ...OPEN, my_signup: { id: 's-1', status: 'CANCELLED' } } })
+    expect(await screen.findByText(/You cancelled your registration earlier/)).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Register again' }))
+    expect(signUpForOpportunityApi).toHaveBeenCalledWith('opp-1', 'test-token')
   })
 
   it('shows roster and edit actions to the organizing coordinator', async () => {

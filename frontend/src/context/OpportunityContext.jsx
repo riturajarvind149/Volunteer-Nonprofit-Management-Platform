@@ -28,7 +28,9 @@ export function OpportunityProvider({ children }) {
     setLoading(true)
     setError(null)
     try {
-      const res = await getOpportunitiesApi(token)
+      // Upcoming published opportunities only (used for dashboard suggestions);
+      // the browse page runs its own paginated server-side search.
+      const res = await getOpportunitiesApi(token, { upcoming: true, limit: 100 })
       setOpportunities(res?.data?.opportunities || [])
     } catch (err) {
       setError(err.message || 'Failed to load opportunities')

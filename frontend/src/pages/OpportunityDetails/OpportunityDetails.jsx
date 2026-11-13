@@ -1,33 +1,73 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
-import { getOpportunityByIdApi } from '../../services/api'
+import { getOpportunityByIdApi, joinWaitlistApi, leaveWaitlistApi, opportunityCalendarUrl } from '../../services/api'
 import Icon from '../../components/Icon'
 import { StatusBadge, LoadingState, EmptyState, Alert, CapacityMeter } from '../../components/ui'
 import { formatDate, formatTime, isUpcoming, spotsLabel } from '../../utils/format'
 import { opportunityPhoto } from '../../utils/photos'
 import './OpportunityDetails.css'
 
+function ShareAndCalendar({ opportunity }) {
+  const [copied, setCopied] = useState(false)
+  const url = typeof window !== 'undefined' ? window.location.href : ''
+
+  const share = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: opportunity.title, text: `Volunteer with ${opportunity.organization_name || 'us'}`, url })
+        return
+      } catch {
+        // dismissed or unsupported — fall back to copying
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      window.prompt('Copy this link:', url)
+    }
+  }
+
+  return (
+    <div className="detail-share">
+      {opportunity.status === 'PUBLISHED' && (
+        <a className="btn btn-ghost btn-sm" href={opportunityCalendarUrl(opportunity.id)} download>
+          <Icon name="calendar" size={15} /> Add to calendar
+        </a>
+      )}
+      <button type="button" className="btn btn-ghost btn-sm" onClick={share}>
+        <Icon name="share" size={15} /> {copied ? 'Link copied' : 'Share'}
+      </button>
+    </div>
+  )
+}
+
 function SignupPanel({ opportunity, onChanged }) {
-  const { user } = useAuth()
-  const { isRegistered, signupStatus, signUp, cancelSignUp } = useOpportunities()
+  const { user, token, isAuthenticated } = useAuth()
+  const location = useLocation()
+  const { isRegistered, signUp, cancelSignUp } = useOpportunities()
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [message, setMessage] = useState(null)
 
   const isCoordinator = user?.role === 'COORDINATOR'
   const isOwner = isCoordinator && opportunity.coordinator_id === user?.id
-  const registered = isRegistered(opportunity.id)
+  // The API reports the viewer's own signup; fall back to the cached list for older responses.
+  const mySignupStatus = opportunity.my_signup?.status
+  const registered = mySignupStatus ? mySignupStatus === 'REGISTERED' : isRegistered(opportunity.id)
+  const waitlistPosition = opportunity.my_waitlist_position
   const isFull = Number(opportunity.spots_remaining) <= 0
   const isPast = !isUpcoming(opportunity.event_date)
 
-  const run = async (action, successText) => {
+  const run = async (action, successText, { useServerMessage = false } = {}) => {
     setBusy(true)
     setMessage(null)
     try {
-      await action(opportunity.id)
-      setMessage({ tone: 'success', text: successText })
+      const res = await action(opportunity.id)
+      setMessage({ tone: 'success', text: (useServerMessage && res?.message) || successText })
       setConfirming(false)
       onChanged()
     } catch (err) {
@@ -35,6 +75,33 @@ function SignupPanel({ opportunity, onChanged }) {
     } finally {
       setBusy(false)
     }
+  }
+
+  const joinWaitlist = (id) => joinWaitlistApi(id, token)
+  const leaveWaitlist = (id) => leaveWaitlistApi(id, token)
+
+  if (!isAuthenticated) {
+    const open = opportunity.status === 'PUBLISHED' && !isPast
+    return (
+      <div className="signup-actions">
+        {open ? (
+          <>
+            <Link
+              to="/login"
+              state={{ from: location.pathname }}
+              className="btn btn-primary btn-lg btn-block"
+            >
+              Sign in to register
+            </Link>
+            <p className="signup-note">
+              New here? <Link to="/register">Create a free volunteer account</Link> — it takes a minute.
+            </p>
+          </>
+        ) : (
+          <p className="signup-note">Registration for this opportunity is closed.</p>
+        )}
+      </div>
+    )
   }
 
   if (isOwner) {
@@ -55,17 +122,46 @@ function SignupPanel({ opportunity, onChanged }) {
   }
 
   let unavailableReason = ''
-  // The API keeps one signup per volunteer and opportunity, so a cancelled one blocks a new registration.
-  if (signupStatus(opportunity.id) === 'CANCELLED') unavailableReason = 'Your registration was cancelled. ServeHub can’t take a new registration for the same opportunity, but the coordinator can restore yours from the roster.'
+  if (opportunity.status === 'CANCELLED') unavailableReason = 'This opportunity was cancelled by the organizer.'
   else if (opportunity.status !== 'PUBLISHED') unavailableReason = 'This opportunity isn’t open for registration.'
   else if (isPast) unavailableReason = 'This date has passed.'
-  else if (isFull) unavailableReason = 'Every spot has been taken.'
+
+  const canWaitlist = !registered && !unavailableReason && isFull
 
   return (
     <div className="signup-actions">
       {message && <Alert tone={message.tone}>{message.text}</Alert>}
 
-      {registered ? (
+      {canWaitlist ? (
+        waitlistPosition ? (
+          <>
+            <p className="signup-confirmed signup-waitlisted">
+              <Icon name="clock" size={18} />
+              You’re #{waitlistPosition} on the waitlist. We’ll email you and register you automatically if a spot opens up.
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary btn-block"
+              disabled={busy}
+              onClick={() => run(leaveWaitlist, 'You left the waitlist.')}
+            >
+              {busy ? 'Leaving…' : 'Leave waitlist'}
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="signup-note">Every spot has been taken, but you can join the waitlist.</p>
+            <button
+              type="button"
+              className="btn btn-primary btn-lg btn-block"
+              disabled={busy}
+              onClick={() => run(joinWaitlist, 'You joined the waitlist.', { useServerMessage: true })}
+            >
+              {busy ? 'Joining…' : 'Join the waitlist'}
+            </button>
+          </>
+        )
+      ) : registered ? (
         <>
           <p className="signup-confirmed">
             <Icon name="check-circle" size={18} />
@@ -95,14 +191,19 @@ function SignupPanel({ opportunity, onChanged }) {
           <p className="signup-note">{unavailableReason}</p>
         </>
       ) : (
-        <button
-          type="button"
-          className="btn btn-primary btn-lg btn-block"
-          disabled={busy}
-          onClick={() => run(signUp, 'You’re registered. It’s now listed under My registrations.')}
-        >
-          {busy ? 'Registering…' : 'Register for this opportunity'}
-        </button>
+        <>
+          {mySignupStatus === 'CANCELLED' && (
+            <p className="signup-note">You cancelled your registration earlier. You can register again while spots are available.</p>
+          )}
+          <button
+            type="button"
+            className="btn btn-primary btn-lg btn-block"
+            disabled={busy}
+            onClick={() => run(signUp, 'You’re registered. A confirmation email with a calendar invite is on its way.')}
+          >
+            {busy ? 'Registering…' : mySignupStatus === 'CANCELLED' ? 'Register again' : 'Register for this opportunity'}
+          </button>
+        </>
       )}
     </div>
   )
@@ -174,7 +275,15 @@ function OpportunityDetails() {
             <Link to={`/organizations/${opportunity.organization_id}`}>{opportunity.organization_name}</Link>
           </p>
         )}
+        <ShareAndCalendar opportunity={opportunity} />
       </header>
+
+      {opportunity.status === 'CANCELLED' && (
+        <Alert>
+          This opportunity was cancelled by the organizer.
+          {opportunity.cancellation_reason ? ` Reason: ${opportunity.cancellation_reason}` : ''}
+        </Alert>
+      )}
 
       <img
         className="detail-cover"
@@ -196,6 +305,15 @@ function OpportunityDetails() {
               <p className="muted">The organizer hasn’t added a description yet.</p>
             )}
           </section>
+
+          {opportunity.skills_required?.length > 0 && (
+            <section className="detail-section" aria-labelledby="skills-heading">
+              <h2 id="skills-heading">Helpful skills</h2>
+              <ul role="list" className="detail-skills">
+                {opportunity.skills_required.map((skill) => <li key={skill} className="tag">{skill}</li>)}
+              </ul>
+            </section>
+          )}
 
           <section className="detail-section" aria-labelledby="where-heading">
             <h2 id="where-heading">Where</h2>

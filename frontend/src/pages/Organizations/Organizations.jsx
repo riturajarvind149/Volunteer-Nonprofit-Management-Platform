@@ -5,6 +5,7 @@ import { getOrganizationsApi, createOrganizationApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, OrgInitials } from '../../components/ui'
 import { formatDate, pluralize } from '../../utils/format'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import './Organizations.css'
 
 function CreateOrganizationForm({ onCreated, onCancel }) {
@@ -26,7 +27,8 @@ function CreateOrganizationForm({ onCreated, onCancel }) {
     setSaving(true)
     try {
       const res = await createOrganizationApi({ name: name.trim(), description: description.trim() }, token)
-      onCreated(res?.data?.organization?.name || name.trim())
+      const created = res?.data?.organization
+      onCreated(created?.name || name.trim(), created?.verification_status)
     } catch (err) {
       setError(err.message || 'The organization could not be created.')
       setSaving(false)
@@ -90,29 +92,34 @@ function Organizations() {
   const showForm = isCoordinator && params.get('new') === '1'
   const setShowForm = (open) => setParams(open ? { new: '1' } : {}, { replace: true })
 
+  const debouncedQuery = useDebouncedValue(query.trim(), 300)
+
   const load = useCallback(async () => {
     setError('')
     try {
-      const res = await getOrganizationsApi(token)
+      // Server-side search; approved organizations plus a coordinator's own.
+      const res = await getOrganizationsApi(token, { q: debouncedQuery, limit: 100 })
       setOrganizations(res?.data?.organizations || [])
     } catch (err) {
       setError(err.message || 'Organizations could not be loaded.')
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, debouncedQuery])
 
   useEffect(() => { load() }, [load])
 
-  const handleCreated = (name) => {
+  const handleCreated = (name, verificationStatus) => {
     setShowForm(false)
-    setNotice(`“${name}” was created. You can now publish opportunities under it.`)
+    setNotice(
+      verificationStatus === 'PENDING'
+        ? `“${name}” was created and sent for verification. You can prepare opportunities as drafts now; you’ll be notified when it’s approved and can publish.`
+        : `“${name}” was created. You can now publish opportunities under it.`
+    )
     load()
   }
 
-  const q = query.trim().toLowerCase()
-  const filtered = organizations.filter((org) =>
-    !q || org.name?.toLowerCase().includes(q) || org.description?.toLowerCase().includes(q))
+  const filtered = organizations
 
   return (
     <div className="page">
@@ -150,7 +157,7 @@ function Organizations() {
         <LoadingState label="Loading organizations…" />
       ) : filtered.length === 0 ? (
         <div className="panel">
-          {organizations.length === 0 ? (
+          {organizations.length === 0 && !debouncedQuery ? (
             <EmptyState icon="building" title="No organizations yet">
               {isCoordinator ? 'Create the first one to start publishing opportunities.' : 'Organizations appear here once a coordinator registers one.'}
             </EmptyState>
@@ -172,8 +179,17 @@ function Organizations() {
                   <h2 className="org-row-name">
                     {org.name}
                     {org.coordinator_id === user?.id && <span className="badge badge-info">Yours</span>}
+                    {org.coordinator_id === user?.id && org.verification_status === 'PENDING' && (
+                      <span className="badge badge-warning">Pending verification</span>
+                    )}
+                    {org.coordinator_id === user?.id && ['REJECTED', 'SUSPENDED'].includes(org.verification_status) && (
+                      <span className="badge badge-danger">{org.verification_status === 'REJECTED' ? 'Rejected' : 'Suspended'}</span>
+                    )}
                   </h2>
                   <p className="org-row-desc">{org.description || 'No description provided.'}</p>
+                  {Number(org.open_opportunities) > 0 && (
+                    <p className="org-row-open">{pluralize(Number(org.open_opportunities), 'open opportunity', 'open opportunities')}</p>
+                  )}
                 </div>
                 <span className="org-row-date">Joined {formatDate(org.created_at, { day: undefined })}</span>
                 <Icon name="chevron-right" size={18} className="org-row-chevron" />

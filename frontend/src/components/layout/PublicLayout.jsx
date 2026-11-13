@@ -14,7 +14,9 @@ function PublicLayout({ theme, onToggleTheme, children }) {
       <header className="public-header">
         <div className="public-header-inner">
           <Brand />
-          <nav className="public-nav" aria-label="Account">
+          <nav className="public-nav" aria-label="Site">
+            <Link to="/opportunities" className="btn btn-ghost public-nav-browse">Opportunities</Link>
+            <Link to="/organizations" className="btn btn-ghost public-nav-browse">Organizations</Link>
             <button
               type="button"
               className="icon-button"
@@ -47,6 +49,8 @@ function PublicLayout({ theme, onToggleTheme, children }) {
             <p>Volunteer registration, rosters and hour tracking for nonprofit teams.</p>
           </div>
           <nav className="public-footer-links" aria-label="Footer">
+            <Link to="/opportunities">Browse opportunities</Link>
+            <Link to="/organizations">Organizations</Link>
             <Link to="/login">Sign in</Link>
             <Link to="/register">Create account</Link>
             <Link to="/privacy">Privacy</Link>

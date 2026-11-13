@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { getOrganizationsApi, getManagedOpportunitiesApi } from '../../services/api'
+import { getMyOrganizationsApi, getManagedOpportunitiesApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, OrgInitials } from '../../components/ui'
 import { formatDate, isUpcoming } from '../../utils/format'
@@ -17,7 +17,7 @@ function OrgProfile() {
   const load = useCallback(async () => {
     setError('')
     try {
-      const [orgsRes, oppsRes] = await Promise.all([getOrganizationsApi(token), getManagedOpportunitiesApi(token)])
+      const [orgsRes, oppsRes] = await Promise.all([getMyOrganizationsApi(token), getManagedOpportunitiesApi(token)])
       setOrganizations((orgsRes?.data?.organizations || []).filter((org) => org.coordinator_id === user.id))
       setOpportunities(oppsRes?.data?.opportunities || [])
     } catch (err) {
