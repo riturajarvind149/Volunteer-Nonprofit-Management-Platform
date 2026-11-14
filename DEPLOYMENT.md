@@ -38,8 +38,10 @@ Set these in the Render dashboard (see `backend/.env.example` for every option):
 | `DATABASE_URL` | Internal connection string of the Render database |
 | `JWT_SECRET` | A long random string (≥ 32 characters): `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `FRONTEND_URL` | `https://volunteer-nonprofit-frontend.vercel.app` — no trailing slash; comma-separate several origins |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Your email provider (Resend, Brevo, SendGrid, Mailgun, SES…) |
-| `REQUIRE_EMAIL_VERIFICATION` | `true` once SMTP works (otherwise users can’t receive the link) |
+| `BREVO_API_KEY` | **Required on Render’s free plan.** Brevo API key (`xkeysib-…`, from SMTP & API → API Keys). Sends over HTTPS because Render’s free plan blocks SMTP ports 25/465/587. |
+| `EMAIL_FROM` | `ServeHub <sender@yourdomain>` — a sender verified in Brevo |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Alternative to the API key, only for hosts that allow SMTP (local development, paid Render plans). Ignored when `BREVO_API_KEY` is set. |
+| `REQUIRE_EMAIL_VERIFICATION` | `true` (default). Automatically paused while email can’t be delivered, so users are never locked out. |
 | `REQUIRE_ORG_APPROVAL` | `true` once an admin account exists |
 | `APP_TIMEZONE` | `Asia/Kolkata` (default) |
 
@@ -47,7 +49,7 @@ Without SMTP the app still works, but emails are only written to the server log.
 While email can't be delivered (SMTP missing or its login failing), email verification is
 **automatically switched off** so new users aren’t locked out.
 
-**Checking email:** at every start the backend logs either `[email] SMTP login OK` or the exact
+**Checking email:** at every start the backend logs either `[email] Email login OK` or the exact
 problem (e.g. a wrong login). Admins also see an **Email delivery** panel on the admin overview.
 
 Do **not** set `APP_URL` on Render — links in emails use `FRONTEND_URL`. (`APP_URL=http://localhost:5173`
@@ -90,7 +92,7 @@ and `/api/health/db` → `{"status":"ok","database":"connected"}`.
 1. Deploy the backend with `REQUIRE_EMAIL_VERIFICATION=false` and `REQUIRE_ORG_APPROVAL=false`.
 2. Deploy the frontend and confirm sign-in works.
 3. Create the first admin (`npm run create-admin`).
-4. Configure SMTP and send yourself a password-reset email to test it.
+4. Set `BREVO_API_KEY` + `EMAIL_FROM` and send yourself a password-reset email to test it.
 5. Turn on `REQUIRE_EMAIL_VERIFICATION=true` and `REQUIRE_ORG_APPROVAL=true`.
 
 ---
