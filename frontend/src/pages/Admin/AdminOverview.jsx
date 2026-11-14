@@ -17,9 +17,37 @@ const FIGURES = [
   { key: 'verified_hours', label: 'Verified hours', hours: true },
 ]
 
+const EMAIL_STATES = {
+  ok: { tone: 'success', title: 'Email delivery is working' },
+  unknown: { tone: 'info', title: 'Email delivery is being checked' },
+  not_configured: { tone: 'error', title: 'Email is not set up' },
+  failed: { tone: 'error', title: 'Email delivery is failing' },
+}
+
+function EmailStatus({ email }) {
+  if (!email) return null
+  const view = EMAIL_STATES[email.state] || EMAIL_STATES.unknown
+  return (
+    <Alert tone={view.tone}>
+      <strong>{view.title}.</strong>{' '}
+      {email.state === 'ok' && (
+        <>Messages are sent through {email.host} as {email.from}.</>
+      )}
+      {email.state === 'not_configured' && (
+        <>Verification, password-reset and reminder emails are only written to the server log. Add the SMTP settings to the backend environment (see DEPLOYMENT.md).</>
+      )}
+      {email.state === 'failed' && <>{email.detail}</>}
+      {email.state !== 'ok' && email.state !== 'unknown' && (
+        <> Email verification is switched off until this is fixed, so new users are not locked out.</>
+      )}
+    </Alert>
+  )
+}
+
 function AdminOverview() {
   const { token } = useAuth()
   const [stats, setStats] = useState(null)
+  const [email, setEmail] = useState(null)
   const [pending, setPending] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -32,6 +60,7 @@ function AdminOverview() {
         getAdminOrganizationsApi(token, { status: 'PENDING', limit: 5 }),
       ])
       setStats(statsRes?.data?.stats || null)
+      setEmail(statsRes?.data?.email || null)
       setPending(pendingRes?.data?.organizations || [])
     } catch (err) {
       setError(err.message || 'The overview could not be loaded.')
@@ -51,6 +80,8 @@ function AdminOverview() {
       <PageHeader title="Platform overview" description="Health of ServeHub at a glance, and anything waiting on an administrator." />
 
       {error && <Alert onRetry={load}>{error}</Alert>}
+
+      <EmailStatus email={email} />
 
       {stats && (
         <section className="figures admin-figures" aria-label="Platform statistics">

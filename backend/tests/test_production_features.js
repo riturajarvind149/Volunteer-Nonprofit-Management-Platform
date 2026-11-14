@@ -179,6 +179,24 @@ const run = async () => {
   assert((await api('GET', '/api/auth/me', { token: volToken })).status === 401, 'Logout-all revokes the current token');
   volToken = (await api('POST', '/api/auth/login', { body: { email: vol.email, password: 'Password123!' } })).data.data.token;
 
+  // Without working email, verification must not lock new users out.
+  const savedMailEnv = { NODE_ENV: process.env.NODE_ENV, SMTP_HOST: process.env.SMTP_HOST };
+  try {
+    process.env.NODE_ENV = 'development';
+    delete process.env.SMTP_HOST;
+    const noMail = await register('nomail', 'VOLUNTEER');
+    assert(
+      noMail.res.status === 201 && noMail.res.data.data.requires_email_verification === false,
+      'Without email configured, registration does not demand verification'
+    );
+    const noMailLogin = await api('POST', '/api/auth/login', { body: { email: noMail.email, password: 'Password123!' } });
+    assert(noMailLogin.status === 200, 'Without email configured, new users can sign in immediately');
+  } finally {
+    process.env.NODE_ENV = savedMailEnv.NODE_ENV;
+    if (savedMailEnv.SMTP_HOST === undefined) delete process.env.SMTP_HOST;
+    else process.env.SMTP_HOST = savedMailEnv.SMTP_HOST;
+  }
+
   const roleEscalation = await api('POST', '/api/auth/register', {
     body: { full_name: 'Sneaky', email: `sneaky.${stamp}@prodtest.org`, password: 'Password123!', role: 'ADMIN' },
   });
@@ -231,6 +249,12 @@ const run = async () => {
   const oppId = draft.data.data.opportunity.id;
 
   assert((await api('GET', '/api/admin/stats', { token: coordToken })).status === 403, 'Non-admin cannot access admin API');
+  const adminStats = await api('GET', '/api/admin/stats', { token: adminToken });
+  assert(
+    adminStats.status === 200 && adminStats.data.data.email?.state === 'ok' && !('pass' in adminStats.data.data.email),
+    'Admin stats report email delivery status without secrets',
+    JSON.stringify(adminStats.data.data.email)
+  );
   const pending = await api('GET', '/api/admin/organizations?status=PENDING', { token: adminToken });
   assert(pending.data.data.organizations.some((o) => o.id === orgId), 'Admin sees pending organizations');
   const rejectNoNote = await api('PATCH', `/api/admin/organizations/${orgId}/verification`, {

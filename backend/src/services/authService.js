@@ -12,6 +12,12 @@ const EMAIL_VERIFICATION_TTL_MIN = 24 * 60;
 const PASSWORD_RESET_TTL_MIN = 60;
 const MAX_TOKENS_PER_HOUR = 5;
 
+/**
+ * Email verification is only enforced when the platform can actually deliver email.
+ * Requiring it while SMTP is missing or broken would lock every new user out.
+ */
+const isVerificationRequired = () => config.requireEmailVerification && emailService.canDeliverEmail();
+
 // Pre-computed hash used to equalise timing when an email does not exist.
 const DUMMY_HASH = bcrypt.hashSync('timing-equaliser-not-a-real-password', 10);
 
@@ -94,7 +100,7 @@ const registerUser = async ({ full_name, email, password, role }) => {
   delete newUser.password_hash;
 
   // 4. Email verification (auto-verify when the feature is disabled)
-  if (config.requireEmailVerification) {
+  if (isVerificationRequired()) {
     await sendVerificationEmail(newUser);
   } else {
     newUser = (await userRepository.markEmailVerified(newUser.id)) || newUser;
@@ -126,7 +132,7 @@ const loginUser = async ({ email, password }) => {
   if (!user.is_active) {
     throw new AppError('This account has been suspended. Please contact support.', 403, 'ACCOUNT_SUSPENDED');
   }
-  if (config.requireEmailVerification && !user.email_verified_at) {
+  if (isVerificationRequired() && !user.email_verified_at) {
     throw new AppError(
       'Please verify your email address before logging in. Check your inbox for the verification link.',
       403,
@@ -285,4 +291,5 @@ module.exports = {
   resetPassword,
   logoutAllSessions,
   validatePasswordStrength,
+  isVerificationRequired,
 };
