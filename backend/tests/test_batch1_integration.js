@@ -1,6 +1,6 @@
 require('dotenv').config();
-const app = require('./src/app');
-const pool = require('./src/config/db');
+const app = require('../src/app');
+const pool = require('../src/config/db');
 
 let server;
 let baseUrl;

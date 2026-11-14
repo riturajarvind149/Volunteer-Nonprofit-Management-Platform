@@ -1,7 +1,7 @@
 require('dotenv').config();
-const app = require('./src/app');
-const pool = require('./src/config/db');
-const { cleanupTestUsers } = require('./scripts/test-cleanup');
+const app = require('../src/app');
+const pool = require('../src/config/db');
+const { cleanupTestUsers } = require('../scripts/test-cleanup');
 
 let server;
 let baseUrl;
