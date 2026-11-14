@@ -34,7 +34,7 @@ function EmailStatus({ email }) {
         <>Messages are sent through {email.host} as {email.from}.</>
       )}
       {email.state === 'not_configured' && (
-        <>Verification, password-reset and reminder emails are only written to the server log. Add the SMTP settings to the backend environment (see DEPLOYMENT.md).</>
+        <>Verification, password-reset and reminder emails are only written to the server log. Add BREVO_API_KEY (or SMTP settings) and EMAIL_FROM to the backend environment — see DEPLOYMENT.md.</>
       )}
       {email.state === 'failed' && <>{email.detail}</>}
       {email.state !== 'ok' && email.state !== 'unknown' && (

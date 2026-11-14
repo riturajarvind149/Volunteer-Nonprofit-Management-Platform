@@ -64,6 +64,10 @@ const config = {
   get logLevel() {
     return process.env.LOG_LEVEL || (this.isTest ? 'silent' : 'info');
   },
+  /** Brevo transactional API key (xkeysib-…). Sends over HTTPS — use on hosts that block SMTP ports. */
+  get brevoApiKey() {
+    return process.env.BREVO_API_KEY || null;
+  },
   smtp: {
     get host() {
       return process.env.SMTP_HOST;
@@ -106,9 +110,9 @@ const validateEnv = () => {
     errors.push('FRONTEND_URL is required in production (used for CORS and email links)');
   }
 
-  if (config.isProduction && !config.smtp.host) {
+  if (config.isProduction && !config.smtp.host && !config.brevoApiKey) {
     // Not fatal: the app still works, but emails are only logged.
-    console.warn('[config] SMTP_HOST is not set — emails will be logged instead of sent.');
+    console.warn('[config] Neither BREVO_API_KEY nor SMTP_HOST is set — emails will be logged instead of sent.');
   }
 
   if (errors.length) {
