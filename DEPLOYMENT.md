@@ -44,6 +44,14 @@ Set these in the Render dashboard (see `backend/.env.example` for every option):
 | `APP_TIMEZONE` | `Asia/Kolkata` (default) |
 
 Without SMTP the app still works, but emails are only written to the server log.
+While email can't be delivered (SMTP missing or its login failing), email verification is
+**automatically switched off** so new users aren’t locked out.
+
+**Checking email:** at every start the backend logs either `[email] SMTP login OK` or the exact
+problem (e.g. a wrong login). Admins also see an **Email delivery** panel on the admin overview.
+
+Do **not** set `APP_URL` on Render — links in emails use `FRONTEND_URL`. (`APP_URL=http://localhost:5173`
+is only for local development.)
 
 ### First administrator
 

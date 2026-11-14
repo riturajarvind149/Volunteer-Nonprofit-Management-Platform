@@ -1,5 +1,6 @@
 const express = require('express');
 const adminService = require('../services/adminService');
+const { getEmailStatus } = require('../services/emailService');
 const authenticate = require('../middleware/authenticate');
 const authorizeRoles = require('../middleware/authorizeRoles');
 const { parsePagination, isUuid } = require('../utils/validators');
@@ -26,7 +27,7 @@ const str = (v) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 100) :
 router.get(
   '/stats',
   handle(async (req, res) => {
-    res.json({ status: 'success', data: { stats: await adminService.getStats() } });
+    res.json({ status: 'success', data: { stats: await adminService.getStats(), email: getEmailStatus() } });
   })
 );
 
