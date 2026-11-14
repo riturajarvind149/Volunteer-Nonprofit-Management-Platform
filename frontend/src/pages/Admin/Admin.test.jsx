@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AdminOrganizations from './AdminOrganizations'
 import AdminUsers from './AdminUsers'
+import AdminOverview from './AdminOverview'
 import {
   getMeApi,
   getOpportunitiesApi,
@@ -10,6 +11,7 @@ import {
   reviewOrganizationApi,
   getAdminUsersApi,
   setUserActiveApi,
+  getAdminStatsApi,
 } from '../../services/api'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import { TOKEN_KEY, ADMIN } from '../../test/fixtures'
@@ -106,5 +108,31 @@ describe('User management', () => {
     renderWithProviders(<AdminUsers />, { route: '/admin/users', path: '/admin/users' })
     const row = (await screen.findByText('You')).closest('tr')
     expect(within(row).queryByRole('button', { name: 'Suspend' })).not.toBeInTheDocument()
+  })
+})
+
+describe('Admin overview email status', () => {
+  const renderOverview = async (email) => {
+    signInAsAdmin()
+    getAdminStatsApi.mockResolvedValue({ data: { stats: { volunteers: 3 }, email } })
+    getAdminOrganizationsApi.mockResolvedValue({ data: { organizations: [] } })
+    renderWithProviders(<AdminOverview />, { route: '/admin', path: '/admin' })
+    return screen.findByText(/Email (delivery|is)/)
+  }
+
+  it('confirms when email works', async () => {
+    await renderOverview({ state: 'ok', host: 'smtp-relay.brevo.com', from: 'ServeHub <a@b.org>' })
+    expect(screen.getByText(/Messages are sent through smtp-relay\.brevo\.com/)).toBeInTheDocument()
+  })
+
+  it('warns when email is not set up and explains verification is paused', async () => {
+    await renderOverview({ state: 'not_configured' })
+    expect(screen.getByRole('alert')).toHaveTextContent('Email is not set up')
+    expect(screen.getByRole('alert')).toHaveTextContent('Email verification is switched off')
+  })
+
+  it('shows the reason when delivery is failing', async () => {
+    await renderOverview({ state: 'failed', detail: 'The mail server rejected SMTP_USER / SMTP_PASS.' })
+    expect(screen.getByRole('alert')).toHaveTextContent('The mail server rejected SMTP_USER / SMTP_PASS.')
   })
 })
