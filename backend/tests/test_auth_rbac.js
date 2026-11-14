@@ -1,8 +1,8 @@
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
-const app = require('./src/app');
-const pool = require('./src/config/db');
-const authorizeRoles = require('./src/middleware/authorizeRoles');
+const app = require('../src/app');
+const pool = require('../src/config/db');
+const authorizeRoles = require('../src/middleware/authorizeRoles');
 
 let server;
 let baseUrl;

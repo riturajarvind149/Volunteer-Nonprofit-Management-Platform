@@ -1,13 +1,13 @@
 require('dotenv').config();
-const app = require('./src/app');
-const pool = require('./src/config/db');
-const { cleanupTestUsers } = require('./scripts/test-cleanup');
+const app = require('../src/app');
+const pool = require('../src/config/db');
+const { cleanupTestUsers } = require('../scripts/test-cleanup');
 const {
   processCompletedOpportunities,
   startOpportunityCompletionScheduler,
   stopOpportunityCompletionScheduler,
   isSchedulerRunning,
-} = require('./src/services/opportunityCompletionService');
+} = require('../src/services/opportunityCompletionService');
 
 let server;
 let baseUrl;
