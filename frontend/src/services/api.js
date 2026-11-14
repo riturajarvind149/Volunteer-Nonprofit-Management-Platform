@@ -136,6 +136,18 @@ export const logOwnHoursApi = (signupId, payload, token) =>
   authFetch('/signups/' + signupId + '/hours/self', { method: 'POST', body: payload, token })
 export const downloadCertificateApi = (token) => downloadFile('/hours/my/certificate', token, 'volunteer-certificate.pdf')
 
+// ---- Account settings ----
+/** Profile with impact stats: { data: { user: { ...profile, stats } } } */
+export const getProfileApi = (token) => authFetch('/users/profile', { token })
+/** fields: full_name, phone, location, bio, skills (string[]), email_notifications (bool) */
+export const updateProfileApi = (fields, token) => authFetch('/users/profile', { method: 'PATCH', body: fields, token })
+/** Revokes every other session; responds with a fresh token in data.token. */
+export const changePasswordApi = (currentPassword, newPassword, token) =>
+  authFetch('/auth/change-password', { method: 'POST', body: { current_password: currentPassword, new_password: newPassword }, token })
+export const logoutAllApi = (token) => authFetch('/auth/logout-all', { method: 'POST', token })
+export const exportMyDataApi = (token) => downloadFile('/users/me/export', token, 'my-servehub-data.json')
+export const deleteAccountApi = (password, token) => authFetch('/users/me', { method: 'DELETE', body: { password }, token })
+
 // ---- Admin console (ADMIN role only) ----
 export const getAdminStatsApi = (token) => authFetch('/admin/stats', { token })
 /** params: status (PENDING|APPROVED|REJECTED|SUSPENDED), q, page, limit */

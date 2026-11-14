@@ -91,3 +91,137 @@
     padding: var(--space-3) var(--space-4);
   }
 }
+
+/* ---------- Account settings ---------- */
+.settings-section-desc {
+  margin-top: 2px;
+  font-size: var(--text-sm);
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-body > * + * {
+  border-top: 1px solid var(--line);
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.settings-row > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.settings-row-title {
+  font-weight: 600;
+}
+
+.settings-row-desc {
+  font-size: var(--text-sm);
+  max-width: 56ch;
+}
+
+.settings-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.settings-danger {
+  background: var(--danger-soft);
+}
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.switch.is-on {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.switch.is-on .switch-thumb {
+  transform: translateX(20px);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.switch:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+@media (max-width: 640px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-grid > span[aria-hidden='true'] {
+    display: none;
+  }
+
+  .settings-form,
+  .settings-row {
+    padding: var(--space-4);
+  }
+
+  .settings-row {
+    flex-wrap: wrap;
+  }
+}
