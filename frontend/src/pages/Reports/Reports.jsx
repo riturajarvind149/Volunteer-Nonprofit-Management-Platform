@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { getOrganizationOpportunitiesSummaryApi, getOrganizationHoursApi } from '../../services/api'
+import { getOrganizationOpportunitiesSummaryApi, getOrganizationHoursApi, getParticipationReportApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import DateRangeForm from '../../components/DateRangeForm'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge } from '../../components/ui'
 import { formatDate, formatHours, toInputDate, pluralize } from '../../utils/format'
+import { toCsv } from '../../utils/csv'
 import './Reports.css'
 
 const REPORTS = {
@@ -21,6 +22,20 @@ const REPORTS = {
       { key: 'pending_hours', label: 'Pending', num: true, hours: true },
     ],
   },
+  participation: {
+    label: 'Volunteer participation',
+    description: 'One row per volunteer: sign-ups, attendance and hours for events in the selected period.',
+    columns: [
+      { key: 'volunteer_name', label: 'Volunteer' },
+      { key: 'volunteer_email', label: 'Email' },
+      { key: 'total_signups', label: 'Sign-ups', num: true },
+      { key: 'events_attended', label: 'Attended', num: true },
+      { key: 'events_cancelled', label: 'Cancelled', num: true },
+      { key: 'total_hours_logged', label: 'Hours logged', num: true, hours: true },
+      { key: 'verified_hours', label: 'Verified', num: true, hours: true },
+      { key: 'last_active_date', label: 'Last active', date: true },
+    ],
+  },
   log: {
     label: 'Hours log',
     description: 'Every individual hour entry logged in the selected period.',
@@ -33,18 +48,6 @@ const REPORTS = {
       { key: 'hours', label: 'Hours', num: true, hours: true },
     ],
   },
-}
-
-function toCsv(columns, rows) {
-  const escape = (value) => {
-    const text = value == null ? '' : String(value)
-    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
-  }
-  const lines = [columns.map((c) => escape(c.label)).join(',')]
-  for (const row of rows) {
-    lines.push(columns.map((c) => escape(c.date ? toInputDate(row[c.key]) : row[c.key])).join(','))
-  }
-  return lines.join('\n')
 }
 
 function downloadCsv(filename, content) {
@@ -76,6 +79,9 @@ function Reports() {
       if (type === 'summary') {
         const res = await getOrganizationOpportunitiesSummaryApi(token, range)
         setRows(res?.data?.opportunities || [])
+      } else if (type === 'participation') {
+        const res = await getParticipationReportApi(token, range)
+        setRows(res?.data?.report || [])
       } else {
         const res = await getOrganizationHoursApi(token)
         setRows((res?.data?.volunteer_hours || []).filter((r) => inRange(r.created_at, range)))
@@ -99,7 +105,8 @@ function Reports() {
 
   const handleExport = () => {
     const suffix = [range.from_date, range.to_date].filter(Boolean).join('_to_') || 'all-time'
-    downloadCsv(`servehub-${type === 'summary' ? 'hours-by-opportunity' : 'hours-log'}-${suffix}.csv`, toCsv(report.columns, rows))
+    const slug = { summary: 'hours-by-opportunity', participation: 'volunteer-participation', log: 'hours-log' }[type]
+    downloadCsv(`servehub-${slug}-${suffix}.csv`, toCsv(report.columns, rows))
   }
 
   const renderCell = (column, row) => {
@@ -112,7 +119,7 @@ function Reports() {
 
   return (
     <div className="page">
-      <PageHeader title="Reports" description="Volunteer hour reports for the organizations you manage, ready to download as CSV." />
+      <PageHeader title="Reports" description="Hours and participation reports for the organizations you manage, ready to download as CSV." />
 
       <div className="segmented" role="group" aria-label="Report">
         {Object.entries(REPORTS).map(([key, r]) => (
@@ -131,7 +138,12 @@ function Reports() {
           </button>
         </div>
         <div className="panel-filters">
-          <DateRangeForm label="Hours logged between" value={range} onApply={setRange} disabled={loading} />
+          <DateRangeForm
+            label={type === 'participation' ? 'Events between' : 'Hours logged between'}
+            value={range}
+            onApply={setRange}
+            disabled={loading}
+          />
         </div>
 
         {error && <div className="panel-body"><Alert onRetry={load}>{error}</Alert></div>}
@@ -141,12 +153,22 @@ function Reports() {
         ) : rows.length === 0 ? (
           !error && (
             <EmptyState icon="file-text" title="No data for this period">
-              {type === 'summary' ? 'You haven’t created any opportunities yet.' : 'No hours were logged in the selected period.'}
+              {type === 'summary'
+                ? 'You haven’t created any opportunities yet.'
+                : type === 'participation'
+                  ? 'No volunteers signed up for your events in the selected period.'
+                  : 'No hours were logged in the selected period.'}
             </EmptyState>
           )
         ) : (
           <>
-            <p className="report-meta">{periodLabel} · {pluralize(rows.length, type === 'summary' ? 'opportunity' : 'entry', type === 'summary' ? 'opportunities' : 'entries')}</p>
+            <p className="report-meta">
+              {periodLabel} · {type === 'summary'
+                ? pluralize(rows.length, 'opportunity', 'opportunities')
+                : type === 'participation'
+                  ? pluralize(rows.length, 'volunteer')
+                  : pluralize(rows.length, 'entry', 'entries')}
+            </p>
             <div className="table-wrap">
               <table className="table table-stack">
                 <thead>

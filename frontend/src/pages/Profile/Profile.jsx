@@ -8,7 +8,7 @@ function Profile() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const isCoordinator = user.role === 'COORDINATOR'
-  const roleLabel = isCoordinator ? 'Coordinator' : 'Volunteer'
+  const roleLabel = { ADMIN: 'Administrator', COORDINATOR: 'Coordinator' }[user.role] || 'Volunteer'
   const initials = (user.full_name || '?').split(' ').filter(Boolean).map((p) => p[0]).join('').toUpperCase().slice(0, 2)
 
   const handleSignOut = () => {

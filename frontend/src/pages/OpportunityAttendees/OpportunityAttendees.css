@@ -81,3 +81,104 @@
     text-align: right;
   }
 }
+
+/* Check-in code panel */
+.checkin-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+}
+
+.checkin-code-title {
+  font-size: var(--text-md);
+  margin-bottom: var(--space-1);
+}
+
+.checkin-code .muted {
+  max-width: 52ch;
+  font-size: var(--text-sm);
+}
+
+.checkin-code-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.checkin-code-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--brand-ink);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--brand-soft);
+}
+
+/* Attendance + hours cells */
+.attendance-toggle {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.roster-hours {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.roster-review-link {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+/* Waitlist */
+.waitlist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.waitlist-list li {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+}
+
+.waitlist-list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.waitlist-pos {
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.waitlist-joined {
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 640px) {
+  .waitlist-list li {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .waitlist-joined {
+    grid-column: 2;
+  }
+}
+
+.waitlist-list .cell-lead {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}

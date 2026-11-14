@@ -7,6 +7,7 @@ import {
   getOpportunityByIdApi,
   updateSignupStatusApi,
   recordHoursApi,
+  setAttendanceApi,
 } from '../../services/api'
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge, CapacityMeter } from '../../components/ui'
@@ -97,10 +98,60 @@ function RosterPicker() {
   )
 }
 
+function CheckInCode({ code, eventDate }) {
+  const [copied, setCopied] = useState(false)
+  if (!code) return null
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard blocked: the code is visible on screen anyway.
+    }
+  }
+  return (
+    <section className="panel checkin-code" aria-labelledby="checkin-code-title">
+      <div>
+        <h2 id="checkin-code-title" className="checkin-code-title">Check-in code</h2>
+        <p className="muted">
+          Show or read this out at the venue{eventDate ? ` on ${formatDate(eventDate, { weekday: 'long', month: 'long' })}` : ''}.
+          Volunteers enter it under My registrations from 1 hour before the start until 3 hours after the end.
+        </p>
+      </div>
+      <div className="checkin-code-value">
+        <span className="checkin-code-text" aria-label={`Code ${code.split('').join(' ')}`}>{code}</span>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+      </div>
+    </section>
+  )
+}
+
+function AttendanceControl({ signup, busy, onChange }) {
+  const current = signup.attendance_status || null
+  return (
+    <div className="attendance-toggle" role="group" aria-label={`Attendance for ${signup.volunteer_name}`}>
+      {['PRESENT', 'ABSENT'].map((value) => (
+        <button
+          key={value}
+          type="button"
+          className={`btn btn-sm ${current === value ? (value === 'PRESENT' ? 'btn-primary' : 'btn-danger') : 'btn-ghost'}`}
+          aria-pressed={current === value}
+          disabled={busy}
+          onClick={() => onChange(signup, current === value ? null : value)}
+        >
+          {value === 'PRESENT' ? 'Present' : 'Absent'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function Roster({ opportunityId }) {
   const { token } = useAuth()
   const [opportunity, setOpportunity] = useState(null)
   const [signups, setSignups] = useState([])
+  const [waitlist, setWaitlist] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
@@ -118,7 +169,11 @@ function Roster({ opportunityId }) {
         getOpportunityByIdApi(opportunityId, token),
       ])
       setSignups(rosterRes?.data?.signups || [])
-      setOpportunity(oppRes?.data?.opportunity || rosterRes?.data?.opportunity || null)
+      setWaitlist(rosterRes?.data?.waitlist || [])
+      setOpportunity({
+        ...(rosterRes?.data?.opportunity || {}),
+        ...(oppRes?.data?.opportunity || {}),
+      })
     } catch (err) {
       setError(err.message || 'This roster could not be loaded.')
     } finally {
@@ -135,14 +190,33 @@ function Roster({ opportunityId }) {
       await updateSignupStatusApi(signup.id, status, token)
       setSignups((prev) => prev.map((s) => (s.id === signup.id ? { ...s, status } : s)))
       setConfirmingId(null)
+      const promoted = status === 'CANCELLED' && waitlist.length > 0
       setNotice({
         tone: 'success',
         text: status === 'CANCELLED'
-          ? `${signup.volunteer_name}’s registration was cancelled.`
+          ? `${signup.volunteer_name}’s registration was cancelled.${promoted ? ' The next person on the waitlist was registered and notified.' : ''}`
           : `${signup.volunteer_name}’s registration was restored.`,
       })
+      // Cancelling frees a spot that the waitlist fills automatically; refresh to show it.
+      if (status === 'CANCELLED') load()
     } catch (err) {
       setNotice({ tone: 'error', text: err.message || 'The registration could not be updated.' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const changeAttendance = async (signup, attendance) => {
+    setBusyId(signup.id)
+    setNotice(null)
+    try {
+      const res = await setAttendanceApi(signup.id, attendance, token)
+      const updated = res?.data?.signup || {}
+      setSignups((prev) => prev.map((s) => (s.id === signup.id
+        ? { ...s, attendance_status: attendance, checked_in_at: updated.checked_in_at ?? s.checked_in_at }
+        : s)))
+    } catch (err) {
+      setNotice({ tone: 'error', text: err.message || 'Attendance could not be updated.' })
     } finally {
       setBusyId(null)
     }
@@ -185,7 +259,9 @@ function Roster({ opportunityId }) {
 
   const active = signups.filter((s) => s.status !== 'CANCELLED')
   const cancelled = signups.length - active.length
+  const present = active.filter((s) => s.attendance_status === 'PRESENT').length
   const time = formatTime(opportunity?.start_time, opportunity?.end_time)
+  const showCode = opportunity?.check_in_code && opportunity?.status === 'PUBLISHED' && isUpcoming(opportunity?.event_date)
 
   return (
     <div className="page">
@@ -209,11 +285,18 @@ function Roster({ opportunityId }) {
         </div>
         {opportunity?.capacity && (
           <div className="roster-capacity">
-            <span><strong className="num">{active.length}</strong> of {opportunity.capacity} spots filled{cancelled > 0 && ` · ${cancelled} cancelled`}</span>
+            <span>
+              <strong className="num">{active.length}</strong> of {opportunity.capacity} spots filled
+              {cancelled > 0 && ` · ${cancelled} cancelled`}
+              {waitlist.length > 0 && ` · ${waitlist.length} on waitlist`}
+              {present > 0 && ` · ${present} checked in`}
+            </span>
             <CapacityMeter taken={active.length} capacity={opportunity.capacity} />
           </div>
         )}
       </div>
+
+      {showCode && <CheckInCode code={opportunity.check_in_code} eventDate={opportunity.event_date} />}
 
       <div aria-live="polite">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
 
@@ -230,7 +313,8 @@ function Roster({ opportunityId }) {
                   <th>Volunteer</th>
                   <th>Registered</th>
                   <th>Status</th>
-                  <th>Log hours</th>
+                  <th>Attendance</th>
+                  <th>Hours</th>
                   <th><span className="sr-only">Registration actions</span></th>
                 </tr>
               </thead>
@@ -246,9 +330,30 @@ function Roster({ opportunityId }) {
                       </td>
                       <td data-label="Registered" className="num">{formatDate(s.created_at)}</td>
                       <td data-label="Status"><StatusBadge status={s.status} /></td>
-                      <td data-label="Log hours">
+                      <td data-label="Attendance">
                         {isCancelled ? (
                           <span className="muted">—</span>
+                        ) : (
+                          <>
+                            <AttendanceControl signup={s} busy={busy} onChange={changeAttendance} />
+                            {s.checked_in_at && s.attendance_status === 'PRESENT' && (
+                              <span className="cell-sub">
+                                Checked in {new Date(s.checked_in_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </td>
+                      <td data-label="Hours">
+                        {isCancelled ? (
+                          <span className="muted">—</span>
+                        ) : s.hours_status && s.hours_status !== 'REJECTED' && !logged[s.id] ? (
+                          <span className="roster-hours">
+                            {formatHours(s.hours_logged)} h <StatusBadge status={s.hours_status} />
+                            {s.hours_status === 'PENDING' && (
+                              <Link to="/coordinator-hours" className="roster-review-link">Review</Link>
+                            )}
+                          </span>
                         ) : (
                           <form className="hours-form" onSubmit={(e) => logHours(e, s)} noValidate>
                             <label className="sr-only" htmlFor={`hours-${s.id}`}>Hours for {s.volunteer_name}</label>
@@ -298,9 +403,31 @@ function Roster({ opportunityId }) {
         )}
       </section>
 
+      {waitlist.length > 0 && (
+        <section className="panel" aria-labelledby="waitlist-title">
+          <div className="panel-header">
+            <h2 id="waitlist-title">Waitlist</h2>
+            <span className="muted">Promoted automatically, in this order, when a spot opens</span>
+          </div>
+          <ol className="waitlist-list">
+            {waitlist.map((w) => (
+              <li key={w.id}>
+                <span className="waitlist-pos num">#{w.position}</span>
+                <span className="cell-lead">
+                  <span className="cell-primary">{w.volunteer_name}</span>
+                  <a href={`mailto:${w.volunteer_email}`} className="cell-sub roster-email">{w.volunteer_email}</a>
+                </span>
+                <span className="muted waitlist-joined">Joined {formatDate(w.created_at)}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {active.length > 0 && (
         <p className="muted roster-footnote">
-          Logged hours appear in <Link to="/coordinator-hours">Hours &amp; attendance</Link>, where you can verify them.
+          Logged hours — yours and those volunteers submit themselves — appear in{' '}
+          <Link to="/coordinator-hours">Hours &amp; attendance</Link>, where you can verify them.
         </p>
       )}
     </div>
