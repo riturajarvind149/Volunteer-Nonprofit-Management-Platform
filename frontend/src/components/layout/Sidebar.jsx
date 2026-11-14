@@ -56,11 +56,41 @@ const COORDINATOR_NAV = [
   },
 ]
 
+const ADMIN_NAV = [
+  { items: [{ to: '/admin', label: 'Overview', icon: 'dashboard' }] },
+  {
+    label: 'Administration',
+    items: [
+      { to: '/admin/organizations', label: 'Organization review', icon: 'shield' },
+      { to: '/admin/users', label: 'Users', icon: 'users' },
+      { to: '/admin/audit-log', label: 'Audit log', icon: 'file-text' },
+    ],
+  },
+  {
+    label: 'Public site',
+    items: [
+      { to: '/opportunities', label: 'Opportunities', icon: 'search' },
+      { to: '/organizations', label: 'Organizations', icon: 'building' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { to: '/notifications', label: 'Notifications', icon: 'bell' },
+      { to: '/profile', label: 'Profile', icon: 'user' },
+    ],
+  },
+]
+
+const ROLE_LABELS = { ADMIN: 'Administrator', COORDINATOR: 'Coordinator', VOLUNTEER: 'Volunteer' }
+
 function Sidebar({ onNavigate, theme, onToggleTheme }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const isCoordinator = user?.role === 'COORDINATOR'
-  const groups = isCoordinator ? COORDINATOR_NAV : VOLUNTEER_NAV
+  const isAdmin = user?.role === 'ADMIN'
+  const groups = isAdmin ? ADMIN_NAV : isCoordinator ? COORDINATOR_NAV : VOLUNTEER_NAV
+  const home = isAdmin ? '/admin' : '/dashboard'
 
   const handleSignOut = () => {
     onNavigate()
@@ -74,8 +104,8 @@ function Sidebar({ onNavigate, theme, onToggleTheme }) {
   return (
     <div className="sidebar">
       <div className="sidebar-top">
-        <Brand to="/dashboard" onClick={onNavigate} />
-        <span className="sidebar-role">{isCoordinator ? 'Coordinator' : 'Volunteer'}</span>
+        <Brand to={home} onClick={onNavigate} />
+        <span className="sidebar-role">{ROLE_LABELS[user?.role] || 'Volunteer'}</span>
       </div>
 
       {isCoordinator && (
@@ -92,7 +122,7 @@ function Sidebar({ onNavigate, theme, onToggleTheme }) {
             <ul role="list">
               {group.items.map((item) => (
                 <li key={item.to}>
-                  <NavLink to={item.to} end={item.to === '/dashboard'} className="sidebar-link" onClick={onNavigate}>
+                  <NavLink to={item.to} end={item.to === '/dashboard' || item.to === '/admin'} className="sidebar-link" onClick={onNavigate}>
                     <Icon name={item.icon} size={16} />
                     {item.label}
                   </NavLink>

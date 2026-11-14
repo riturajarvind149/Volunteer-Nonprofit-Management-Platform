@@ -30,6 +30,10 @@ import OrgProfile from './pages/OrgProfile/OrgProfile'
 import Privacy from './pages/Privacy/Privacy'
 import Terms from './pages/Terms/Terms'
 import NotFound from './pages/NotFound/NotFound'
+import AdminOverview from './pages/Admin/AdminOverview'
+import AdminOrganizations from './pages/Admin/AdminOrganizations'
+import AdminUsers from './pages/Admin/AdminUsers'
+import AdminAuditLog from './pages/Admin/AdminAuditLog'
 
 const THEME_KEY = 'servehub_theme'
 
@@ -110,6 +114,13 @@ function AppRoutes() {
           <Route element={<RequireAuth roles={['VOLUNTEER']} />}>
             <Route path="/my-signups" element={<MySignups />} />
             <Route path="/my-hours" element={<VolunteerHours />} />
+          </Route>
+
+          <Route element={<RequireAuth roles={['ADMIN']} />}>
+            <Route path="/admin" element={<AdminOverview />} />
+            <Route path="/admin/organizations" element={<AdminOrganizations />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/audit-log" element={<AdminAuditLog />} />
           </Route>
 
           <Route element={<RequireAuth roles={['COORDINATOR']} />}>

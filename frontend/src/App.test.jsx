@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import App from './App'
 import * as api from './services/api'
 import LocationDisplay from './test/LocationDisplay'
-import { TOKEN_KEY, VOLUNTEER, COORDINATOR } from './test/fixtures'
+import { TOKEN_KEY, VOLUNTEER, COORDINATOR, ADMIN } from './test/fixtures'
 
 vi.mock('./services/api')
 
@@ -60,6 +60,18 @@ describe('Role-based routing', () => {
 
     await expectPath('/login')
     expect(localStorage.getItem(TOKEN_KEY)).toBeNull()
+  })
+
+  it('sends admins from the dashboard to the admin console', async () => {
+    renderApp('/dashboard', ADMIN)
+    await expectPath('/admin')
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    expect(nav).toHaveTextContent('Organization review')
+  })
+
+  it('keeps non-admins out of the admin console', async () => {
+    renderApp('/admin/users', COORDINATOR)
+    await expectPath('/dashboard')
   })
 
   it('keeps volunteers out of coordinator pages', async () => {
