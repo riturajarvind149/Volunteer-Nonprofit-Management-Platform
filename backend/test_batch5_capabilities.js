@@ -1,6 +1,7 @@
 require('dotenv').config();
 const app = require('./src/app');
 const pool = require('./src/config/db');
+const { cleanupTestUsers } = require('./scripts/test-cleanup');
 
 let server;
 let baseUrl;
@@ -526,6 +527,11 @@ const runTests = async () => {
   } finally {
     if (server) {
       server.close();
+    }
+    try {
+      await cleanupTestUsers(pool, [coordData.email, coordOtherData.email, volunteerData.email]);
+    } catch (cleanupErr) {
+      console.error('Cleanup failed:', cleanupErr.message);
     }
     // Clean up DB pool
     await pool.end();
