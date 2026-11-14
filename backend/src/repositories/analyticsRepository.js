@@ -13,12 +13,12 @@ const getVolunteerAnalytics = async (volunteerId) => {
   // 1. Core Summary Metrics
   const summaryQuery = `
     SELECT
-      (SELECT COALESCE(SUM(vh.hours), 0)
+      (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)
        FROM volunteer_hours vh
        JOIN signups s ON vh.signup_id = s.id
        WHERE s.volunteer_id = $1
       ) AS total_hours,
-      (SELECT COALESCE(SUM(vh.hours), 0)
+      (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)
        FROM volunteer_hours vh
        JOIN signups s ON vh.signup_id = s.id
        WHERE s.volunteer_id = $1 AND vh.status = 'VERIFIED'
@@ -85,7 +85,7 @@ const getVolunteerAnalytics = async (volunteerId) => {
     SELECT
       TO_CHAR(m.month_date, 'Mon') AS month,
       DATE_PART('year', m.month_date)::int AS year,
-      COALESCE(SUM(vh.hours), 0)::numeric(6,2) AS hours
+      COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)::numeric(6,2) AS hours
     FROM months m
     LEFT JOIN signups s ON s.volunteer_id = $1
     LEFT JOIN volunteer_hours vh
@@ -207,14 +207,14 @@ const getCoordinatorAnalytics = async (coordinatorId, { period = 'all' } = {}) =
          AND o.status = 'PUBLISHED'
          AND o.event_date >= CURRENT_DATE
       ) AS upcoming_events,
-      (SELECT COALESCE(SUM(vh.hours), 0)
+      (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)
        FROM volunteer_hours vh
        JOIN signups s ON vh.signup_id = s.id
        JOIN opportunities o ON s.opportunity_id = o.id
        JOIN organizations org ON o.organization_id = org.id
        WHERE org.coordinator_id = $1
       ) AS total_hours,
-      (SELECT COALESCE(SUM(vh.hours), 0)
+      (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)
        FROM volunteer_hours vh
        JOIN signups s ON vh.signup_id = s.id
        JOIN opportunities o ON s.opportunity_id = o.id
@@ -275,7 +275,7 @@ const getCoordinatorAnalytics = async (coordinatorId, { period = 'all' } = {}) =
     SELECT
       TO_CHAR(m.month_date, 'Mon') AS month,
       DATE_PART('year', m.month_date)::int AS year,
-      COALESCE(SUM(vh.hours), 0)::numeric(6,2) AS hours
+      COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)::numeric(6,2) AS hours
     FROM months m
     LEFT JOIN organizations org ON org.coordinator_id = $1
     LEFT JOIN opportunities o ON o.organization_id = org.id

@@ -19,7 +19,7 @@ const getVolunteerParticipationReport = async (coordinatorId, { from_date, to_da
       COUNT(DISTINCT s.id)::int AS total_signups,
       COUNT(DISTINCT CASE WHEN s.status = 'REGISTERED' AND (o.status = 'COMPLETED' OR o.event_date < CURRENT_DATE) THEN s.id END)::int AS events_attended,
       COUNT(DISTINCT CASE WHEN s.status = 'CANCELLED' THEN s.id END)::int AS events_cancelled,
-      COALESCE(SUM(vh.hours), 0)::numeric(6,2) AS total_hours_logged,
+      COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)::numeric(6,2) AS total_hours_logged,
       COALESCE(SUM(CASE WHEN vh.status = 'VERIFIED' THEN vh.hours ELSE 0 END), 0)::numeric(6,2) AS verified_hours,
       MAX(s.created_at) AS last_active_date
     FROM users u
@@ -101,7 +101,7 @@ const getOpportunityPerformanceReport = async (coordinatorId, { from_date, to_da
       COUNT(DISTINCT CASE WHEN s.status = 'REGISTERED' THEN s.id END)::int AS active_registrations,
       COUNT(DISTINCT CASE WHEN s.status = 'CANCELLED' THEN s.id END)::int AS cancelled_registrations,
       ROUND((COUNT(DISTINCT CASE WHEN s.status = 'REGISTERED' THEN s.id END)::numeric / NULLIF(o.capacity, 0)) * 100, 1)::numeric(5,1) AS fill_rate_percentage,
-      COALESCE(SUM(vh.hours), 0)::numeric(6,2) AS total_hours_logged,
+      COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)::numeric(6,2) AS total_hours_logged,
       COUNT(DISTINCT vh.id)::int AS hour_entries_count
     FROM opportunities o
     JOIN organizations org ON o.organization_id = org.id

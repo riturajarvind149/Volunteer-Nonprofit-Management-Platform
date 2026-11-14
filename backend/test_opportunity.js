@@ -2,6 +2,7 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const app = require('./src/app');
 const pool = require('./src/config/db');
+const { cleanupTestUsers } = require('./scripts/test-cleanup');
 
 let server;
 let baseUrl;
@@ -68,21 +69,11 @@ const runTests = async () => {
   const testEmails = [coord1.email, coord2.email, volunteer.email];
 
   const cleanupDatabase = async () => {
-    await pool.query(
-      `DELETE FROM opportunities WHERE organization_id IN (
-         SELECT id FROM organizations WHERE coordinator_id IN (
-           SELECT id FROM users WHERE email = ANY($1)
-         )
-       )`,
-      [testEmails]
-    );
-    await pool.query(
-      `DELETE FROM organizations WHERE coordinator_id IN (
-         SELECT id FROM users WHERE email = ANY($1)
-       )`,
-      [testEmails]
-    );
-    await pool.query(`DELETE FROM users WHERE email = ANY($1)`, [testEmails]);
+    try {
+      await cleanupTestUsers(pool, [...testEmails, 'opp.regression@test.org']);
+    } catch (err) {
+      console.error('Cleanup failed:', err.message);
+    }
   };
 
   // Initial cleanup
