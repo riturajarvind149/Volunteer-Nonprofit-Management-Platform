@@ -332,7 +332,7 @@ const getVolunteerStats = async (volunteerId) => {
          AND o.status != 'CANCELLED'
          AND (o.status = 'COMPLETED' OR o.event_date < CURRENT_DATE)
       ) AS completed_count,
-      (SELECT COALESCE(SUM(vh.hours), 0)
+      (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)
        FROM volunteer_hours vh
        JOIN signups s ON vh.signup_id = s.id
        WHERE s.volunteer_id = $1

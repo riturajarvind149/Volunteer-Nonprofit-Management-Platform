@@ -329,6 +329,20 @@ const run = async () => {
     'Certificate PDF is generated'
   );
 
+  // Rejected hours must not count toward any total.
+  await pool.query(
+    "INSERT INTO volunteer_hours (signup_id, hours, status, recorded_by, self_reported) VALUES ($1, 5, 'REJECTED', $2, TRUE)",
+    [vol2Signup, vol2User.id]
+  );
+  const summaryAfterReject = (await api('GET', '/api/hours/my/summary', { token: vol2Token })).data.data.summary;
+  assert(
+    summaryAfterReject.total_hours === 2.5 && summaryAfterReject.total_records === 1,
+    'Rejected hours are excluded from volunteer totals',
+    JSON.stringify(summaryAfterReject)
+  );
+  const profileAfterReject = (await api('GET', '/api/users/profile', { token: vol2Token })).data.data.user.stats;
+  assert(profileAfterReject.total_hours === 2.5, 'Rejected hours are excluded from profile impact stats', JSON.stringify(profileAfterReject));
+
   // ------------------------------------------------------------------
   section('Profile validation, suspension, export, deletion');
   const badAvatar = await api('PATCH', '/api/users/profile', { token: vol2Token, body: { avatar_url: 'javascript:alert(1)' } });

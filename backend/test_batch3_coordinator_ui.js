@@ -1,6 +1,7 @@
 require('dotenv').config();
 const app = require('./src/app');
 const pool = require('./src/config/db');
+const { cleanupTestUsers } = require('./scripts/test-cleanup');
 
 let server;
 let baseUrl;
@@ -69,33 +70,8 @@ const runTests = async () => {
 
   const cleanupDatabase = async () => {
     try {
-      await pool.query(
-        `DELETE FROM signups WHERE volunteer_id IN (
-           SELECT id FROM users WHERE email = ANY($1)
-         ) OR opportunity_id IN (
-           SELECT id FROM opportunities WHERE organization_id IN (
-             SELECT id FROM organizations WHERE coordinator_id IN (
-               SELECT id FROM users WHERE email = ANY($1)
-             )
-           )
-         )`,
-        [testEmails]
-      );
-      await pool.query(
-        `DELETE FROM opportunities WHERE organization_id IN (
-           SELECT id FROM organizations WHERE coordinator_id IN (
-             SELECT id FROM users WHERE email = ANY($1)
-           )
-         )`,
-        [testEmails]
-      );
-      await pool.query(
-        `DELETE FROM organizations WHERE coordinator_id IN (
-           SELECT id FROM users WHERE email = ANY($1)
-         )`,
-        [testEmails]
-      );
-      await pool.query(`DELETE FROM users WHERE email = ANY($1)`, [testEmails]);
+      // Includes the volunteer created later in the suite (Test: capacity below active signups).
+      await cleanupTestUsers(pool, [...testEmails, `vol.delta.${timestamp}@test.org`]);
     } catch (err) {
       console.error('Error during DB cleanup:', err.message);
     }
@@ -389,8 +365,10 @@ const runTests = async () => {
       'Test 16: Coordinator B cannot see Coordinator A managed opportunities (Data isolation enforced)'
     );
 
-    // Test 17: Normal GET /api/opportunities returns all opportunities for both roles
-    const allOppsRes = await fetch(`${baseUrl}/api/opportunities`, {
+    // Test 17: Normal GET /api/opportunities lists the published opportunity for volunteers.
+    // Filter by organization: the listing is paginated, so other data in the database
+    // must not push this opportunity off the first page.
+    const allOppsRes = await fetch(`${baseUrl}/api/opportunities?organization_id=${orgAId}`, {
       headers: { Authorization: `Bearer ${tokenVol}` },
     });
     const allOppsData = await allOppsRes.json();
