@@ -114,7 +114,7 @@ const getUserStats = async (userId, role) => {
   if (role === 'VOLUNTEER') {
     const query = `
       SELECT
-        (SELECT COALESCE(SUM(vh.hours), 0)
+        (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)
          FROM volunteer_hours vh
          JOIN signups s ON vh.signup_id = s.id
          WHERE s.volunteer_id = $1
@@ -153,7 +153,7 @@ const getUserStats = async (userId, role) => {
          JOIN organizations org ON o.organization_id = org.id
          WHERE org.coordinator_id = $1 AND s.status = 'REGISTERED'
         ) AS total_volunteers,
-        (SELECT COALESCE(SUM(vh.hours), 0)
+        (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)
          FROM volunteer_hours vh
          JOIN signups s ON vh.signup_id = s.id
          JOIN opportunities o ON s.opportunity_id = o.id

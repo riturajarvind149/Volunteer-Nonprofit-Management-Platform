@@ -187,12 +187,12 @@ const getOrganizationImpactStats = async (id) => {
        JOIN opportunities o ON s.opportunity_id = o.id 
        WHERE o.organization_id = $1 AND s.status = 'REGISTERED' 
          AND DATE_TRUNC('month', o.event_date) = DATE_TRUNC('month', CURRENT_DATE)) AS active_volunteers_this_month,
-      (SELECT COALESCE(SUM(vh.hours), 0) 
+      (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0) 
        FROM volunteer_hours vh 
        JOIN signups s ON vh.signup_id = s.id 
        JOIN opportunities o ON s.opportunity_id = o.id 
        WHERE o.organization_id = $1) AS total_hours,
-      (SELECT COALESCE(SUM(vh.hours), 0) 
+      (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0) 
        FROM volunteer_hours vh 
        JOIN signups s ON vh.signup_id = s.id 
        JOIN opportunities o ON s.opportunity_id = o.id 

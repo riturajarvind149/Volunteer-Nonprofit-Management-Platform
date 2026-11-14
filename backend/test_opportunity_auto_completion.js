@@ -1,6 +1,7 @@
 require('dotenv').config();
 const app = require('./src/app');
 const pool = require('./src/config/db');
+const { cleanupTestUsers } = require('./scripts/test-cleanup');
 const {
   processCompletedOpportunities,
   startOpportunityCompletionScheduler,
@@ -465,6 +466,11 @@ const runTests = async () => {
     stopOpportunityCompletionScheduler();
     if (server) {
       server.close();
+    }
+    try {
+      await cleanupTestUsers(pool, [coordData.email, volunteerAliceData.email, volunteerBobData.email]);
+    } catch (cleanupErr) {
+      console.error('Cleanup failed:', cleanupErr.message);
     }
     await pool.end();
   }

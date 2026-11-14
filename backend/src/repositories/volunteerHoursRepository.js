@@ -349,8 +349,8 @@ const updateStatus = async (id, status) => {
 const getSummaryByVolunteerId = async (volunteerId) => {
   const query = `
     SELECT 
-      COALESCE(SUM(vh.hours), 0) AS total_hours,
-      COUNT(vh.id)::int AS total_records,
+      COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0) AS total_hours,
+      COUNT(vh.id) FILTER (WHERE vh.status <> 'REJECTED')::int AS total_records,
       COALESCE(SUM(CASE WHEN vh.status = 'VERIFIED' THEN vh.hours ELSE 0 END), 0) AS verified_hours,
       COALESCE(SUM(CASE WHEN vh.status = 'RECORDED' THEN vh.hours ELSE 0 END), 0) AS recorded_hours,
       COALESCE(SUM(CASE WHEN vh.status = 'PENDING' THEN vh.hours ELSE 0 END), 0) AS pending_hours
@@ -377,8 +377,8 @@ const getSummaryByVolunteerId = async (volunteerId) => {
 const getSummaryByCoordinatorId = async (coordinatorId) => {
   const query = `
     SELECT 
-      COALESCE(SUM(vh.hours), 0) AS total_hours,
-      COUNT(vh.id)::int AS total_records,
+      COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0) AS total_hours,
+      COUNT(vh.id) FILTER (WHERE vh.status <> 'REJECTED')::int AS total_records,
       COALESCE(SUM(CASE WHEN vh.status = 'VERIFIED' THEN vh.hours ELSE 0 END), 0) AS verified_hours,
       COALESCE(SUM(CASE WHEN vh.status = 'RECORDED' THEN vh.hours ELSE 0 END), 0) AS recorded_hours,
       COALESCE(SUM(CASE WHEN vh.status = 'PENDING' THEN vh.hours ELSE 0 END), 0) AS pending_hours,
@@ -415,7 +415,7 @@ const getOpportunitySummaryByCoordinatorId = async (coordinatorId, { from_date, 
       org.id AS organization_id,
       org.name AS organization_name,
       COUNT(DISTINCT CASE WHEN vh.id IS NOT NULL THEN s.volunteer_id ELSE NULL END)::int AS total_volunteers,
-      COALESCE(SUM(vh.hours), 0) AS total_hours,
+      COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0) AS total_hours,
       COALESCE(SUM(CASE WHEN vh.status = 'VERIFIED' THEN vh.hours ELSE 0 END), 0) AS verified_hours,
       COALESCE(SUM(CASE WHEN vh.status = 'RECORDED' THEN vh.hours ELSE 0 END), 0) AS recorded_hours,
       COALESCE(SUM(CASE WHEN vh.status = 'PENDING' THEN vh.hours ELSE 0 END), 0) AS pending_hours
@@ -485,7 +485,7 @@ const createSelfReported = async ({ signup_id, hours, notes, volunteer_id }) => 
 const findVerifiedForCertificate = async (volunteerId) => {
   const { rows } = await pool.query(
     `SELECT o.title AS opportunity_title, o.event_date, org.name AS organization_name,
-            SUM(vh.hours)::numeric(8,2) AS hours
+            SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED')::numeric(8,2) AS hours
        FROM volunteer_hours vh
        JOIN signups s ON s.id = vh.signup_id
        JOIN opportunities o ON o.id = s.opportunity_id
