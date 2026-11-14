@@ -35,6 +35,7 @@ const SUITES = [
   'test_opportunity_auto_completion.js',
   'test_production_features.js',
   'test_deployment_readiness.js',
+  'test_email_transports.js',
 ];
 
 const filter = process.argv[2];
