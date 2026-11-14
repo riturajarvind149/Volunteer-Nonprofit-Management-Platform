@@ -34,6 +34,7 @@ const SUITES = [
   'test_batch5_capabilities.js',
   'test_opportunity_auto_completion.js',
   'test_production_features.js',
+  'test_deployment_readiness.js',
 ];
 
 const filter = process.argv[2];
@@ -54,7 +55,7 @@ const env = {
 const failed = [];
 for (const suite of selected) {
   console.log(`\n▶ ${suite}`);
-  const result = spawnSync(process.execPath, [path.join(__dirname, '..', suite)], { stdio: 'inherit', env });
+  const result = spawnSync(process.execPath, [path.join(__dirname, '..', 'tests', suite)], { stdio: 'inherit', env });
   if (result.status !== 0) {
     failed.push(suite);
     break;
