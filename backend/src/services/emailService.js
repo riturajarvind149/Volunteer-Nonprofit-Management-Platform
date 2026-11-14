@@ -1,20 +1,19 @@
-const nodemailer = require('nodemailer');
 const { config } = require('../config/env');
 const logger = require('../utils/logger');
+const { getTransport, explainError, isServerWideError } = require('./emailTransports');
 
 /**
  * Transactional email delivery.
  *
- * - With SMTP_* configured, mail is sent via SMTP (works with SendGrid, Resend,
- *   Mailgun, Amazon SES, Gmail app passwords, Brevo...).
- * - Without SMTP (local development), mail is written to the log instead.
+ * - BREVO_API_KEY set: mail goes through Brevo's HTTPS API (works where SMTP ports are blocked).
+ * - Otherwise SMTP_* configured: mail is sent via SMTP (Brevo, Gmail app password, SendGrid…).
+ * - Neither (local development): mail is written to the log instead.
  * - In NODE_ENV=test mail is captured in-memory (see getOutbox) for assertions.
  *
  * Sending never throws to the caller: failures are logged so that a mail
  * outage can't break signups, registrations, etc.
  */
 
-let transporter = null;
 const testOutbox = [];
 
 /**
@@ -26,20 +25,6 @@ const setStatus = (state, detail = null) => {
   emailStatus.state = state;
   emailStatus.detail = detail;
   emailStatus.checkedAt = new Date().toISOString();
-};
-
-const getTransporter = () => {
-  if (transporter) return transporter;
-  if (!config.smtp.host) return null;
-  transporter = nodemailer.createTransport({
-    host: config.smtp.host,
-    port: config.smtp.port,
-    secure: config.smtp.secure,
-    auth: config.smtp.user ? { user: config.smtp.user, pass: config.smtp.pass } : undefined,
-    pool: true,
-    maxConnections: 3,
-  });
-  return transporter;
 };
 
 const escapeHtml = (value) =>
@@ -105,21 +90,21 @@ const sendEmail = async ({ to, subject, heading, paragraphs, cta, footer, attach
     return { delivered: true, captured: true };
   }
 
-  const transport = getTransporter();
+  const transport = getTransport();
   if (!transport) {
-    logger.info({ to, subject, link: cta?.url }, '[email] SMTP not configured — email logged instead of sent');
+    logger.info({ to, subject, link: cta?.url }, '[email] Email not configured — email logged instead of sent');
     return { delivered: false, logged: true };
   }
 
   try {
-    await transport.sendMail(mail);
+    await transport.send(mail);
     setStatus('ok');
     return { delivered: true };
   } catch (err) {
-    // Only server-wide problems (login, connection) mark email as broken;
+    // Only server-wide problems (login, connection, sender) mark email as broken;
     // a single rejected recipient address must not switch verification off for everyone.
-    if (isServerWideError(err)) setStatus('failed', explainSmtpError(err));
-    logger.error({ err: err.response || err.message, to, subject }, `[email] Failed to send email. ${explainSmtpError(err)}`);
+    if (isServerWideError(err)) setStatus('failed', explainError(err));
+    logger.error({ err: err.response || err.message, via: transport.label, to, subject }, `[email] Failed to send email. ${explainError(err)}`);
     // Local development only: print the link so testing can continue while email is misconfigured.
     if (!config.isProduction && cta?.url) {
       logger.warn({ to, link: cta.url }, '[email] (development) Link from the email that could not be sent');
@@ -140,24 +125,6 @@ const clearOutbox = () => {
   testOutbox.length = 0;
 };
 
-/** Plain-language hints for the SMTP errors people hit most often. */
-const explainSmtpError = (err) => {
-  const text = `${err.responseCode || ''} ${err.response || ''} ${err.code || ''} ${err.message || ''}`;
-  if (/535|EAUTH|authentication/i.test(text)) {
-    return 'The mail server rejected SMTP_USER / SMTP_PASS. Use the SMTP *login* your provider shows (Brevo: "Login" on the SMTP page, e.g. 123abc@smtp-brevo.com; Gmail: your address + an App Password).';
-  }
-  if (/ENOTFOUND|EAI_AGAIN/i.test(text)) return 'SMTP_HOST could not be found. Check the host name for typos.';
-  if (/ETIMEDOUT|ECONNREFUSED|ESOCKET/i.test(text)) {
-    return 'Could not connect to the mail server. Check SMTP_PORT/SMTP_SECURE (587 + false, or 465 + true) and that your network allows outgoing mail.';
-  }
-  return 'Check the SMTP_* settings in your environment.';
-};
-
-const isServerWideError = (err) =>
-  /535|EAUTH|authentication|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED|ESOCKET|ECONNECTION/i.test(
-    `${err.responseCode || ''} ${err.response || ''} ${err.code || ''} ${err.message || ''}`
-  );
-
 const PLACEHOLDER_SENDER = /yourdomain\.org|example\.(com|org)|servehub\.local/i;
 
 /**
@@ -169,13 +136,13 @@ const PLACEHOLDER_SENDER = /yourdomain\.org|example\.(com|org)|servehub\.local/i
 const checkEmailSetup = async () => {
   if (config.isTest) return { ok: true, reason: 'test' };
 
-  const transport = getTransporter();
+  const transport = getTransport();
   if (!transport) {
-    logger.warn('[email] SMTP is not configured — emails will be written to this log instead of being sent. Set SMTP_HOST, SMTP_USER, SMTP_PASS and EMAIL_FROM to send real email.');
+    logger.warn('[email] Email is not configured — emails will be written to this log instead of being sent. Set BREVO_API_KEY (recommended on Render) or SMTP_HOST/SMTP_USER/SMTP_PASS, plus EMAIL_FROM.');
     if (config.requireEmailVerification) {
       logger.warn('[email] Email verification is switched OFF until email works, so new users are not locked out.');
     }
-    setStatus('not_configured', 'SMTP_HOST is not set.');
+    setStatus('not_configured', 'Neither BREVO_API_KEY nor SMTP_HOST is set.');
     return { ok: false, reason: 'not-configured' };
   }
 
@@ -185,12 +152,12 @@ const checkEmailSetup = async () => {
 
   try {
     await transport.verify();
-    logger.info({ host: config.smtp.host }, '[email] SMTP login OK — emails will be sent');
+    logger.info({ via: transport.label }, '[email] Email login OK — emails will be sent');
     setStatus('ok');
     return { ok: true };
   } catch (err) {
-    const hint = explainSmtpError(err);
-    logger.error({ host: config.smtp.host, error: err.response || err.message }, `[email] SMTP check FAILED — emails will not be delivered. ${hint}`);
+    const hint = explainError(err);
+    logger.error({ via: transport.label, error: err.response || err.message }, `[email] Email check FAILED — emails will not be delivered. ${hint}`);
     if (config.requireEmailVerification) {
       logger.warn('[email] Email verification is switched OFF until email works, so new users are not locked out.');
     }
@@ -205,19 +172,22 @@ const checkEmailSetup = async () => {
  */
 const canDeliverEmail = () => {
   if (config.isTest) return true;
-  if (!config.smtp.host) return false;
+  if (!getTransport()) return false;
   return emailStatus.state !== 'failed';
 };
 
-/** Status for the admin console — no secrets, just host, sender and the verdict. */
-const getEmailStatus = () => ({
-  state: config.isTest ? 'ok' : !config.smtp.host ? 'not_configured' : emailStatus.state,
-  detail: emailStatus.detail,
-  checked_at: emailStatus.checkedAt,
-  host: config.smtp.host || null,
-  from: config.smtp.host ? config.smtp.from : null,
-  verification_required: config.requireEmailVerification && canDeliverEmail(),
-});
+/** Status for the admin console — no secrets, just the method, sender and the verdict. */
+const getEmailStatus = () => {
+  const transport = config.isTest ? null : getTransport();
+  return {
+    state: config.isTest ? 'ok' : !transport ? 'not_configured' : emailStatus.state,
+    detail: emailStatus.detail,
+    checked_at: emailStatus.checkedAt,
+    host: transport ? transport.label : null,
+    from: transport ? config.smtp.from : null,
+    verification_required: config.requireEmailVerification && canDeliverEmail(),
+  };
+};
 
 module.exports = {
   checkEmailSetup,
