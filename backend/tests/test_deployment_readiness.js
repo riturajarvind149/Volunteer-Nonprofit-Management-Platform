@@ -1,7 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const pool = require('./src/config/db');
+const pool = require('../src/config/db');
 
 const colors = {
   green: '\x1b[32m',
@@ -93,7 +93,7 @@ const runTests = async () => {
   // 2. Database Schema and initDb Tests
   console.log(`\n--> Section 2: Database Schema & initDb Path Resolution...`);
 
-  const schemaPath = path.join(__dirname, 'src', 'db', 'migrations', '001_initial_schema.sql');
+  const schemaPath = path.join(__dirname, '..', 'src', 'db', 'migrations', '001_initial_schema.sql');
   assert(
     fs.existsSync(schemaPath),
     'Initial migration exists at src/db/migrations/001_initial_schema.sql'
@@ -107,13 +107,13 @@ const runTests = async () => {
     'schema.sql contains expected core tables and unique index definitions'
   );
 
-  const initDbPath = path.join(__dirname, 'src', 'db', 'initDb.js');
+  const initDbPath = path.join(__dirname, '..', 'src', 'db', 'initDb.js');
   assert(
     fs.existsSync(initDbPath),
     'src/db/initDb.js exists at resolved path'
   );
 
-  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
   assert(
     pkg.scripts && pkg.scripts['db:init'] === 'node src/db/initDb.js',
     'package.json contains "db:init": "node src/db/initDb.js" script'

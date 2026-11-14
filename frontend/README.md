@@ -1,16 +1,44 @@
-# React + Vite
+# ServeHub — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + Vite single-page app for the Volunteer & Nonprofit Management Platform.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+echo VITE_API_URL=http://localhost:5000 > .env.local   # match PORT in backend/.env
+npm run dev                                            # http://localhost:5173
+```
 
-## React Compiler
+The backend must be running (see `../backend/README.md`).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Scripts
 
-## Expanding the Oxlint configuration
+| Command | What it does |
+|---|---|
+| `npm run dev` | Development server with hot reload |
+| `npm run build` | Production build into `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | Oxlint |
+| `npm test` | Vitest + Testing Library (requires **Node 22+**) |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Configuration
+
+| Variable | Purpose |
+|---|---|
+| `VITE_API_URL` | Backend base URL (with or without `/api`). Baked in at build time. |
+| `VITE_CACHE_DIR` | Optional location of Vite’s dependency cache. Defaults to the OS temp folder so projects inside OneDrive/Dropbox don’t hit `EPERM` errors. |
+
+## Structure
+
+```
+src/
+  components/     shared UI (layout, icons, pagination, password input…)
+  context/        AuthContext (session, expiry handling), OpportunityContext
+  pages/          one folder per screen, each with its CSS and tests
+  services/api.js every backend call, error handling and file downloads
+  utils/          formatting, CSV export, password rules, skills parsing
+  test/           test setup and helpers
+```
+
+Deployment: see [`../DEPLOYMENT.md`](../DEPLOYMENT.md).

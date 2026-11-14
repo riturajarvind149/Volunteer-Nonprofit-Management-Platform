@@ -15,10 +15,10 @@ process.env.REQUIRE_ORG_APPROVAL = 'true';
 process.env.RATE_LIMIT_ENABLED = 'false';
 
 const bcrypt = require('bcrypt');
-const app = require('./src/app');
-const pool = require('./src/config/db');
-const { migrate } = require('./src/db/migrate');
-const emailService = require('./src/services/emailService');
+const app = require('../src/app');
+const pool = require('../src/config/db');
+const { migrate } = require('../src/db/migrate');
+const emailService = require('../src/services/emailService');
 
 const c = { green: '\x1b[32m', red: '\x1b[31m', cyan: '\x1b[36m', bold: '\x1b[1m', reset: '\x1b[0m' };
 let passed = 0;
@@ -99,6 +99,33 @@ const run = async () => {
   assert(badJson.status === 400, 'Malformed JSON returns 400 instead of 500');
   const noBody = await api('POST', '/api/auth/login');
   assert(noBody.status === 400, 'Missing body returns 400 instead of 500');
+
+  // ------------------------------------------------------------------
+  section('CORS');
+  const corsCheck = async (origin) => {
+    const res = await fetch(`${baseUrl}/api/health`, { headers: { Origin: origin } });
+    return { status: res.status, allow: res.headers.get('access-control-allow-origin') };
+  };
+  const savedEnv = { NODE_ENV: process.env.NODE_ENV, FRONTEND_URL: process.env.FRONTEND_URL };
+  try {
+    // The allow-list is read per request, so the running app can be switched to production rules.
+    process.env.NODE_ENV = 'production';
+    process.env.FRONTEND_URL = 'https://app.example.org, https://staging.example.org/';
+    const prod = await corsCheck('https://app.example.org');
+    assert(prod.status === 200 && prod.allow === 'https://app.example.org', 'Production: configured frontend origin is allowed');
+    const staging = await corsCheck('https://staging.example.org');
+    assert(staging.status === 200, 'Production: comma-separated origins (trailing slash tolerated) are allowed');
+    const local = await corsCheck('http://localhost:5173');
+    assert(local.status === 403 && !local.allow, 'Production: localhost is rejected');
+    const evil = await corsCheck('https://evil.example.com');
+    assert(evil.status === 403 && !evil.allow, 'Production: unknown origins are rejected');
+  } finally {
+    process.env.NODE_ENV = savedEnv.NODE_ENV;
+    if (savedEnv.FRONTEND_URL === undefined) delete process.env.FRONTEND_URL;
+    else process.env.FRONTEND_URL = savedEnv.FRONTEND_URL;
+  }
+  const dev = await corsCheck('http://localhost:5173');
+  assert(dev.status === 200 && dev.allow === 'http://localhost:5173', 'Non-production: localhost dev server is allowed');
 
   // ------------------------------------------------------------------
   section('Registration & email verification');

@@ -97,11 +97,14 @@ If PostgreSQL is unreachable or `DATABASE_URL` is misconfigured, the endpoint re
 
 ## Tests
 
-Tests run against the database in `DATABASE_URL` and clean up the data they create.
+Integration tests live in `tests/` (one file per feature area). They start the API in-process,
+run against the database in `DATABASE_URL`, and remove the data they create.
+**Use a development database — never production.**
 ```bash
 npm test                 # all suites
 npm test -- signup       # suites whose file name contains "signup"
-npm run test:production  # email verification, org approval, waitlist, check-in, certificates...
+npm run test:production  # email verification, org approval, CORS, waitlist, check-in, certificates...
+npm run test:cleanup     # remove leftover @test.org accounts from older runs (refuses in production)
 ```
 
 ---
