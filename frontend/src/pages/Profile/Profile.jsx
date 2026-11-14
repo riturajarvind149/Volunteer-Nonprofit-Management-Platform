@@ -69,6 +69,10 @@ function Profile() {
 
   useEffect(() => { load() }, [load])
 
+  // The route guard normally waits for the session, but don't assume it: the user is null
+  // while the session is being checked and for a moment after signing out.
+  if (!user) return <LoadingState label="Loading your profile…" />
+
   const roleLabel = ROLE_LABELS[user.role] || 'Volunteer'
   const name = profile?.full_name || user.full_name || '?'
   const initials = name.split(' ').filter(Boolean).map((p) => p[0]).join('').toUpperCase().slice(0, 2)
