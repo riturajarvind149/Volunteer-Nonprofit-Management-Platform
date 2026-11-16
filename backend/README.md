@@ -120,6 +120,7 @@ See `.env.example` for every option.
 | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | — | Transactional email. Without SMTP, emails are logged |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` | Users must verify their email before logging in |
 | `REQUIRE_ORG_APPROVAL` | `true` | Admin must approve an organization before it can publish |
+| `REQUIRE_VOLUNTEER_DETAILS` | `true` | Volunteers must complete identity details (phone, city, DOB, emergency contact) before registering; admins can verify or flag them |
 | `APP_TIMEZONE` | `Asia/Kolkata` | Event times, reminders and check-in window |
 | `REMINDER_LEAD_HOURS` | `24` | When reminder emails go out |
 

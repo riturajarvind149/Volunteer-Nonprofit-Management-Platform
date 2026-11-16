@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const userRepository = require('../repositories/userRepository');
 const AppError = require('../utils/AppError');
 const { isSafeHttpUrl } = require('../utils/validators');
+const { ID_TYPES, IDENTITY_FIELDS, parseDateOfBirth } = require('../utils/volunteerDetails');
 
 /**
  * Retrieve comprehensive user profile including impact metrics
@@ -21,7 +22,16 @@ const getUserProfile = async (userId, role) => {
   };
 };
 
-const LIMITS = { full_name: [2, 255], phone: [0, 30], location: [0, 255], bio: [0, 2000] };
+const LIMITS = {
+  full_name: [2, 255],
+  phone: [0, 30],
+  location: [0, 255],
+  bio: [0, 2000],
+  emergency_contact_name: [0, 255],
+  emergency_contact_phone: [0, 30],
+};
+
+const PHONE_REGEX = /^[+()\-\s\d]{6,30}$/;
 
 const sanitizeProfileUpdate = (updateData) => {
   const cleanFields = {};
@@ -33,17 +43,48 @@ const sanitizeProfileUpdate = (updateData) => {
       continue;
     }
     if (typeof updateData[field] !== 'string') {
-      throw new AppError(`${field.replace('_', ' ')} must be text`, 400);
+      throw new AppError(`${field.replace(/_/g, ' ')} must be text`, 400);
     }
     const value = updateData[field].trim();
     if (value.length < min || value.length > max) {
-      throw new AppError(`${field.replace('_', ' ')} must be between ${min} and ${max} characters`, 400);
+      throw new AppError(`${field.replace(/_/g, ' ')} must be between ${min} and ${max} characters`, 400);
     }
     cleanFields[field] = value || null;
   }
 
-  if (cleanFields.phone && !/^[+()\-\s\d]{6,30}$/.test(cleanFields.phone)) {
+  if (cleanFields.phone && !PHONE_REGEX.test(cleanFields.phone)) {
     throw new AppError('Phone number contains invalid characters', 400);
+  }
+  if (cleanFields.emergency_contact_phone && !PHONE_REGEX.test(cleanFields.emergency_contact_phone)) {
+    throw new AppError('Emergency contact phone contains invalid characters', 400);
+  }
+
+  if (updateData.date_of_birth !== undefined) {
+    cleanFields.date_of_birth =
+      updateData.date_of_birth === null || updateData.date_of_birth === ''
+        ? null
+        : parseDateOfBirth(updateData.date_of_birth);
+  }
+
+  if (updateData.id_type !== undefined) {
+    if (updateData.id_type === null || updateData.id_type === '') {
+      cleanFields.id_type = null;
+    } else if (typeof updateData.id_type !== 'string' || !ID_TYPES.includes(updateData.id_type.trim().toUpperCase())) {
+      throw new AppError(`ID type must be one of: ${ID_TYPES.join(', ')}`, 400);
+    } else {
+      cleanFields.id_type = updateData.id_type.trim().toUpperCase();
+    }
+  }
+
+  if (updateData.id_last4 !== undefined) {
+    if (updateData.id_last4 === null || updateData.id_last4 === '') {
+      cleanFields.id_last4 = null;
+    } else if (typeof updateData.id_last4 !== 'string' || !/^[A-Za-z0-9]{4}$/.test(updateData.id_last4.trim())) {
+      // Only the last 4 characters are ever stored — reject anything longer so a full ID number is never saved.
+      throw new AppError('Enter only the last 4 letters or digits of your ID', 400);
+    } else {
+      cleanFields.id_last4 = updateData.id_last4.trim().toUpperCase();
+    }
   }
 
   if (updateData.skills !== undefined) {
@@ -87,7 +128,31 @@ const updateUserProfile = async (userId, updateData) => {
   }
 
   const cleanFields = sanitizeProfileUpdate(updateData || {});
-  const updatedUser = await userRepository.updateProfile(userId, cleanFields);
+
+  const merged = { ...existingUser, ...cleanFields };
+  if (Boolean(merged.id_type) !== Boolean(merged.id_last4)) {
+    throw new AppError('Provide both the ID type and its last 4 characters, or leave both empty', 400);
+  }
+
+  const identityChanged = IDENTITY_FIELDS.some(
+    (key) => cleanFields[key] !== undefined && (cleanFields[key] ?? null) !== (existingUser[key] ?? null)
+  );
+  const detailsChanged =
+    identityChanged ||
+    ['location', 'emergency_contact_name', 'emergency_contact_phone'].some(
+      (key) => cleanFields[key] !== undefined && (cleanFields[key] ?? null) !== (existingUser[key] ?? null)
+    );
+  if (detailsChanged) cleanFields.details_updated_at = new Date();
+
+  let updatedUser = await userRepository.updateProfile(userId, cleanFields);
+
+  // A verified volunteer who changes who they are needs to be looked at again.
+  if (identityChanged && existingUser.role === 'VOLUNTEER' && existingUser.verification_status === 'VERIFIED') {
+    updatedUser = await userRepository.setVerification(userId, {
+      status: 'UNVERIFIED',
+      note: 'Details changed after verification',
+    });
+  }
   const stats = await userRepository.getUserStats(userId, updatedUser.role);
 
   return {

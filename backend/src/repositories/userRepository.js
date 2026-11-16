@@ -1,7 +1,10 @@
 const pool = require('../config/db');
 
 const PUBLIC_COLUMNS =
-  'id, full_name, email, role, phone, location, bio, skills, avatar_url, email_verified_at, is_active, email_notifications, last_login_at, created_at, updated_at';
+  'id, full_name, email, role, phone, location, bio, skills, avatar_url, email_verified_at, is_active, email_notifications, last_login_at, created_at, updated_at, ' +
+  // Volunteer identity details (DATE is formatted as text to avoid timezone shifts in JSON).
+  "TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth, emergency_contact_name, emergency_contact_phone, id_type, id_last4, " +
+  'details_updated_at, verification_status, verification_note, verified_at';
 
 /**
  * Data-access repository for users table
@@ -56,7 +59,21 @@ const createUser = async ({ full_name, email, password_hash, role }) => {
  * @returns {Promise<Object>} Updated user record
  */
 const updateProfile = async (id, updateFields) => {
-  const allowedKeys = ['full_name', 'phone', 'location', 'bio', 'skills', 'avatar_url', 'email_notifications'];
+  const allowedKeys = [
+    'full_name',
+    'phone',
+    'location',
+    'bio',
+    'skills',
+    'avatar_url',
+    'email_notifications',
+    'date_of_birth',
+    'emergency_contact_name',
+    'emergency_contact_phone',
+    'id_type',
+    'id_last4',
+    'details_updated_at',
+  ];
   const setClauses = [];
   const values = [];
   let paramIndex = 1;
@@ -216,6 +233,25 @@ const setActive = async (id, isActive) => {
   return rows[0] || null;
 };
 
+/**
+ * Admin decision on whether a volunteer is a real person.
+ * status: UNVERIFIED | VERIFIED | FLAGGED
+ */
+const setVerification = async (id, { status, note = null, adminId = null }) => {
+  const { rows } = await pool.query(
+    `UPDATE users
+        SET verification_status = $2::varchar,
+            verification_note = $3,
+            verified_at = CASE WHEN $2::varchar = 'UNVERIFIED' THEN NULL ELSE CURRENT_TIMESTAMP END,
+            verified_by = CASE WHEN $2::varchar = 'UNVERIFIED' THEN NULL ELSE $4::uuid END,
+            updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING ${PUBLIC_COLUMNS}`,
+    [id, status, note, adminId]
+  );
+  return rows[0] || null;
+};
+
 const findAdmins = async () => {
   const { rows } = await pool.query(
     "SELECT id, full_name, email, email_notifications FROM users WHERE role = 'ADMIN' AND is_active = TRUE"
@@ -226,9 +262,13 @@ const findAdmins = async () => {
 /**
  * Paginated user search for the admin console.
  */
-const searchUsers = async ({ q, role, page = 1, limit = 20 }) => {
+const searchUsers = async ({ q, role, verification, page = 1, limit = 20 }) => {
   const where = [];
   const values = [];
+  if (verification) {
+    values.push(verification);
+    where.push(`verification_status = $${values.length}`);
+  }
   if (q) {
     values.push(`%${q}%`);
     where.push(`(full_name ILIKE $${values.length} OR email ILIKE $${values.length})`);
@@ -288,6 +328,7 @@ module.exports = {
   incrementTokenVersion,
   touchLastLogin,
   setActive,
+  setVerification,
   findAdmins,
   searchUsers,
   deleteUserCascade,

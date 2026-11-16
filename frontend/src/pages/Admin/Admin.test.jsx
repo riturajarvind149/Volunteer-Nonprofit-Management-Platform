@@ -10,6 +10,7 @@ import {
   reviewOrganizationApi,
   getAdminUsersApi,
   setUserActiveApi,
+  reviewVolunteerApi,
 } from '../../services/api'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import { TOKEN_KEY, ADMIN } from '../../test/fixtures'
@@ -106,5 +107,88 @@ describe('User management', () => {
     renderWithProviders(<AdminUsers />, { route: '/admin/users', path: '/admin/users' })
     const row = (await screen.findByText('You')).closest('tr')
     expect(within(row).queryByRole('button', { name: 'Suspend' })).not.toBeInTheDocument()
+    expect(within(row).queryByRole('button', { name: 'Review details' })).not.toBeInTheDocument()
+  })
+})
+
+describe('Volunteer verification', () => {
+  const VOL = {
+    id: 'u-2',
+    full_name: 'Meera Real',
+    email: 'meera@example.org',
+    role: 'VOLUNTEER',
+    is_active: true,
+    email_verified_at: '2026-01-01',
+    created_at: '2026-01-01',
+    phone: '+91 98765 43210',
+    location: 'Bengaluru',
+    date_of_birth: '1998-04-12',
+    emergency_contact_name: 'Ravi Kumar',
+    emergency_contact_phone: '+91 91234 56789',
+    id_type: 'AADHAAR',
+    id_last4: '1234',
+    verification_status: 'UNVERIFIED',
+    missing_details: [],
+  }
+
+  const listWith = (users) =>
+    getAdminUsersApi.mockResolvedValue({ data: { users, pagination: { page: 1, limit: 25, total: users.length, total_pages: 1 } } })
+
+  beforeEach(() => signInAsAdmin())
+
+  it('shows a volunteer’s details and marks them verified', async () => {
+    listWith([VOL])
+    reviewVolunteerApi.mockResolvedValue({ data: { user: { ...VOL, verification_status: 'VERIFIED' } } })
+    renderWithProviders(<AdminUsers />, { route: '/admin/users', path: '/admin/users' })
+
+    const row = (await screen.findByText('Meera Real')).closest('tr')
+    expect(within(row).getByText('Not reviewed')).toBeInTheDocument()
+    await userEvent.click(within(row).getByRole('button', { name: 'Review details' }))
+
+    expect(screen.getByText('Ravi Kumar · +91 91234 56789')).toBeInTheDocument()
+    expect(screen.getByText('Aadhaar ending 1234')).toBeInTheDocument()
+    expect(screen.getByText(/April 12, 1998 \(age \d+\)/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Mark verified' }))
+
+    expect(reviewVolunteerApi).toHaveBeenCalledWith('u-2', 'VERIFIED', undefined, 'test-token')
+    expect(await screen.findByText(/Meera Real is marked as a verified volunteer/)).toBeInTheDocument()
+    expect(within(row).getByText('Verified')).toBeInTheDocument()
+  })
+
+  it('requires a note before flagging a volunteer', async () => {
+    listWith([VOL])
+    reviewVolunteerApi.mockResolvedValue({ data: { user: { ...VOL, verification_status: 'FLAGGED' } } })
+    renderWithProviders(<AdminUsers />, { route: '/admin/users', path: '/admin/users' })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Review details' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Flag as suspicious' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Add a note explaining why')
+    expect(reviewVolunteerApi).not.toHaveBeenCalled()
+
+    await userEvent.type(screen.getByLabelText(/^Note/), 'Phone does not answer')
+    await userEvent.click(screen.getByRole('button', { name: 'Flag as suspicious' }))
+    expect(reviewVolunteerApi).toHaveBeenCalledWith('u-2', 'FLAGGED', 'Phone does not answer', 'test-token')
+  })
+
+  it('cannot verify a volunteer whose details are incomplete', async () => {
+    listWith([{ ...VOL, date_of_birth: null, missing_details: ['date_of_birth'] }])
+    renderWithProviders(<AdminUsers />, { route: '/admin/users', path: '/admin/users' })
+
+    const row = (await screen.findByText('Meera Real')).closest('tr')
+    expect(within(row).getByText('Details incomplete')).toBeInTheDocument()
+    await userEvent.click(within(row).getByRole('button', { name: 'Review details' }))
+    expect(screen.getByText(/missing date of birth/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Mark verified' })).toBeDisabled()
+  })
+
+  it('filters volunteers by verification status', async () => {
+    listWith([VOL])
+    renderWithProviders(<AdminUsers />, { route: '/admin/users', path: '/admin/users' })
+    await screen.findByText('Meera Real')
+    await userEvent.click(screen.getByRole('button', { name: 'Volunteers' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Flagged' }))
+    await vi.waitFor(() =>
+      expect(getAdminUsersApi).toHaveBeenLastCalledWith('test-token', expect.objectContaining({ role: 'VOLUNTEER', verification: 'FLAGGED' })),
+    )
   })
 })

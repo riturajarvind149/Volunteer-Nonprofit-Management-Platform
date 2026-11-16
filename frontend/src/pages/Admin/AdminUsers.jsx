@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { getAdminUsersApi, setUserActiveApi } from '../../services/api'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
@@ -6,6 +6,7 @@ import Icon from '../../components/Icon'
 import Pagination from '../../components/Pagination'
 import { PageHeader, LoadingState, Alert, EmptyState, StatusBadge } from '../../components/ui'
 import { formatDate } from '../../utils/format'
+import VolunteerReviewPanel from './VolunteerReviewPanel'
 import './Admin.css'
 
 const ROLE_FILTERS = [
@@ -17,9 +18,20 @@ const ROLE_FILTERS = [
 
 const ROLE_LABELS = { VOLUNTEER: 'Volunteer', COORDINATOR: 'Coordinator', ADMIN: 'Admin' }
 
+const VERIFICATION_FILTERS = [
+  { key: '', label: 'Any status' },
+  { key: 'UNVERIFIED', label: 'Not reviewed' },
+  { key: 'VERIFIED', label: 'Verified' },
+  { key: 'FLAGGED', label: 'Flagged' },
+]
+
+const COLUMNS = 7
+
 function AdminUsers() {
   const { token, user: me } = useAuth()
   const [role, setRole] = useState('')
+  const [verification, setVerification] = useState('')
+  const [openId, setOpenId] = useState(null)
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query.trim(), 300)
   const [page, setPage] = useState(1)
@@ -34,14 +46,30 @@ function AdminUsers() {
     setLoading(true)
     setError('')
     try {
-      const res = await getAdminUsersApi(token, { q: debouncedQuery, role, page, limit: 25 })
+      const params = { q: debouncedQuery, role, page, limit: 25 }
+      if (role === 'VOLUNTEER' && verification) params.verification = verification
+      const res = await getAdminUsersApi(token, params)
       setData({ users: res?.data?.users || [], pagination: res?.data?.pagination || null })
     } catch (err) {
       setError(err.message || 'Users could not be loaded.')
     } finally {
       setLoading(false)
     }
-  }, [token, debouncedQuery, role, page])
+  }, [token, debouncedQuery, role, verification, page])
+
+  const handleReviewed = (target, updated, action) => {
+    setData((prev) => ({
+      ...prev,
+      users: prev.users.map((u) => (u.id === target.id ? { ...u, ...updated } : u)),
+    }))
+    setOpenId(null)
+    const text = {
+      VERIFIED: `${target.full_name} is marked as a verified volunteer.`,
+      FLAGGED: `${target.full_name} was flagged and can’t register for new opportunities.`,
+      UNVERIFIED: `${target.full_name} is back to not reviewed.`,
+    }[action.status]
+    setNotice({ tone: 'success', text })
+  }
 
   useEffect(() => { load() }, [load])
 
@@ -73,15 +101,26 @@ function AdminUsers() {
 
   return (
     <div className="page">
-      <PageHeader title="Users" description="Find accounts and suspend anyone misusing the platform. Suspended users are signed out immediately and can’t sign in." />
+      <PageHeader title="Users" description="Find accounts, check that volunteers are real people, and suspend anyone misusing the platform. Suspended users are signed out immediately and can’t sign in." />
 
       <div className="admin-toolbar">
-        <div className="segmented" role="group" aria-label="Role">
-          {ROLE_FILTERS.map((r) => (
-            <button key={r.key || 'all'} type="button" aria-pressed={role === r.key} onClick={() => { setRole(r.key); setPage(1) }}>
-              {r.label}
-            </button>
-          ))}
+        <div className="admin-filters">
+          <div className="segmented" role="group" aria-label="Role">
+            {ROLE_FILTERS.map((r) => (
+              <button key={r.key || 'all'} type="button" aria-pressed={role === r.key} onClick={() => { setRole(r.key); setPage(1); setOpenId(null) }}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+          {role === 'VOLUNTEER' && (
+            <div className="segmented" role="group" aria-label="Verification">
+              {VERIFICATION_FILTERS.map((v) => (
+                <button key={v.key || 'any'} type="button" aria-pressed={verification === v.key} onClick={() => { setVerification(v.key); setPage(1); setOpenId(null) }}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <label className="search admin-search">
           <span className="sr-only">Search users</span>
@@ -113,6 +152,7 @@ function AdminUsers() {
                   <th>Role</th>
                   <th>Joined</th>
                   <th>Last sign-in</th>
+                  <th>Identity</th>
                   <th>Status</th>
                   <th><span className="sr-only">Actions</span></th>
                 </tr>
@@ -121,8 +161,11 @@ function AdminUsers() {
                 {users.map((u) => {
                   const isSelf = u.id === me?.id
                   const busy = busyId === u.id
+                  const isVolunteer = u.role === 'VOLUNTEER'
+                  const open = openId === u.id
                   return (
-                    <tr key={u.id}>
+                    <Fragment key={u.id}>
+                    <tr>
                       <td data-label="User" className="cell-lead">
                         <span className="cell-primary">{u.full_name}{isSelf && <span className="badge badge-info admin-you">You</span>}</span>
                         <span className="cell-sub">{u.email}{!u.email_verified_at && ' · email not verified'}</span>
@@ -130,6 +173,25 @@ function AdminUsers() {
                       <td data-label="Role">{ROLE_LABELS[u.role] || u.role}</td>
                       <td data-label="Joined" className="num">{formatDate(u.created_at)}</td>
                       <td data-label="Last sign-in" className="num">{u.last_login_at ? formatDate(u.last_login_at) : 'Never'}</td>
+                      <td data-label="Identity">
+                        {isVolunteer ? (
+                          <div className="admin-identity">
+                            <StatusBadge status={u.verification_status || 'UNVERIFIED'} />
+                            {u.missing_details?.length > 0 && <span className="cell-sub">Details incomplete</span>}
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              aria-expanded={open}
+                              aria-controls={`vreview-${u.id}`}
+                              onClick={() => { setNotice(null); setOpenId(open ? null : u.id) }}
+                            >
+                              {open ? 'Hide details' : 'Review details'}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
                       <td data-label="Status"><StatusBadge status={u.is_active ? 'ACTIVE' : 'SUSPENDED'} /></td>
                       <td data-label="">
                         {isSelf || u.role === 'ADMIN' ? (
@@ -152,6 +214,14 @@ function AdminUsers() {
                         )}
                       </td>
                     </tr>
+                    {open && (
+                      <tr className="admin-review-row">
+                        <td colSpan={COLUMNS} id={`vreview-${u.id}`}>
+                          <VolunteerReviewPanel volunteer={u} onDone={handleReviewed} />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   )
                 })}
               </tbody>
