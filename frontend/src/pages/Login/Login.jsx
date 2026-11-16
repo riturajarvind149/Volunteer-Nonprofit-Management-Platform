@@ -4,7 +4,6 @@ import { loginApi } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import Icon from '../../components/Icon'
 import { Alert } from '../../components/ui'
-import { ResendVerification } from '../VerifyEmail/VerifyEmail'
 import '../Auth.css'
 
 function Login() {
@@ -18,7 +17,7 @@ function Login() {
   const [loading, setLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
-  const [needsVerification, setNeedsVerification] = useState(false)
+  const [errorCode, setErrorCode] = useState('')
 
   const redirectTo = location.state?.from || '/dashboard'
   const infoMessage = location.state?.message || ''
@@ -35,7 +34,7 @@ function Login() {
     if (Object.keys(errors).length) return
 
     setError('')
-    setNeedsVerification(false)
+    setErrorCode('')
     setLoading(true)
     try {
       const response = await loginApi({ email: trimmedEmail, password })
@@ -43,7 +42,7 @@ function Login() {
       navigate(redirectTo, { replace: true })
     } catch (err) {
       setError(err.message || 'Sign in failed. Check your email and password.')
-      setNeedsVerification(err.code === 'EMAIL_NOT_VERIFIED')
+      setErrorCode(err.code || '')
       setLoading(false)
     }
   }
@@ -61,8 +60,17 @@ function Login() {
         {location.state?.from && !infoMessage && !sessionNotice && !error && (
           <Alert tone="info">Sign in to continue to that page.</Alert>
         )}
-        {error && <Alert>{error}</Alert>}
-        {needsVerification && <ResendVerification initialEmail={email.trim()} />}
+        {error && (
+          <Alert>
+            {error}{' '}
+            {errorCode === 'EMAIL_NOT_REGISTERED' && <Link to="/register">Create an account</Link>}
+          </Alert>
+        )}
+        {errorCode === 'EMAIL_NOT_VERIFIED' && (
+          <Link to="/verify-email" state={{ email: email.trim() }} className="btn btn-secondary btn-block">
+            Enter verification code
+          </Link>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <div className="field">
