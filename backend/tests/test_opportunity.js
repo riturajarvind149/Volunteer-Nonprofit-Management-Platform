@@ -172,7 +172,7 @@ const runTests = async () => {
       title: 'Beach Cleanup Drive',
       description: 'Community beach cleanup activity to restore marine habitats.',
       category: 'Environment',
-      event_date: '2026-10-10',
+      event_date: '2030-10-10',
       start_time: '09:00',
       end_time: '12:00',
       location: 'Bengaluru Beach Park',

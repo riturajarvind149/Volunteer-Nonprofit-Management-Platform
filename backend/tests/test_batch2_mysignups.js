@@ -172,7 +172,7 @@ const runTests = async () => {
         title,
         description: 'Test Opportunity Description',
         category: 'Community Support',
-        event_date: options.event_date || '2027-04-10',
+        event_date: options.event_date || '2030-04-10',
         start_time: '09:00:00',
         end_time: '13:00:00',
         location: 'Downtown Center',

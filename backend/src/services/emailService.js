@@ -41,10 +41,16 @@ const escapeHtml = (value) =>
  * @param {string} opts.heading
  * @param {string[]} opts.paragraphs - plain text paragraphs (escaped)
  * @param {{label: string, url: string}} [opts.cta]
+ * @param {{label: string, value: string}} [opts.code] - one-time code shown in a large box
  * @param {string} [opts.footer]
  */
-const renderLayout = ({ heading, paragraphs = [], cta, footer }) => {
-  const body = paragraphs.map((p) => `<p style="margin:0 0 14px;line-height:1.55">${escapeHtml(p)}</p>`).join('');
+const renderLayout = ({ heading, paragraphs = [], cta, code, footer }) => {
+  const body =
+    paragraphs.map((p) => `<p style="margin:0 0 14px;line-height:1.55">${escapeHtml(p)}</p>`).join('') +
+    (code
+      ? `<p style="margin:20px 0 6px;font-size:13px;color:#6b7280">${escapeHtml(code.label)}</p>
+         <div style="display:inline-block;font-size:32px;font-weight:700;letter-spacing:8px;font-family:Consolas,Menlo,monospace;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:12px 20px">${escapeHtml(code.value)}</div>`
+      : '');
   const button = cta
     ? `<p style="margin:24px 0"><a href="${escapeHtml(cta.url)}" style="background:#2563eb;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">${escapeHtml(cta.label)}</a></p>
        <p style="font-size:12px;color:#6b7280;word-break:break-all">If the button doesn't work, copy this link: ${escapeHtml(cta.url)}</p>`
@@ -60,8 +66,8 @@ const renderLayout = ({ heading, paragraphs = [], cta, footer }) => {
   </td></tr></table></td></tr></table></body></html>`;
 };
 
-const renderText = ({ heading, paragraphs = [], cta }) =>
-  [heading, '', ...paragraphs, cta ? `\n${cta.label}: ${cta.url}` : ''].join('\n');
+const renderText = ({ heading, paragraphs = [], cta, code }) =>
+  [heading, '', ...paragraphs, code ? `\n${code.label}: ${code.value}` : '', cta ? `\n${cta.label}: ${cta.url}` : ''].join('\n');
 
 /**
  * Send an email. Never throws.
@@ -73,26 +79,27 @@ const renderText = ({ heading, paragraphs = [], cta }) =>
  * @param {{label: string, url: string}} [message.cta]
  * @param {Array} [message.attachments] - nodemailer attachments
  */
-const sendEmail = async ({ to, subject, heading, paragraphs, cta, footer, attachments }) => {
+const sendEmail = async ({ to, subject, heading, paragraphs, cta, code, footer, attachments }) => {
   if (!to) return { delivered: false };
 
   const mail = {
     from: config.smtp.from,
     to,
     subject,
-    text: renderText({ heading, paragraphs, cta }),
-    html: renderLayout({ heading, paragraphs, cta, footer }),
+    text: renderText({ heading, paragraphs, cta, code }),
+    html: renderLayout({ heading, paragraphs, cta, code, footer }),
     attachments,
   };
 
   if (config.isTest) {
-    testOutbox.push({ to, subject, text: mail.text, cta, attachments });
+    testOutbox.push({ to, subject, text: mail.text, cta, code: code?.value, attachments });
     return { delivered: true, captured: true };
   }
 
   const transport = getTransport();
   if (!transport) {
-    logger.info({ to, subject, link: cta?.url }, '[email] Email not configured — email logged instead of sent');
+    const devCode = config.isProduction ? undefined : code?.value;
+    logger.info({ to, subject, link: cta?.url, code: devCode }, '[email] Email not configured — email logged instead of sent');
     return { delivered: false, logged: true };
   }
 
@@ -106,8 +113,8 @@ const sendEmail = async ({ to, subject, heading, paragraphs, cta, footer, attach
     if (isServerWideError(err)) setStatus('failed', explainError(err));
     logger.error({ err: err.response || err.message, via: transport.label, to, subject }, `[email] Failed to send email. ${explainError(err)}`);
     // Local development only: print the link so testing can continue while email is misconfigured.
-    if (!config.isProduction && cta?.url) {
-      logger.warn({ to, link: cta.url }, '[email] (development) Link from the email that could not be sent');
+    if (!config.isProduction && (cta?.url || code)) {
+      logger.warn({ to, link: cta?.url, code: code?.value }, '[email] (development) Link/code from the email that could not be sent');
     }
     return { delivered: false, error: err.message };
   }

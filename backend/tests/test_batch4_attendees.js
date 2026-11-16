@@ -208,7 +208,7 @@ const runTests = async () => {
           title,
           description: 'Batch 4 Test Event Description',
           category: 'Community',
-          event_date: '2027-06-15',
+          event_date: '2030-06-15',
           start_time: '10:00:00',
           end_time: '14:00:00',
           location: 'Community Center Main Hall',
