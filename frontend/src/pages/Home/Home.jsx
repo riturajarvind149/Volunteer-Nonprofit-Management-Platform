@@ -6,7 +6,7 @@ import TiltCard from '../../components/TiltCard'
 import { StatusBadge } from '../../components/ui'
 import './Home.css'
 
-const ShiftScene = lazy(() => import('./ShiftScene'))
+const CommunityScene = lazy(() => import('./CommunityScene'))
 
 const STEPS = [
   {
@@ -87,6 +87,7 @@ const PALETTE_TOKENS = {
   info: '--info',
   success: '--success',
   onSuccess: '--on-brand',
+  ink: '--ink',
 }
 
 function readPalette() {
@@ -235,7 +236,7 @@ function Home() {
             {webgl ? (
               <SceneBoundary fallback={<LifecycleList />}>
                 <Suspense fallback={null}>
-                  <ShiftScene stageRef={stageRef} palette={palette} reducedMotion={reducedMotion} active={inView} />
+                  <CommunityScene stageRef={stageRef} palette={palette} reducedMotion={reducedMotion} active={inView} />
                 </Suspense>
               </SceneBoundary>
             ) : (
