@@ -104,7 +104,9 @@ and `/api/health/db` → `{"status":"ok","database":"connected"}`.
 | Browser console shows **CORS** errors | `FRONTEND_URL` on the backend must exactly match the frontend origin (scheme + host, no trailing slash or path). Redeploy after changing it. |
 | Frontend shows “Can’t reach the server” | `VITE_API_URL` points to the wrong host, or the Render service is asleep (free instances take ~30 s to wake). |
 | Render build looks for `package.json` in the repo root | Root Directory must be `backend`. |
-| Users never receive verification / reset emails | Check SMTP variables and the Render logs for `[email]` lines. |
+| Users never receive verification / reset emails | Check `BREVO_API_KEY` / `EMAIL_FROM` and the Render logs for `[email]` lines. The site now shows the reason directly (not registered, already verified, limit of 5 per hour, send failed). Then check Brevo → Transactional → Logs. |
+| Link in the email opens `localhost` | `APP_URL` is set on the server. Remove it on Render — links then use `FRONTEND_URL`. Users can always type the **6-digit code** from the email instead of opening the link. |
+| “Please verify your email” but no email arrives | Use **Send a new code** on the verification screen, or **Forgot password** — resetting the password also verifies the email. Accounts created while email was down are verified automatically. |
 | Server exits at start with “Invalid configuration” | A required variable is missing — the log line names it. |
 
 ---

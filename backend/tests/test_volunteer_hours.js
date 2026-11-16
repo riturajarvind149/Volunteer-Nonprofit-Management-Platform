@@ -196,7 +196,7 @@ const runTests = async () => {
         body: JSON.stringify({
           organization_id: orgId,
           title,
-          event_date: '2026-11-20',
+          event_date: '2030-11-20',
           start_time: '09:00:00',
           end_time: '13:00:00',
           location: 'Community Center',

@@ -97,6 +97,10 @@ export const verifyEmailApi = (token) => authFetch('/auth/verify-email', { metho
 export const resendVerificationApi = (email) => authFetch('/auth/resend-verification', { method: 'POST', body: { email } })
 export const forgotPasswordApi = (email) => authFetch('/auth/forgot-password', { method: 'POST', body: { email } })
 export const resetPasswordApi = (token, password) => authFetch('/auth/reset-password', { method: 'POST', body: { token, password } })
+/** Email verification / password reset with the 6-digit code from the email (works on any device). */
+export const verifyEmailCodeApi = (email, code) => authFetch('/auth/verify-email', { method: 'POST', body: { email, code } })
+export const resetPasswordWithCodeApi = (email, code, password) =>
+  authFetch('/auth/reset-password', { method: 'POST', body: { email, code, password } })
 
 /** Build "?a=1&b=2" from an object, skipping empty values. Arrays become comma lists. */
 const toQuery = (params = {}) => {

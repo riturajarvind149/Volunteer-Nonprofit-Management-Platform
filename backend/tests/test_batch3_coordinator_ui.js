@@ -173,7 +173,7 @@ const runTests = async () => {
       title: 'Riverbank Clean-up Action',
       description: 'Removing trash along the riverside trail.',
       category: 'Environment',
-      event_date: '2027-05-20',
+      event_date: '2030-05-20',
       start_time: '09:00',
       end_time: '12:00',
       location: 'Riverside North Park',
