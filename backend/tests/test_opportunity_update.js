@@ -194,7 +194,7 @@ const runTests = async () => {
           title,
           description: `Description for ${title}`,
           category: 'Environment',
-          event_date: '2026-11-20',
+          event_date: '2030-11-20',
           start_time: '10:00:00',
           end_time: '14:00:00',
           location: 'Civic Center',

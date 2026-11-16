@@ -207,8 +207,8 @@ const runTests = async () => {
     const data6 = await res6.json();
 
     assert(
-      res6.status === 401 && data6.status === 'error' && data6.message === 'Invalid email or password',
-      'Non-existent email returns HTTP 401 with generic "Invalid email or password"',
+      res6.status === 404 && data6.status === 'error' && data6.code === 'EMAIL_NOT_REGISTERED' && /No account is registered/.test(data6.message),
+      'Non-existent email returns HTTP 404 "No account is registered with this email"',
       JSON.stringify(data6)
     );
 
@@ -227,8 +227,8 @@ const runTests = async () => {
     const data7 = await res7.json();
 
     assert(
-      res7.status === 401 && data7.status === 'error' && data7.message === 'Invalid email or password',
-      'Incorrect password returns identical HTTP 401 generic message',
+      res7.status === 401 && data7.status === 'error' && data7.code === 'INVALID_PASSWORD' && /Incorrect password/.test(data7.message),
+      'Incorrect password returns HTTP 401 "Incorrect password"',
       JSON.stringify(data7)
     );
 

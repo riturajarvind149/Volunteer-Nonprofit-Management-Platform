@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Login from './Login'
+import VerifyEmail from '../VerifyEmail/VerifyEmail'
 import { loginApi } from '../../services/api'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import { VOLUNTEER } from '../../test/fixtures'
@@ -41,14 +42,14 @@ describe('Login page', () => {
   })
 
   it('shows the server error when sign-in fails', async () => {
-    loginApi.mockRejectedValue(new Error('Invalid email or password'))
+    loginApi.mockRejectedValue(new Error('Incorrect password. Try again or use "Forgot password?" to reset it.'))
     renderLogin()
 
     await userEvent.type(screen.getByLabelText('Email address'), 'asha@example.org')
     await userEvent.type(screen.getByLabelText('Password'), 'wrong-password')
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect password')
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled()
     expect(screen.getByTestId('location')).toHaveTextContent('/login')
   })
@@ -62,21 +63,40 @@ describe('Login page', () => {
     expect(password).toHaveAttribute('type', 'text')
   })
 
-  it('offers to resend the verification email when the address is not verified', async () => {
+  it('sends an unverified user to the code screen with their email', async () => {
     loginApi.mockRejectedValue(
       Object.assign(new Error('Please verify your email address before logging in.'), {
         status: 403,
         code: 'EMAIL_NOT_VERIFIED',
       })
     )
-    renderLogin()
+    renderLogin({ routes: [{ path: '/verify-email', element: <VerifyEmail /> }] })
     await userEvent.type(screen.getByLabelText('Email address'), 'asha@example.org')
     await userEvent.type(screen.getByLabelText('Password'), 'Secret123!')
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('verify your email')
-    expect(screen.getByRole('button', { name: 'Resend verification email' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Email address', { selector: '#resend-email' })).toHaveValue('asha@example.org')
+    await userEvent.click(screen.getByRole('link', { name: 'Enter verification code' }))
+
+    expect(await screen.findByRole('heading', { name: 'Verify your email' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Email address', { selector: '#verify-email' })).toHaveValue('asha@example.org')
+  })
+
+  it('says when the email is not registered and links to sign up', async () => {
+    loginApi.mockRejectedValue(
+      Object.assign(new Error('No account is registered with this email address.'), {
+        status: 404,
+        code: 'EMAIL_NOT_REGISTERED',
+      })
+    )
+    renderLogin()
+    await userEvent.type(screen.getByLabelText('Email address'), 'new@example.org')
+    await userEvent.type(screen.getByLabelText('Password'), 'Secret123!')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('No account is registered')
+    expect(screen.getAllByRole('link', { name: 'Create an account' })[0]).toHaveAttribute('href', '/register')
   })
 
   it('links to the forgot-password page', () => {
