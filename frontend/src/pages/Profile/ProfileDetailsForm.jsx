@@ -12,18 +12,23 @@ const toForm = (user) => ({
   skills: (user.skills || []).join(', '),
 })
 
-function validate(form) {
+function validate(form, hideIdentity) {
   const errors = {}
-  if (form.full_name.trim().length < 2) errors.full_name = 'Enter your name (at least 2 characters).'
-  if (form.phone.trim() && !/^[+()\-\s\d]{6,30}$/.test(form.phone.trim())) errors.phone = 'Use digits, spaces, +, - or brackets only.'
+  if (!hideIdentity) {
+    if (form.full_name.trim().length < 2) errors.full_name = 'Enter your name (at least 2 characters).'
+    if (form.phone.trim() && !/^[+()\-\s\d]{6,30}$/.test(form.phone.trim())) errors.phone = 'Use digits, spaces, +, - or brackets only.'
+  }
   if (form.bio.length > 2000) errors.bio = 'Keep your bio under 2000 characters.'
   const skills = parseSkills(form.skills)
   if (skills.some((s) => s.length > 50)) errors.skills = 'Keep each skill under 50 characters.'
   return errors
 }
 
-/** Editable personal details. Volunteers' skills help coordinators match them to opportunities. */
-export function ProfileDetailsForm({ profile, onSaved }) {
+/**
+ * Editable personal details. Volunteers' skills help coordinators match them to opportunities.
+ * With `hideIdentity` (volunteers), name/phone/city live in the separate personal-details form instead.
+ */
+export function ProfileDetailsForm({ profile, onSaved, hideIdentity = false }) {
   const { token, updateUser } = useAuth()
   const [form, setForm] = useState(() => toForm(profile))
   const [errors, setErrors] = useState({})
@@ -36,20 +41,25 @@ export function ProfileDetailsForm({ profile, onSaved }) {
     setStatus(null)
   }
 
-  const dirty = JSON.stringify(form) !== JSON.stringify(toForm(profile))
+  const editable = (f) => (hideIdentity ? { bio: f.bio, skills: f.skills } : f)
+  const dirty = JSON.stringify(editable(form)) !== JSON.stringify(editable(toForm(profile)))
 
   const submit = async (e) => {
     e.preventDefault()
-    const nextErrors = validate(form)
+    const nextErrors = validate(form, hideIdentity)
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
     setSaving(true)
     setStatus(null)
     try {
       const res = await updateProfileApi({
-        full_name: form.full_name.trim(),
-        phone: form.phone.trim() || null,
-        location: form.location.trim() || null,
+        ...(hideIdentity
+          ? {}
+          : {
+              full_name: form.full_name.trim(),
+              phone: form.phone.trim() || null,
+              location: form.location.trim() || null,
+            }),
         bio: form.bio.trim() || null,
         skills: parseSkills(form.skills),
       }, token)
@@ -92,9 +102,13 @@ export function ProfileDetailsForm({ profile, onSaved }) {
     <form className="settings-form" onSubmit={submit} noValidate>
       {status && <Alert tone={status.tone}>{status.text}</Alert>}
       <div className="settings-grid">
-        {field('full_name', 'Full name', <input className="input" maxLength={255} autoComplete="name" {...inputProps('full_name')} />)}
-        {field('phone', 'Phone', <input className="input" type="tel" maxLength={30} autoComplete="tel" {...inputProps('phone')} />, 'Only shared with coordinators of events you register for.')}
-        {field('location', 'City or area', <input className="input" maxLength={255} autoComplete="address-level2" {...inputProps('location')} />)}
+        {!hideIdentity && (
+          <>
+            {field('full_name', 'Full name', <input className="input" maxLength={255} autoComplete="name" {...inputProps('full_name')} />)}
+            {field('phone', 'Phone', <input className="input" type="tel" maxLength={30} autoComplete="tel" {...inputProps('phone')} />, 'Only shared with coordinators of events you register for.')}
+            {field('location', 'City or area', <input className="input" maxLength={255} autoComplete="address-level2" {...inputProps('location')} />)}
+          </>
+        )}
         {profile.role !== 'ADMIN' && field(
           'skills',
           'Skills',

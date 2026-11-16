@@ -63,8 +63,27 @@ router.get(
   '/users',
   handle(async (req, res) => {
     const paging = parsePagination(req.query);
-    const data = await adminService.listUsers({ ...paging, q: str(req.query.q), role: str(req.query.role)?.toUpperCase() });
+    const data = await adminService.listUsers({
+      ...paging,
+      q: str(req.query.q),
+      role: str(req.query.role)?.toUpperCase(),
+      verification: str(req.query.verification)?.toUpperCase(),
+    });
     res.json({ status: 'success', data });
+  })
+);
+
+/** PATCH /api/admin/users/:id/verification { status: VERIFIED|FLAGGED|UNVERIFIED, note } */
+router.patch(
+  '/users/:id/verification',
+  requireUuid,
+  handle(async (req, res) => {
+    const user = await adminService.reviewVolunteer(
+      req.params.id,
+      { status: str(req.body?.status)?.toUpperCase(), note: req.body?.note },
+      req.user.id
+    );
+    res.json({ status: 'success', message: 'Volunteer status updated', data: { user } });
   })
 );
 

@@ -6,8 +6,11 @@ const templates = require('./emailTemplates');
 const { icsAttachment } = require('../utils/ical');
 const logger = require('../utils/logger');
 const AppError = require('../utils/AppError');
+const { assertVolunteerCanRegister } = require('../utils/volunteerDetails');
 
 const joinWaitlist = async (opportunityId, volunteerId) => {
+  // Waitlisted volunteers are auto-registered later, so they need complete details up front too.
+  assertVolunteerCanRegister(await userRepository.findById(volunteerId));
   const entry = await waitlistRepository.join(opportunityId, volunteerId);
   return entry;
 };

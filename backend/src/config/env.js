@@ -49,6 +49,10 @@ const config = {
   get requireOrgApproval() {
     return bool(process.env.REQUIRE_ORG_APPROVAL, true);
   },
+  /** Require volunteers to complete identity details before registering for opportunities. */
+  get requireVolunteerDetails() {
+    return bool(process.env.REQUIRE_VOLUNTEER_DETAILS, true);
+  },
   get rateLimitEnabled() {
     return bool(process.env.RATE_LIMIT_ENABLED, !this.isTest);
   },

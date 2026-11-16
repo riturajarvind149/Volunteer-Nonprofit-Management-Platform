@@ -5,6 +5,7 @@ const notificationService = require('./notificationService');
 const templates = require('./emailTemplates');
 const AppError = require('../utils/AppError');
 const { paginationMeta } = require('../utils/validators');
+const { missingVolunteerDetails } = require('../utils/volunteerDetails');
 
 const ORG_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'];
 
@@ -98,12 +99,48 @@ const reviewOrganization = async (orgId, { status, note }, adminId) => {
   return organization;
 };
 
-const listUsers = async ({ q, role, page, limit }) => {
+const VOLUNTEER_STATUSES = ['UNVERIFIED', 'VERIFIED', 'FLAGGED'];
+
+const listUsers = async ({ q, role, verification, page, limit }) => {
   if (role && !['VOLUNTEER', 'COORDINATOR', 'ADMIN'].includes(role)) {
     throw new AppError('Invalid role filter', 400);
   }
-  const { users, total } = await userRepository.searchUsers({ q, role, page, limit });
-  return { users, pagination: paginationMeta({ page, limit }, total) };
+  if (verification && !VOLUNTEER_STATUSES.includes(verification)) {
+    throw new AppError(`verification must be one of ${VOLUNTEER_STATUSES.join(', ')}`, 400);
+  }
+  const { users, total } = await userRepository.searchUsers({ q, role, verification, page, limit });
+  return {
+    users: users.map((u) => (u.role === 'VOLUNTEER' ? { ...u, missing_details: missingVolunteerDetails(u) } : u)),
+    pagination: paginationMeta({ page, limit }, total),
+  };
+};
+
+/** Admin marks a volunteer as a verified real person, flags them, or resets the review. */
+const reviewVolunteer = async (userId, { status, note }, adminId) => {
+  if (!VOLUNTEER_STATUSES.includes(status)) {
+    throw new AppError(`status must be one of ${VOLUNTEER_STATUSES.join(', ')}`, 400);
+  }
+  if (note !== undefined && note !== null && (typeof note !== 'string' || note.length > 1000)) {
+    throw new AppError('note must be text of at most 1000 characters', 400);
+  }
+  if (status === 'FLAGGED' && (!note || !note.trim())) {
+    throw new AppError('Please include a note explaining why this volunteer is flagged', 400);
+  }
+
+  const target = await userRepository.findById(userId);
+  if (!target) throw new AppError('User not found', 404);
+  if (target.role !== 'VOLUNTEER') throw new AppError('Only volunteer accounts can be verified here', 400);
+  if (status === 'VERIFIED' && missingVolunteerDetails(target).length) {
+    throw new AppError('This volunteer hasn’t completed their details yet, so they can’t be verified', 400);
+  }
+
+  const user = await userRepository.setVerification(userId, { status, note: note?.trim() || null, adminId });
+  await audit(adminId, `VOLUNTEER_${status}`, 'user', userId, {
+    email: target.email,
+    from: target.verification_status,
+    note: note?.trim() || undefined,
+  });
+  return { ...user, missing_details: missingVolunteerDetails(user) };
 };
 
 const setUserActive = async (userId, isActive, adminId) => {
@@ -137,6 +174,7 @@ module.exports = {
   listOrganizations,
   reviewOrganization,
   listUsers,
+  reviewVolunteer,
   setUserActive,
   listAuditLogs,
 };
