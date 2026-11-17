@@ -101,10 +101,11 @@ Integration tests live in `tests/` (one file per feature area). They start the A
 run against the database in `DATABASE_URL`, and remove the data they create.
 **Use a development database — never production.**
 ```bash
-npm test                 # all suites
-npm test -- signup       # suites whose file name contains "signup"
-npm run test:production  # email verification, org approval, CORS, waitlist, check-in, certificates...
-npm run test:cleanup     # remove leftover @test.org accounts from older runs (refuses in production)
+npm test                  # all suites
+npm test -- signup        # suites whose file name contains "signup"
+npm test -- production    # email verification, org approval, CORS, waitlist, check-in, certificates...
+npm run lint              # oxlint: unused code and common mistakes
+npm run test:cleanup      # remove leftover @test.org accounts from older runs (refuses in production)
 ```
 
 ---

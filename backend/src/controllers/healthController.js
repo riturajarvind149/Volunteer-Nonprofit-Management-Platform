@@ -22,7 +22,7 @@ const getDbHealth = async (req, res) => {
       status: 'ok',
       database: 'connected',
     });
-  } catch (error) {
+  } catch {
     // Do not expose database credentials or internal connection details
     res.status(503).json({
       status: 'error',

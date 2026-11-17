@@ -121,4 +121,4 @@ const countRecent = async (userId, type) => {
   return rows[0].n;
 };
 
-module.exports = { issue, consume, consumeCode, countRecent, hashToken, MAX_CODE_ATTEMPTS };
+module.exports = { issue, consume, consumeCode, countRecent };

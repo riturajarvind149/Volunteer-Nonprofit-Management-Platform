@@ -81,7 +81,7 @@ and `/api/health/db` → `{"status":"ok","database":"connected"}`.
 | Environment variable | `VITE_API_URL=https://<your-service>.onrender.com` |
 
 `frontend/vercel.json` rewrites every path to `index.html` so deep links such as
-`/opportunities/123` work. (`public/_redirects` does the same on Render/Netlify static hosting.)
+`/opportunities/123` work.
 
 `VITE_API_URL` is baked in at build time — **redeploy the frontend after changing it**.
 

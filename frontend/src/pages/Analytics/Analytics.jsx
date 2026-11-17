@@ -5,9 +5,11 @@ import {
   getManagedOpportunitiesApi,
   getOrganizationHoursSummaryApi,
   getOrganizationOpportunitiesSummaryApi,
+  getCoordinatorAnalyticsApi,
 } from '../../services/api'
+import MonthlyBars from '../../components/MonthlyBars'
 import { PageHeader, LoadingState, EmptyState, Alert } from '../../components/ui'
-import { formatHours, isUpcoming } from '../../utils/format'
+import { formatHours, isUpcoming, pluralize } from '../../utils/format'
 import './Analytics.css'
 
 const STATUS_ORDER = [
@@ -48,17 +50,21 @@ function Analytics() {
   const [opportunities, setOpportunities] = useState([])
   const [hours, setHours] = useState(null)
   const [hoursByOpp, setHoursByOpp] = useState([])
+  const [trends, setTrends] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
     setError('')
     try {
-      const [oppsRes, hoursRes, byOppRes] = await Promise.all([
+      const [oppsRes, hoursRes, byOppRes, trendsRes] = await Promise.all([
         getManagedOpportunitiesApi(token),
         getOrganizationHoursSummaryApi(token),
         getOrganizationOpportunitiesSummaryApi(token),
+        // Monthly trends are an extra: the rest of the page works without them.
+        getCoordinatorAnalyticsApi(token).catch(() => null),
       ])
+      setTrends(trendsRes?.data || null)
       setOpportunities(oppsRes?.data?.opportunities || [])
       setHours(hoursRes?.data?.summary || null)
       setHoursByOpp(byOppRes?.data?.opportunities || [])
@@ -153,6 +159,41 @@ function Analytics() {
           </section>
 
           <div className="analytics-grid">
+            {trends && (
+              <>
+                <section className="panel" aria-labelledby="hours-month-title">
+                  <div className="panel-header">
+                    <h2 id="hours-month-title">Hours logged per month</h2>
+                    <span className="muted">{formatHours(trends.metrics?.hours_this_month)} this month</span>
+                  </div>
+                  <div className="panel-body">
+                    <MonthlyBars
+                      rows={(trends.hours_by_month || []).map((r) => ({ month: r.month, year: r.year, value: Number(r.hours) || 0 }))}
+                      format={formatHours}
+                      unit="hours"
+                      label="Hours logged per month, last six months"
+                    />
+                  </div>
+                </section>
+
+                <section className="panel" aria-labelledby="regs-month-title">
+                  <div className="panel-header">
+                    <h2 id="regs-month-title">Registrations per month</h2>
+                    <span className="muted">
+                      {pluralize(trends.metrics?.total_volunteers ?? 0, 'volunteer')} in total · {trends.metrics?.volunteers_this_month ?? 0} this month
+                    </span>
+                  </div>
+                  <div className="panel-body">
+                    <MonthlyBars
+                      rows={(trends.registrations_by_month || []).map((r) => ({ month: r.month, year: r.year, value: Number(r.registrations) || 0 }))}
+                      unit="registrations"
+                      label="Registrations per month, last six months"
+                    />
+                  </div>
+                </section>
+              </>
+            )}
+
             <section className="panel analytics-wide" aria-labelledby="fill-title">
               <div className="panel-header">
                 <h2 id="fill-title">Fill rate of upcoming published events</h2>

@@ -326,67 +326,6 @@ const runTests = async () => {
       'Coordinator querying non-existent opportunity receives 404 Not Found'
     );
 
-    console.log(`\n${colors.cyan}--- 3. SIGNUP DETAILS ENDPOINT CONTRACT & OWNERSHIP ---${colors.reset}`);
-
-    // Test 6: Coordinator A retrieves detail for signup in owned opportunity
-    const detailRes = await fetch(`${baseUrl}/api/signups/${signupAliceId}`, {
-      headers: { Authorization: `Bearer ${tokenCoordA}` },
-    });
-    const detailData = await detailRes.json();
-    assert(detailRes.status === 200, 'Coordinator A can retrieve signup detail for owned opportunity (200)');
-    assert(
-      detailData.data?.signup?.id === signupAliceId,
-      'Signup detail returns correct signup ID'
-    );
-    assert(
-      detailData.data?.signup?.opportunity_id === opp1Id,
-      'Signup detail clearly distinguishes signup ID from opportunity ID'
-    );
-    assert(
-      detailData.data?.signup?.volunteer_email === volunteerAlice.email,
-      'Signup detail displays volunteer email'
-    );
-    assert(
-      !detailData.data?.signup?.password && !detailData.data?.signup?.password_hash,
-      'Security: Signup detail strictly avoids password hashes or secrets'
-    );
-
-    // Test 7: Coordinator B cannot view signup detail for Coordinator A's opportunity
-    const crossCoordDetailRes = await fetch(`${baseUrl}/api/signups/${signupAliceId}`, {
-      headers: { Authorization: `Bearer ${tokenCoordB}` },
-    });
-    assert(
-      crossCoordDetailRes.status === 403,
-      'Coordinator B receives 403 Forbidden when requesting another coordinator signup detail'
-    );
-
-    // Test 8: Volunteer Alice can view her own signup detail
-    const ownVolunteerDetailRes = await fetch(`${baseUrl}/api/signups/${signupAliceId}`, {
-      headers: { Authorization: `Bearer ${tokenAlice}` },
-    });
-    assert(
-      ownVolunteerDetailRes.status === 200,
-      'Volunteer Alice can access her own signup detail (200)'
-    );
-
-    // Test 9: Volunteer Bob cannot view Alice's signup detail (returns 404 anti-enumeration)
-    const otherVolunteerDetailRes = await fetch(`${baseUrl}/api/signups/${signupAliceId}`, {
-      headers: { Authorization: `Bearer ${tokenBob}` },
-    });
-    assert(
-      otherVolunteerDetailRes.status === 404,
-      'Volunteer Bob receives 404 Not Found when attempting to access Alice signup detail'
-    );
-
-    // Test 10: Non-existent signup detail returns 404
-    const notFoundDetailRes = await fetch(`${baseUrl}/api/signups/${fakeUuid}`, {
-      headers: { Authorization: `Bearer ${tokenCoordA}` },
-    });
-    assert(
-      notFoundDetailRes.status === 404,
-      'Querying non-existent signup ID returns 404 Not Found'
-    );
-
     console.log(`\n${colors.cyan}--- 4. COORDINATOR STATUS MANAGEMENT ---${colors.reset}`);
 
     // Test 11: Volunteer cannot update signup status
@@ -552,12 +491,9 @@ const runTests = async () => {
     );
 
     // Step E: Verify Alice status remains CANCELLED after rejected reactivation
-    const detailAfterFailedReactivation = await fetch(`${baseUrl}/api/signups/${aliceOpp2SignupId}`, {
-      headers: { Authorization: `Bearer ${tokenCoordA}` },
-    });
-    const detailAfterFailedData = await detailAfterFailedReactivation.json();
+    const afterFailed = await pool.query('SELECT status FROM signups WHERE id = $1', [aliceOpp2SignupId]);
     assert(
-      detailAfterFailedData.data?.signup?.status === 'CANCELLED',
+      afterFailed.rows[0]?.status === 'CANCELLED',
       'Signup status remains CANCELLED after rejected capacity-exceeded reactivation'
     );
 
@@ -678,12 +614,9 @@ const runTests = async () => {
 
     // Verify the rejected volunteer remains CANCELLED
     const loserSignupId = concurrentResAlice.status === 409 ? aliceOpp4Id : bobOpp4Id;
-    const loserDetailRes = await fetch(`${baseUrl}/api/signups/${loserSignupId}`, {
-      headers: { Authorization: `Bearer ${tokenCoordA}` },
-    });
-    const loserDetailData = await loserDetailRes.json();
+    const loser = await pool.query('SELECT status FROM signups WHERE id = $1', [loserSignupId]);
     assert(
-      loserDetailData.data?.signup?.status === 'CANCELLED',
+      loser.rows[0]?.status === 'CANCELLED',
       'The volunteer rejected due to capacity limit remains with status CANCELLED'
     );
 

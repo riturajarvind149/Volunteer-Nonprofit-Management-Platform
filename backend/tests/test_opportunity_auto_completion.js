@@ -73,7 +73,7 @@ const runTests = async () => {
   };
 
   let coordToken, aliceToken, bobToken;
-  let coordUser, aliceUser, bobUser;
+  let aliceUser, bobUser;
   let testOrgId;
 
   try {
@@ -83,12 +83,11 @@ const runTests = async () => {
     console.log(`${colors.yellow}--> Setting up test coordinators and volunteers...${colors.reset}`);
 
     // Register & Login Coordinator
-    const regCoord = await fetch(`${baseUrl}/api/auth/register`, {
+    await fetch(`${baseUrl}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(coordData),
     });
-    coordUser = (await regCoord.json()).data.user;
 
     const loginCoord = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
@@ -196,8 +195,8 @@ const runTests = async () => {
       )
     ).rows[0].id;
 
-    const cancelBobRes = await fetch(`${baseUrl}/api/signups/${bobSignupId}/cancel`, {
-      method: 'PATCH',
+    const cancelBobRes = await fetch(`${baseUrl}/api/opportunities/${pastOppId}/signup`, {
+      method: 'DELETE',
       headers: { Authorization: `Bearer ${bobToken}` },
     });
     assert(cancelBobRes.status === 200, 'Bob cancels his signup');
@@ -432,25 +431,9 @@ const runTests = async () => {
     assert(overnightEndedCheck.rows[0].status === 'COMPLETED', 'Overnight event is COMPLETED after 02:00 next morning');
 
     // -------------------------------------------------------------
-    // TEST GROUP 6: HTTP Endpoint & Scheduler Lifecycle
+    // TEST GROUP 6: Scheduler Lifecycle
     // -------------------------------------------------------------
-    console.log(`\n${colors.yellow}--> Group 6: HTTP Maintenance Endpoint & Background Scheduler Lifecycle...${colors.reset}`);
-
-    // Call POST /api/opportunities/process-completions
-    const httpProcessRes = await fetch(`${baseUrl}/api/opportunities/process-completions`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${coordToken}` },
-    });
-    const httpProcessBody = await httpProcessRes.json();
-    assert(httpProcessRes.status === 200, 'POST /api/opportunities/process-completions returns 200 OK');
-    assert(typeof httpProcessBody.data.completed_count === 'number', 'Endpoint returns completed_count summary');
-
-    // RBAC: Volunteer cannot trigger process-completions
-    const httpVolProcessRes = await fetch(`${baseUrl}/api/opportunities/process-completions`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${aliceToken}` },
-    });
-    assert(httpVolProcessRes.status === 403, 'Volunteer cannot call process-completions (returns 403 Forbidden)');
+    console.log(`\n${colors.yellow}--> Group 6: Background Scheduler Lifecycle...${colors.reset}`);
 
     // Test Scheduler start & stop
     assert(!isSchedulerRunning(), 'Scheduler is initially not active in test process');

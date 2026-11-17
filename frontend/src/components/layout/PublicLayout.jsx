@@ -1,10 +1,12 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
+import ErrorBoundary from '../ErrorBoundary'
 import { useAuth } from '../../context/AuthContext'
 import Icon from '../Icon'
 import { Brand } from '../ui'
 import './PublicLayout.css'
 
 function PublicLayout({ theme, onToggleTheme, children }) {
+  const { pathname } = useLocation()
   const { isAuthenticated } = useAuth()
   const nextTheme = theme === 'light' ? 'dark' : 'light'
 
@@ -39,7 +41,7 @@ function PublicLayout({ theme, onToggleTheme, children }) {
       </header>
 
       <main id="main" className="public-main">
-        {children ?? <Outlet />}
+        <ErrorBoundary resetKey={pathname}>{children ?? <Outlet />}</ErrorBoundary>
       </main>
 
       <footer className="public-footer">

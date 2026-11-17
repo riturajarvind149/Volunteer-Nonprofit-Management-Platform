@@ -1,6 +1,5 @@
 const express = require('express');
 const userController = require('../controllers/userController');
-const { changePassword } = require('../controllers/authController');
 const authenticate = require('../middleware/authenticate');
 const { loginLimiter } = require('../middleware/rateLimiters');
 
@@ -11,9 +10,6 @@ router.get('/profile', authenticate, userController.getProfile);
 
 /** PATCH /api/users/profile — update current user profile */
 router.patch('/profile', authenticate, userController.updateProfile);
-
-/** POST /api/users/change-password */
-router.post('/change-password', authenticate, loginLimiter, changePassword);
 
 /** GET /api/users/me/export — download all personal data (GDPR / DPDP) */
 router.get('/me/export', authenticate, userController.exportData);

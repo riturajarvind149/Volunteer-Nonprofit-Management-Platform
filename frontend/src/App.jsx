@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { OpportunityProvider } from './context/OpportunityContext'
+import { NotificationProvider } from './context/NotificationContext'
 import PublicLayout from './components/layout/PublicLayout'
 import AppLayout from './components/layout/AppLayout'
 import { LoadingState } from './components/ui'
+import ServerWakeNotice from './components/ServerWakeNotice'
 import Home from './pages/Home/Home'
 import Organizations from './pages/Organizations/Organizations'
 import OrganizationDetails from './pages/OrganizationDetails/OrganizationDetails'
@@ -153,8 +155,11 @@ function App() {
   return (
     <AuthProvider>
       <OpportunityProvider>
-        <ScrollToTop />
-        <AppRoutes />
+        <NotificationProvider>
+          <ScrollToTop />
+          <AppRoutes />
+          <ServerWakeNotice />
+        </NotificationProvider>
       </OpportunityProvider>
     </AuthProvider>
   )

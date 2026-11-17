@@ -146,15 +146,12 @@ const runTests = async () => {
     };
 
     // Register all users
-    const userCoord1Data = await registerUser(coordinator1);
+    await registerUser(coordinator1);
     const userCoord2Data = await registerUser(coordinator2);
-    const userVol1Data = await registerUser(volunteer1);
-    const userVol2Data = await registerUser(volunteer2);
+    await registerUser(volunteer1);
+    await registerUser(volunteer2);
 
-    const userCoord1 = userCoord1Data.data.user;
     const userCoord2 = userCoord2Data.data.user;
-    const userVol1 = userVol1Data.data.user;
-    const userVol2 = userVol2Data.data.user;
 
     const tokenCoord1 = (await loginUser(coordinator1.email, coordinator1.password)).data.token;
     const tokenCoord2 = (await loginUser(coordinator2.email, coordinator2.password)).data.token;
@@ -641,8 +638,8 @@ const runTests = async () => {
     );
 
     // Test 27: One volunteer cancels signup -> active signups become 1; CANCELLED signups excluded from active count
-    const cancelBobRes = await fetch(`${baseUrl}/api/signups/${signup1B_Bob}/cancel`, {
-      method: 'PATCH',
+    const cancelBobRes = await fetch(`${baseUrl}/api/opportunities/${opp1B_Id}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol2}`,
@@ -714,15 +711,6 @@ const runTests = async () => {
     assert(
       signupStatusRes.status === 200,
       'Test 31: Day 27 coordinator signup status update remains operational (200 OK)'
-    );
-
-    // Test 32: Day 28 GET /api/signups/:id detail retrieval remains operational for coordinator
-    const signupDetailRes = await fetch(`${baseUrl}/api/signups/${signup1B_Alice}`, {
-      headers: { Authorization: `Bearer ${tokenCoord1}` },
-    });
-    assert(
-      signupDetailRes.status === 200,
-      'Test 32: Day 28 coordinator signup detail retrieval remains operational (200 OK)'
     );
 
     // Test 33: Volunteer hours regression (Day 20 & Day 21)

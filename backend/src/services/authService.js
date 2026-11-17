@@ -367,7 +367,7 @@ const logoutAllSessions = async (userId) => {
 module.exports = {
   registerUser,
   loginUser,
-  generateToken,
+  
   getUserProfile,
   changePassword,
   verifyEmail,

@@ -120,8 +120,6 @@ const runTests = async () => {
 
   let coord1Id;
   let coord2Id;
-  let vol1Id;
-  let vol2Id;
 
   let signup1Id;
   let signup2Id;
@@ -163,11 +161,9 @@ const runTests = async () => {
 
     const vol1Login = await loginUser(volunteer1.email, volunteer1.password);
     tokenVol1 = vol1Login.data.token;
-    vol1Id = vol1Login.data.user.id;
 
     const vol2Login = await loginUser(volunteer2.email, volunteer2.password);
     tokenVol2 = vol2Login.data.token;
-    vol2Id = vol2Login.data.user.id;
 
     // Create Organization 1 for Coordinator 1
     const org1Res = await fetch(`${baseUrl}/api/organizations`, {
@@ -731,7 +727,7 @@ const runTests = async () => {
   } finally {
     try {
       await cleanupDatabase();
-    } catch (e) {
+    } catch {
       // ignore cleanup errors
     }
     if (server) {

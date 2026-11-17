@@ -32,6 +32,8 @@ describe('Role-based routing', () => {
     for (const fn of Object.values(api)) {
       if (vi.isMockFunction(fn)) fn.mockResolvedValue({ data: {} })
     }
+    // Not a data call: it subscribes to slow-server changes and returns an unsubscribe function.
+    api.onServerSlowChange.mockReturnValue(() => {})
   })
 
   it('sends signed-out users to sign in, remembering where they were going', async () => {
