@@ -46,7 +46,7 @@ export function Brand({ to = '/', onClick }) {
   return (
     <Link to={to} className="brand" onClick={onClick}>
       <span className="brand-mark">
-        <Icon name="mark" size={15} />
+        <img src="/brand/logo.svg" alt="" width="28" height="28" />
       </span>
       <span className="brand-name">ServeHub</span>
     </Link>
