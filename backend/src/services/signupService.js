@@ -8,6 +8,7 @@ const templates = require('./emailTemplates');
 const { icsAttachment } = require('../utils/ical');
 const { config } = require('../config/env');
 const AppError = require('../utils/AppError');
+const { assertVolunteerCanRegister } = require('../utils/volunteerDetails');
 
 /**
  * Service layer for volunteer signup business logic.
@@ -20,6 +21,9 @@ const AppError = require('../utils/AppError');
  * @returns {Promise<Object>} Created signup record
  */
 const createSignup = async (opportunityId, volunteerId) => {
+  // Volunteers must have completed their identity details (and not be flagged) before registering.
+  assertVolunteerCanRegister(await userRepository.findById(volunteerId));
+
   const signup = await signupRepository.createSignupTransaction(opportunityId, volunteerId);
 
   // Non-blocking notification dispatch

@@ -18,6 +18,8 @@ const STATUS_TONES = {
   APPROVED: 'success',
   SUSPENDED: 'danger',
   ACTIVE: 'success',
+  UNVERIFIED: '',
+  FLAGGED: 'danger',
 }
 
 const STATUS_LABELS = {
@@ -36,6 +38,8 @@ const STATUS_LABELS = {
   APPROVED: 'Approved',
   SUSPENDED: 'Suspended',
   ACTIVE: 'Active',
+  UNVERIFIED: 'Not reviewed',
+  FLAGGED: 'Flagged',
 }
 
 export function Brand({ to = '/', onClick }) {

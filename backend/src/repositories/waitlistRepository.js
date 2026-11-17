@@ -148,7 +148,10 @@ const promote = async (opportunityId) => {
       const next = (
         await client.query(
           `SELECT id, volunteer_id FROM waitlist_entries
-            WHERE opportunity_id = $1 ORDER BY created_at, id LIMIT 1 FOR UPDATE SKIP LOCKED`,
+            WHERE opportunity_id = $1
+              -- Volunteers flagged by an admin are skipped (they stay on the list but aren't auto-registered).
+              AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = waitlist_entries.volunteer_id AND u.verification_status = 'FLAGGED')
+            ORDER BY created_at, id LIMIT 1 FOR UPDATE SKIP LOCKED`,
           [opportunityId]
         )
       ).rows[0];

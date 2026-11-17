@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getProfileApi } from '../../services/api'
 import Icon from '../../components/Icon'
-import { Alert, LoadingState } from '../../components/ui'
+import { Alert, LoadingState, StatusBadge } from '../../components/ui'
+import VolunteerDetailsForm from '../../components/VolunteerDetailsForm'
 import { formatDate, formatHours } from '../../utils/format'
 import { ProfileDetailsForm, NotificationPreference } from './ProfileDetailsForm'
 import SecuritySettings from './SecuritySettings'
@@ -115,8 +116,24 @@ function Profile() {
             </Link>
           )}
 
+          {user.role === 'VOLUNTEER' && (
+            <Section
+              id="identity-title"
+              title={<>Personal details <StatusBadge status={profile.verification_status || 'UNVERIFIED'} /></>}
+              description="Needed once before you register for an opportunity. The ServeHub team uses them to confirm volunteers are real people."
+            >
+              {profile.verification_status === 'FLAGGED' && (
+                <Alert>
+                  Your account is under review, so you can’t register for new opportunities right now. Check your
+                  details below or contact support.
+                </Alert>
+              )}
+              <VolunteerDetailsForm profile={profile} onSaved={handleSaved} idPrefix="profile-identity" />
+            </Section>
+          )}
+
           <Section id="profile-title" title="Profile" description="How you appear to coordinators when you register.">
-            <ProfileDetailsForm profile={profile} onSaved={handleSaved} />
+            <ProfileDetailsForm profile={profile} onSaved={handleSaved} hideIdentity={user.role === 'VOLUNTEER'} />
           </Section>
 
           <Section id="notifications-title" title="Notifications">

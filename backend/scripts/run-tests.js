@@ -34,6 +34,7 @@ const SUITES = [
   'test_batch5_capabilities.js',
   'test_opportunity_auto_completion.js',
   'test_production_features.js',
+  'test_volunteer_details.js',
   'test_deployment_readiness.js',
   'test_email_transports.js',
 ];
@@ -50,6 +51,7 @@ const env = {
   // production-features suite switches these on itself.
   REQUIRE_EMAIL_VERIFICATION: 'false',
   REQUIRE_ORG_APPROVAL: 'false',
+  REQUIRE_VOLUNTEER_DETAILS: 'false',
   DISABLE_SCHEDULER: 'true',
 };
 

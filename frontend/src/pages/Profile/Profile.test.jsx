@@ -12,7 +12,7 @@ import {
   deleteAccountApi,
 } from '../../services/api'
 import { renderWithProviders } from '../../test/renderWithProviders'
-import { TOKEN_KEY, VOLUNTEER } from '../../test/fixtures'
+import { TOKEN_KEY, VOLUNTEER, VOLUNTEER_DETAILS } from '../../test/fixtures'
 
 vi.mock('../../services/api')
 
@@ -48,20 +48,37 @@ describe('Account settings', () => {
   })
 
   it('saves profile details with skills as a list', async () => {
-    updateProfileApi.mockResolvedValue({ data: { user: { ...PROFILE, location: 'Mumbai', skills: ['First aid', 'Hindi'] } } })
+    updateProfileApi.mockResolvedValue({ data: { user: { ...PROFILE, skills: ['First aid', 'Hindi'] } } })
     renderProfile()
 
-    const location = await screen.findByLabelText('City or area')
-    await userEvent.clear(location)
-    await userEvent.type(location, 'Mumbai')
-    await userEvent.type(screen.getByLabelText('Skills'), ', Hindi, first aid')
+    await userEvent.type(await screen.findByLabelText('Skills'), ', Hindi, first aid')
     await userEvent.click(screen.getByRole('button', { name: 'Save profile' }))
 
-    expect(updateProfileApi).toHaveBeenCalledWith(
-      expect.objectContaining({ location: 'Mumbai', skills: ['First aid', 'Hindi'] }),
-      'test-token',
-    )
+    expect(updateProfileApi).toHaveBeenCalledWith({ bio: null, skills: ['First aid', 'Hindi'] }, 'test-token')
     expect(await screen.findByText('Your profile was saved.')).toBeInTheDocument()
+  })
+
+  it('lets a volunteer keep their identity details up to date', async () => {
+    const complete = { ...PROFILE, ...VOLUNTEER_DETAILS, location: 'Pune', verification_status: 'VERIFIED' }
+    getProfileApi.mockResolvedValue({ data: { user: complete } })
+    updateProfileApi.mockResolvedValue({ data: { user: { ...complete, location: 'Mumbai' } } })
+    renderProfile()
+
+    expect(await screen.findByRole('heading', { name: /Personal details/ })).toHaveTextContent('Verified')
+    const city = screen.getByLabelText(/^City/)
+    expect(city).toHaveValue('Pune')
+    await userEvent.clear(city)
+    await userEvent.type(city, 'Mumbai')
+    await userEvent.click(screen.getByRole('button', { name: 'Save details' }))
+
+    expect(updateProfileApi).toHaveBeenCalledWith(expect.objectContaining({ location: 'Mumbai', date_of_birth: '1998-04-12' }), 'test-token')
+    expect(await screen.findByText('Your details were saved.')).toBeInTheDocument()
+  })
+
+  it('tells a flagged volunteer their account is under review', async () => {
+    getProfileApi.mockResolvedValue({ data: { user: { ...PROFILE, ...VOLUNTEER_DETAILS, verification_status: 'FLAGGED' } } })
+    renderProfile()
+    expect(await screen.findByText(/Your account is under review/)).toBeInTheDocument()
   })
 
   it('toggles email updates', async () => {
