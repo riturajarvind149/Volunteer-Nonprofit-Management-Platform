@@ -163,6 +163,8 @@ export const reviewOrganizationApi = (id, status, note, token) =>
 export const getAdminUsersApi = (token, params = {}) => authFetch('/admin/users' + toQuery(params), { token })
 export const setUserActiveApi = (id, isActive, token) =>
   authFetch('/admin/users/' + id, { method: 'PATCH', body: { is_active: isActive }, token })
+export const reviewVolunteerApi = (id, status, note, token) =>
+  authFetch('/admin/users/' + id + '/verification', { method: 'PATCH', body: { status, note }, token })
 export const getAuditLogsApi = (token, params = {}) => authFetch('/admin/audit-logs' + toQuery(params), { token })
 
 // ---- Coordinator tools ----

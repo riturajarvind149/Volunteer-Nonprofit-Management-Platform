@@ -1,0 +1,98 @@
+/* ---------- Volunteer identity details form ---------- */
+.details-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.details-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.details-legend {
+  padding: 0;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.details-legend .opt {
+  color: var(--ink-3);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.details-privacy {
+  margin: 0;
+}
+
+.details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ---------- Dialog shown on Register ---------- */
+.details-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  background: rgba(10, 14, 12, 0.55);
+  overflow-y: auto;
+}
+
+.details-dialog {
+  width: 100%;
+  max-width: 620px;
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+}
+
+.details-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.details-dialog-title {
+  font-size: var(--text-xl);
+  margin: 0 0 var(--space-1);
+}
+
+.details-dialog-desc {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.details-dialog-close {
+  flex: none;
+}
+
+@media (max-width: 560px) {
+  .details-dialog-backdrop {
+    padding: var(--space-3);
+  }
+
+  .details-dialog {
+    padding: var(--space-4);
+  }
+}

@@ -7,6 +7,8 @@ import {
   getOpportunitiesApi,
   getMySignupsApi,
   getOpportunityByIdApi,
+  getProfileApi,
+  updateProfileApi,
   signUpForOpportunityApi,
   cancelSignUpApi,
   joinWaitlistApi,
@@ -14,7 +16,8 @@ import {
   opportunityCalendarUrl,
 } from '../../services/api'
 import { renderWithProviders } from '../../test/renderWithProviders'
-import { TOKEN_KEY, VOLUNTEER, COORDINATOR } from '../../test/fixtures'
+import { TOKEN_KEY, VOLUNTEER, COMPLETE_VOLUNTEER, COORDINATOR } from '../../test/fixtures'
+
 
 vi.mock('../../services/api')
 
@@ -37,7 +40,7 @@ const OPEN = {
 }
 
 // Signs `user` in and serves `opportunity` + the volunteer's existing signups.
-const setup = ({ user = VOLUNTEER, opportunity = OPEN, signups = [], loadError } = {}) => {
+const setup = ({ user = COMPLETE_VOLUNTEER, opportunity = OPEN, signups = [], loadError } = {}) => {
   localStorage.setItem(TOKEN_KEY, 'test-token')
   getMeApi.mockResolvedValue({ data: { user } })
   getOpportunitiesApi.mockResolvedValue({ data: { opportunities: [opportunity] } })
@@ -67,6 +70,84 @@ describe('Opportunity sign-up panel', () => {
     expect(signUpForOpportunityApi).toHaveBeenCalledWith('opp-1', 'test-token')
     expect(await screen.findByText(/You’re registered\. A confirmation email/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel registration' })).toBeInTheDocument()
+  })
+
+  it('registers in one click without asking for details when they are already complete', async () => {
+    setup()
+    await userEvent.click(await screen.findByRole('button', { name: 'Register for this opportunity' }))
+    expect(getProfileApi).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(signUpForOpportunityApi).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks a volunteer with missing details to complete them, then registers', async () => {
+    getProfileApi.mockResolvedValue({ data: { user: VOLUNTEER } })
+    updateProfileApi.mockImplementation(async (fields) => ({ data: { user: { ...VOLUNTEER, ...fields } } }))
+    setup({ user: VOLUNTEER })
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Register for this opportunity' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Complete your details' })
+    expect(signUpForOpportunityApi).not.toHaveBeenCalled()
+
+    // Submitting empty shows errors and does not save.
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and register' }))
+    expect(within(dialog).getByText('Enter your phone number.')).toBeInTheDocument()
+    expect(updateProfileApi).not.toHaveBeenCalled()
+
+    await userEvent.type(within(dialog).getByLabelText(/^Phone/, { selector: '#register-details-phone' }), '+91 98765 43210')
+    await userEvent.type(within(dialog).getByLabelText(/^City/), 'Pune')
+    await userEvent.type(within(dialog).getByLabelText(/^Date of birth/), '1998-04-12')
+    await userEvent.type(within(dialog).getByLabelText(/^Name/), 'Ravi Kumar')
+    await userEvent.type(within(dialog).getByLabelText(/^Phone/, { selector: '#register-details-emergency_contact_phone' }), '9123456789')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and register' }))
+
+    expect(updateProfileApi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phone: '+91 98765 43210',
+        location: 'Pune',
+        date_of_birth: '1998-04-12',
+        emergency_contact_name: 'Ravi Kumar',
+        emergency_contact_phone: '9123456789',
+        id_type: null,
+        id_last4: null,
+      }),
+      'test-token',
+    )
+    await vi.waitFor(() => expect(signUpForOpportunityApi).toHaveBeenCalledWith('opp-1', 'test-token'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(await screen.findByText(/You’re registered\. A confirmation email/)).toBeInTheDocument()
+  })
+
+  it('never accepts a full ID number in the details dialog', async () => {
+    getProfileApi.mockResolvedValue({ data: { user: { ...COMPLETE_VOLUNTEER, date_of_birth: null } } })
+    setup({ user: { ...COMPLETE_VOLUNTEER, date_of_birth: null } })
+    await userEvent.click(await screen.findByRole('button', { name: 'Register for this opportunity' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByLabelText(/^Last 4 characters/)).toHaveAttribute('maxLength', '4')
+    await userEvent.selectOptions(within(dialog).getByLabelText(/^ID type/), 'AADHAAR')
+    await userEvent.type(within(dialog).getByLabelText(/^Date of birth/), '1998-04-12')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and register' }))
+    expect(within(dialog).getByText('Add the last 4 characters, or clear the ID type.')).toBeInTheDocument()
+    expect(updateProfileApi).not.toHaveBeenCalled()
+  })
+
+  it('opens the details dialog when the server reports an incomplete profile', async () => {
+    signUpForOpportunityApi.mockRejectedValueOnce(Object.assign(new Error('Please complete your details'), { status: 400, code: 'PROFILE_INCOMPLETE' }))
+    getProfileApi.mockResolvedValue({ data: { user: { ...COMPLETE_VOLUNTEER, phone: null } } })
+    setup()
+    await userEvent.click(await screen.findByRole('button', { name: 'Register for this opportunity' }))
+    expect(await screen.findByRole('dialog', { name: 'Complete your details' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('shows why a flagged volunteer cannot register', async () => {
+    signUpForOpportunityApi.mockRejectedValue(
+      Object.assign(new Error('Your account is under review by the ServeHub team'), { status: 403, code: 'VOLUNTEER_FLAGGED' }),
+    )
+    setup()
+    await userEvent.click(await screen.findByRole('button', { name: 'Register for this opportunity' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your account is under review')
   })
 
   it('shows the API error if registration fails (e.g. it filled up meanwhile)', async () => {

@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
-import { getOpportunityByIdApi, joinWaitlistApi, leaveWaitlistApi, opportunityCalendarUrl } from '../../services/api'
+import { getOpportunityByIdApi, getProfileApi, joinWaitlistApi, leaveWaitlistApi, opportunityCalendarUrl } from '../../services/api'
 import Icon from '../../components/Icon'
+import VolunteerDetailsDialog from '../../components/VolunteerDetailsDialog'
+import { missingDetails } from '../../utils/volunteerDetails'
 import { StatusBadge, LoadingState, EmptyState, Alert, CapacityMeter } from '../../components/ui'
 import { formatDate, formatTime, isUpcoming, spotsLabel } from '../../utils/format'
 import { opportunityPhoto } from '../../utils/photos'
@@ -52,6 +54,8 @@ function SignupPanel({ opportunity, onChanged }) {
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [message, setMessage] = useState(null)
+  // { profile, pending, label } while the "complete your details" dialog is open.
+  const [detailsPrompt, setDetailsPrompt] = useState(null)
 
   const isCoordinator = user?.role === 'COORDINATOR'
   const isOwner = isCoordinator && opportunity.coordinator_id === user?.id
@@ -71,14 +75,54 @@ function SignupPanel({ opportunity, onChanged }) {
       setConfirming(false)
       onChanged()
     } catch (err) {
-      setMessage({ tone: 'error', text: err.message || 'Something went wrong. Please try again.' })
+      if (err.code === 'PROFILE_INCOMPLETE') {
+        // The server says details are missing (e.g. cleared on another device) — ask for them, then retry.
+        setDetailsPrompt({ profile: await freshProfile(), pending: () => run(action, successText, { useServerMessage }) })
+      } else {
+        setMessage({ tone: 'error', text: err.message || 'Something went wrong. Please try again.' })
+      }
     } finally {
       setBusy(false)
     }
   }
 
+  const freshProfile = async () => {
+    try {
+      return (await getProfileApi(token))?.data?.user || user
+    } catch {
+      return user
+    }
+  }
+
+  /**
+   * Volunteers give their identity details once, before their first registration.
+   * If they're already complete this stays a one-click action.
+   */
+  const withDetails = async (pending, label) => {
+    if (missingDetails(user).length === 0) return pending()
+    setBusy(true)
+    setMessage(null)
+    const profile = await freshProfile()
+    setBusy(false)
+    if (missingDetails(profile).length === 0) return pending()
+    setDetailsPrompt({ profile, pending, label })
+  }
+
   const joinWaitlist = (id) => joinWaitlistApi(id, token)
   const leaveWaitlist = (id) => leaveWaitlistApi(id, token)
+
+  const detailsDialog = detailsPrompt && (
+    <VolunteerDetailsDialog
+      profile={detailsPrompt.profile}
+      actionLabel={detailsPrompt.label}
+      onClose={() => setDetailsPrompt(null)}
+      onSaved={() => {
+        const { pending } = detailsPrompt
+        setDetailsPrompt(null)
+        pending()
+      }}
+    />
+  )
 
   if (!isAuthenticated) {
     const open = opportunity.status === 'PUBLISHED' && !isPast
@@ -131,6 +175,7 @@ function SignupPanel({ opportunity, onChanged }) {
   return (
     <div className="signup-actions">
       {message && <Alert tone={message.tone}>{message.text}</Alert>}
+      {detailsDialog}
 
       {canWaitlist ? (
         waitlistPosition ? (
@@ -155,7 +200,12 @@ function SignupPanel({ opportunity, onChanged }) {
               type="button"
               className="btn btn-primary btn-lg btn-block"
               disabled={busy}
-              onClick={() => run(joinWaitlist, 'You joined the waitlist.', { useServerMessage: true })}
+              onClick={() =>
+                withDetails(
+                  () => run(joinWaitlist, 'You joined the waitlist.', { useServerMessage: true }),
+                  'Save and join waitlist',
+                )
+              }
             >
               {busy ? 'Joining…' : 'Join the waitlist'}
             </button>
@@ -199,7 +249,9 @@ function SignupPanel({ opportunity, onChanged }) {
             type="button"
             className="btn btn-primary btn-lg btn-block"
             disabled={busy}
-            onClick={() => run(signUp, 'You’re registered. A confirmation email with a calendar invite is on its way.')}
+            onClick={() =>
+              withDetails(() => run(signUp, 'You’re registered. A confirmation email with a calendar invite is on its way.'))
+            }
           >
             {busy ? 'Registering…' : mySignupStatus === 'CANCELLED' ? 'Register again' : 'Register for this opportunity'}
           </button>
