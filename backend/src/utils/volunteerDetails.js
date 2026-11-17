@@ -80,7 +80,7 @@ const parseDateOfBirth = (value) => {
 
 module.exports = {
   ID_TYPES,
-  REQUIRED_DETAILS,
+  
   IDENTITY_FIELDS,
   missingVolunteerDetails,
   assertVolunteerCanRegister,

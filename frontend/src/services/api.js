@@ -20,6 +20,41 @@ const DEAD_SESSION_CODES = new Set(['TOKEN_EXPIRED', 'SESSION_REVOKED', 'ACCOUNT
 
 let sessionExpiredHandler = null
 
+// ---- Slow-server detection ----
+// The free hosting plan puts the API to sleep when idle; the first request can take
+// up to a minute. Listeners are told when any request has been waiting too long.
+const SLOW_AFTER_MS = 5000
+const slowListeners = new Set()
+let pending = 0
+let slowTimer = null
+let isSlow = false
+
+const setSlow = (value) => {
+  if (isSlow === value) return
+  isSlow = value
+  slowListeners.forEach((listener) => listener(value))
+}
+
+/** Subscribe to "server is slow to respond" changes. Returns an unsubscribe function. */
+export const onServerSlowChange = (listener) => {
+  slowListeners.add(listener)
+  return () => slowListeners.delete(listener)
+}
+
+const trackRequest = async (request) => {
+  pending += 1
+  if (pending === 1) slowTimer = setTimeout(() => setSlow(true), SLOW_AFTER_MS)
+  try {
+    return await request()
+  } finally {
+    pending -= 1
+    if (pending === 0) {
+      clearTimeout(slowTimer)
+      setSlow(false)
+    }
+  }
+}
+
 /**
  * AuthContext registers a callback here so that any authenticated request that
  * comes back with a dead session signs the user out, wherever it happened.
@@ -54,7 +89,7 @@ const authFetch = async (endpoint, options = {}) => {
 
   let response
   try {
-    response = await fetch(API_BASE_URL + endpoint, config)
+    response = await trackRequest(() => fetch(API_BASE_URL + endpoint, config))
   } catch {
     throw new ApiError('Can’t reach the server. Check your internet connection and try again.', { status: 0 })
   }
@@ -65,10 +100,12 @@ const authFetch = async (endpoint, options = {}) => {
  * Download a protected file (PDF, CSV…) and hand it to the browser as a download.
  * Errors from the server arrive as JSON and are thrown as ApiError like any other call.
  */
-export const downloadFile = async (endpoint, token, fallbackName) => {
+const downloadFile = async (endpoint, token, fallbackName) => {
   let response
   try {
-    response = await fetch(API_BASE_URL + endpoint, { headers: token ? { Authorization: 'Bearer ' + token } : {} })
+    response = await trackRequest(() =>
+      fetch(API_BASE_URL + endpoint, { headers: token ? { Authorization: 'Bearer ' + token } : {} })
+    )
   } catch {
     throw new ApiError('Can’t reach the server. Check your internet connection and try again.', { status: 0 })
   }
@@ -120,6 +157,10 @@ export const getOrganizationByIdApi = (id, token) => authFetch('/organizations/'
 export const getOrganizationOpportunitiesApi = (id, token, params = {}) =>
   authFetch('/organizations/' + id + '/opportunities' + toQuery(params), { token })
 export const createOrganizationApi = (payload, token) => authFetch('/organizations', { method: 'POST', body: payload, token })
+export const updateOrganizationApi = (id, fields, token) =>
+  authFetch('/organizations/' + id, { method: 'PATCH', body: fields, token })
+/** Public impact figures: volunteers, hours, events, fill rate. */
+export const getOrganizationImpactApi = (id, token) => authFetch('/organizations/' + id + '/impact', { token })
 
 // ---- Opportunities (search/detail are public; token optional) ----
 /**
@@ -173,6 +214,10 @@ export const setAttendanceApi = (signupId, attendance, token) =>
   authFetch('/signups/' + signupId + '/attendance', { method: 'PATCH', body: { attendance_status: attendance }, token })
 export const getParticipationReportApi = (token, params = {}) =>
   authFetch('/reports/volunteer-participation' + toQuery({ from_date: params.from_date, to_date: params.to_date }), { token })
+export const getVolunteerHoursReportApi = (token, params = {}) =>
+  authFetch('/reports/volunteer-hours' + toQuery({ from_date: params.from_date, to_date: params.to_date }), { token })
+export const getOpportunityPerformanceReportApi = (token, params = {}) =>
+  authFetch('/reports/opportunity-performance' + toQuery({ from_date: params.from_date, to_date: params.to_date }), { token })
 export const getManagedOpportunitiesApi = (token) => authFetch('/opportunities?managed=true', { token })
 export const getOpportunityByIdApi = (id, token) => authFetch('/opportunities/' + id, { token })
 export const createOpportunityApi = (payload, token) => authFetch('/opportunities', { method: 'POST', body: payload, token })
@@ -182,8 +227,6 @@ export const getDashboardStatsApi = (token) => authFetch('/opportunities/dashboa
 export const signUpForOpportunityApi = (opportunityId, token) => authFetch('/opportunities/' + opportunityId + '/signup', { method: 'POST', token })
 export const cancelSignUpApi = (opportunityId, token) => authFetch('/opportunities/' + opportunityId + '/signup', { method: 'DELETE', token })
 export const getMySignupsApi = (token) => authFetch('/signups/my', { token })
-export const getSignupByIdApi = (id, token) => authFetch('/signups/' + id, { token })
-export const cancelSignupByIdApi = (id, token) => authFetch('/signups/' + id + '/cancel', { method: 'PATCH', token })
 export const updateSignupStatusApi = (id, status, token) => authFetch('/signups/' + id + '/status', { method: 'PATCH', body: { status }, token })
 export const getOpportunityAttendeesApi = (opportunityId, token) => authFetch('/opportunities/' + opportunityId + '/signups', { token })
 
@@ -206,3 +249,12 @@ export const getOrganizationOpportunitiesSummaryApi = (token, params = {}) => {
   return authFetch('/hours/organization/opportunities' + (qs ? '?' + qs : ''), { token })
 }
 export const updateHoursStatusApi = (id, status, token) => authFetch('/hours/' + id + '/status', { method: 'PATCH', body: { status }, token })
+
+// ---- Notifications ----
+export const getNotificationsApi = (token, params = {}) => authFetch('/notifications' + toQuery(params), { token })
+export const markNotificationReadApi = (id, token) => authFetch('/notifications/' + id + '/read', { method: 'PATCH', token })
+export const markAllNotificationsReadApi = (token) => authFetch('/notifications/read-all', { method: 'PATCH', token })
+
+// ---- Analytics (monthly trends and impact) ----
+export const getVolunteerAnalyticsApi = (token) => authFetch('/analytics/volunteer', { token })
+export const getCoordinatorAnalyticsApi = (token) => authFetch('/analytics/coordinator', { token })

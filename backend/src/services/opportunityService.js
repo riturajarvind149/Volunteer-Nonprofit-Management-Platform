@@ -101,13 +101,6 @@ const searchOpportunities = async (user, params) => {
 };
 
 /**
- * Retrieves all opportunities (legacy helper)
- */
-const getAllOpportunities = async () => {
-  return await opportunityRepository.findAllOpportunities();
-};
-
-/**
  * Retrieves a single opportunity, enforcing visibility rules, and adds the
  * viewer's own registration / waitlist state.
  */
@@ -263,12 +256,11 @@ const getForCalendar = async (id, user) => getOpportunityById(id, user);
 module.exports = {
   createOpportunity,
   searchOpportunities,
-  getAllOpportunities,
   getManagedOpportunities,
   getOpportunityById,
   updateOpportunity,
   getDashboardStats,
   getForCalendar,
-  isPubliclyVisible,
+  
   canManage,
 };

@@ -168,11 +168,6 @@ const searchOpportunities = async (f = {}) => {
 };
 
 /**
- * Retrieve all opportunities ordered by event date and start time ascending
- */
-const findAllOpportunities = async () => (await searchOpportunities({})).opportunities;
-
-/**
  * Registered (non-cancelled) volunteers of an opportunity with contact details.
  */
 const findRegisteredVolunteers = async (opportunityId) => {
@@ -462,7 +457,6 @@ const findRegisteredAttendeesWithoutCompletionNotification = async (opportunityI
 
 module.exports = {
   createOpportunity,
-  findAllOpportunities,
   findOpportunitiesByCoordinatorId,
   findOpportunityById,
   findOpportunityByIdWithCoordinator,

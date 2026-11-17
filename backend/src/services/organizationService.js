@@ -75,9 +75,6 @@ const listOrganizations = async (user, { q, status, page, limit, offset }) => {
   return { organizations, pagination: paginationMeta({ page, limit }, total) };
 };
 
-/** @deprecated kept for internal callers */
-const getAllOrganizations = async () => organizationRepository.findAll();
-
 const getOrganizationById = async (id, user) => {
   const organization = await organizationRepository.findById(id);
   if (!organization) {
@@ -120,7 +117,6 @@ const getOrganizationImpact = async (id, user) => {
 module.exports = {
   createOrganization,
   listOrganizations,
-  getAllOrganizations,
   getOrganizationById,
   updateOrganization,
   getOrganizationImpact,

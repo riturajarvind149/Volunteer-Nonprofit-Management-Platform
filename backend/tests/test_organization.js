@@ -1,5 +1,4 @@
 require('dotenv').config();
-const jwt = require('jsonwebtoken');
 const app = require('../src/app');
 const pool = require('../src/config/db');
 
@@ -70,7 +69,6 @@ const runTests = async () => {
   let coordinatorToken;
   let coordinatorId;
   let volunteerToken;
-  let volunteerId;
   let createdOrgId;
 
   try {
@@ -111,7 +109,6 @@ const runTests = async () => {
     });
     const loginDataVol = await loginResVol.json();
     volunteerToken = loginDataVol.data?.token;
-    volunteerId = loginDataVol.data?.user?.id;
 
     // ----------------------------------------------------------------
     // Test 1: Coordinator creates organization -> 201 Created
@@ -225,7 +222,6 @@ const runTests = async () => {
       },
       body: JSON.stringify({ name: '   ' }),
     });
-    const data6a = await res6a.json();
 
     const res6b = await fetch(`${baseUrl}/api/organizations`, {
       method: 'POST',
@@ -235,7 +231,6 @@ const runTests = async () => {
       },
       body: JSON.stringify({ name: 'A' }),
     });
-    const data6b = await res6b.json();
 
     assert(
       res6a.status === 400 && res6b.status === 400,
@@ -258,7 +253,6 @@ const runTests = async () => {
         description: 12345, // Not a string
       }),
     });
-    const data7a = await res7a.json();
 
     const res7b = await fetch(`${baseUrl}/api/organizations`, {
       method: 'POST',
@@ -271,7 +265,6 @@ const runTests = async () => {
         description: 'X'.repeat(2001), // Exceeds 2000 chars
       }),
     });
-    const data7b = await res7b.json();
 
     assert(
       res7a.status === 400 && res7b.status === 400,
@@ -467,14 +460,14 @@ const runTests = async () => {
     );
 
     // ----------------------------------------------------------------
-    // Test 18: Existing RBAC tests still pass (/api/auth/coordinator-test)
+    // Test 18: Role-based authorization (coordinator-only route)
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 18: Role-based authorization still operational${colors.reset}`);
-    const rbacCoordRes = await fetch(`${baseUrl}/api/auth/coordinator-test`, {
+    const rbacCoordRes = await fetch(`${baseUrl}/api/organizations/mine`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${coordinatorToken}` },
     });
-    const rbacVolRes = await fetch(`${baseUrl}/api/auth/coordinator-test`, {
+    const rbacVolRes = await fetch(`${baseUrl}/api/organizations/mine`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${volunteerToken}` },
     });

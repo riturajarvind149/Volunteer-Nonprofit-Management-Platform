@@ -69,7 +69,7 @@ const recordHours = async ({ signupId, hours, status, idempotencyKey = null }, c
         reference_id: volunteerHours.id,
       });
     }
-  } catch (notifErr) {
+  } catch {
     // Non-blocking notification
   }
 
@@ -140,7 +140,7 @@ const updateStatus = async (id, status, coordinatorId) => {
           : undefined,
       });
     }
-  } catch (notifErr) {
+  } catch {
     // Non-blocking notification
   }
 

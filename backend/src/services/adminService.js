@@ -52,7 +52,7 @@ const listOrganizations = async ({ status, q, page, limit, offset }) => {
   );
   const total = rows[0]?.total_count || 0;
   return {
-    organizations: rows.map(({ total_count, ...r }) => r),
+    organizations: rows.map(({ total_count: _omit, ...r }) => r),
     pagination: paginationMeta({ page, limit }, total),
   };
 };
@@ -166,7 +166,7 @@ const listAuditLogs = async ({ page, limit, offset }) => {
     [limit, offset]
   );
   const total = rows[0]?.total_count || 0;
-  return { logs: rows.map(({ total_count, ...r }) => r), pagination: paginationMeta({ page, limit }, total) };
+  return { logs: rows.map(({ total_count: _omit, ...r }) => r), pagination: paginationMeta({ page, limit }, total) };
 };
 
 module.exports = {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getMeApi, loginApi, setSessionExpiredHandler, ApiError } from './api'
+import { getMeApi, loginApi, setSessionExpiredHandler, onServerSlowChange, ApiError } from './api'
 
 const mockFetch = (status, body) =>
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -45,5 +45,43 @@ describe('API client', () => {
     const error = await getMeApi('t').catch((e) => e)
     expect(error.status).toBe(0)
     expect(error.message).toMatch(/Can’t reach the server/)
+  })
+
+  it('reports a slow server after 5 seconds and clears it when the response arrives', async () => {
+    vi.useFakeTimers()
+    try {
+      let respond
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise((resolve) => { respond = resolve }))
+      const changes = []
+      const unsubscribe = onServerSlowChange((slow) => changes.push(slow))
+
+      const request = getMeApi('token')
+      await vi.advanceTimersByTimeAsync(4900)
+      expect(changes).toEqual([])
+      await vi.advanceTimersByTimeAsync(200)
+      expect(changes).toEqual([true])
+
+      respond(new Response(JSON.stringify({ data: {} }), { status: 200 }))
+      await request
+      expect(changes).toEqual([true, false])
+      unsubscribe()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not report fast responses as slow', async () => {
+    vi.useFakeTimers()
+    try {
+      mockFetch(200, { data: {} })
+      const changes = []
+      const unsubscribe = onServerSlowChange((slow) => changes.push(slow))
+      await getMeApi('token')
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(changes).toEqual([])
+      unsubscribe()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

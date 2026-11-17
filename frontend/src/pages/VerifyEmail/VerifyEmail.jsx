@@ -9,7 +9,7 @@ import '../Auth.css'
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** "Didn't get it?" form: sends a new code + link. */
-export function ResendVerification({ initialEmail = '', onSent }) {
+function ResendVerification({ initialEmail = '', onSent }) {
   const [email, setEmail] = useState(initialEmail)
   const [status, setStatus] = useState('idle') // idle | sending | sent | error
   const [message, setMessage] = useState('')

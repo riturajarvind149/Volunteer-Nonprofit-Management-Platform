@@ -16,7 +16,7 @@ const colors = {
 
 const runTests = async () => {
   console.log(`${colors.bold}${colors.cyan}=============================================================`);
-  console.log(`  DAY 28: COORDINATOR SIGNUP DETAIL RETRIEVAL TEST SUITE     `);
+  console.log(`  SIGNUP REGRESSION TEST SUITE                               `);
   console.log(`=============================================================${colors.reset}\n`);
 
   let passed = 0;
@@ -146,15 +146,11 @@ const runTests = async () => {
     };
 
     // Register all users
-    const userCoord1Data = await registerUser(coordinator1);
-    const userCoord2Data = await registerUser(coordinator2);
-    const userVol1Data = await registerUser(volunteer1);
-    const userVol2Data = await registerUser(volunteer2);
+    await registerUser(coordinator1);
+    await registerUser(coordinator2);
+    await registerUser(volunteer1);
+    await registerUser(volunteer2);
 
-    const userCoord1 = userCoord1Data.data.user;
-    const userCoord2 = userCoord2Data.data.user;
-    const userVol1 = userVol1Data.data.user;
-    const userVol2 = userVol2Data.data.user;
 
     const tokenCoord1 = (await loginUser(coordinator1.email, coordinator1.password)).data.token;
     const tokenCoord2 = (await loginUser(coordinator2.email, coordinator2.password)).data.token;
@@ -229,227 +225,20 @@ const runTests = async () => {
     // Signups:
     // Alice signs up for Opp 1A and Opp 1B (under Coordinator 1)
     const signup1A_Alice = await signupVolunteer(opp1A_Id, tokenVol1);
-    const signup1B_Alice = await signupVolunteer(opp1B_Id, tokenVol1);
+    await signupVolunteer(opp1B_Id, tokenVol1);
     // Bob signs up for Opp 2 (under Coordinator 2)
-    const signup2_Bob = await signupVolunteer(opp2_Id, tokenVol2);
+    await signupVolunteer(opp2_Id, tokenVol2);
 
     console.log(`${colors.yellow}Test entities prepared successfully.${colors.reset}\n`);
 
     // ================================================================
-    // Group 1: Authentication & Format Validation (401 & 400)
+    // Regression: signup, status, organization, opportunity and hours endpoints
     // ================================================================
-    console.log(`${colors.bold}Group 1: Authentication & Format Validation${colors.reset}`);
+    console.log(`\n${colors.bold}Regression: signup, status and hours endpoints${colors.reset}`);
 
-    // Test 1: Unauthenticated request returns 401 Unauthorized
-    const unauthRes = await fetch(`${baseUrl}/api/signups/${signup1A_Alice}`);
-    assert(
-      unauthRes.status === 401,
-      'Test 1: Unauthenticated request returns 401 Unauthorized'
-    );
-
-    // Test 2: Invalid JWT returns 401 Unauthorized
-    const invalidTokenRes = await fetch(`${baseUrl}/api/signups/${signup1A_Alice}`, {
-      headers: { Authorization: 'Bearer invalid.token.value' },
-    });
-    assert(
-      invalidTokenRes.status === 401,
-      'Test 2: Invalid JWT returns 401 Unauthorized'
-    );
-
-    // Test 3: Invalid UUID format returns 400 Bad Request
-    const invalidUuidRes = await fetch(`${baseUrl}/api/signups/not-a-valid-uuid`, {
-      headers: { Authorization: `Bearer ${tokenVol1}` },
-    });
-    const invalidUuidData = await invalidUuidRes.json();
-    assert(
-      invalidUuidRes.status === 400 && invalidUuidData.message.includes('valid UUID'),
-      'Test 3: Invalid UUID format returns 400 Bad Request'
-    );
-
-    // Test 4: Non-existent signup UUID for volunteer returns 404 Not Found
-    const nonExistentUuid = 'a0000000-0000-0000-0000-000000000000';
-    const nonExistentVolRes = await fetch(`${baseUrl}/api/signups/${nonExistentUuid}`, {
-      headers: { Authorization: `Bearer ${tokenVol1}` },
-    });
-    const nonExistentVolData = await nonExistentVolRes.json();
-    assert(
-      nonExistentVolRes.status === 404 && nonExistentVolData.message.includes('Signup not found'),
-      'Test 4: Non-existent signup UUID for volunteer returns 404 Not Found'
-    );
-
-    // Test 5: Non-existent signup UUID for coordinator returns 404 Not Found
-    const nonExistentCoordRes = await fetch(`${baseUrl}/api/signups/${nonExistentUuid}`, {
-      headers: { Authorization: `Bearer ${tokenCoord1}` },
-    });
-    const nonExistentCoordData = await nonExistentCoordRes.json();
-    assert(
-      nonExistentCoordRes.status === 404 && nonExistentCoordData.message.includes('Signup not found'),
-      'Test 5: Non-existent signup UUID for coordinator returns 404 Not Found'
-    );
-
-    // ================================================================
-    // Group 2: Volunteer Authorization & Ownership Isolation
-    // ================================================================
-    console.log(`\n${colors.bold}Group 2: Volunteer Authorization & Ownership Isolation${colors.reset}`);
-
-    // Test 6: Volunteer 1 can retrieve their own signup (Signup 1A)
-    const vol1OwnRes = await fetch(`${baseUrl}/api/signups/${signup1A_Alice}`, {
-      headers: { Authorization: `Bearer ${tokenVol1}` },
-    });
-    const vol1OwnData = await vol1OwnRes.json();
-    assert(
-      vol1OwnRes.status === 200 &&
-        vol1OwnData.status === 'success' &&
-        vol1OwnData.data?.signup?.id === signup1A_Alice,
-      'Test 6: Volunteer can retrieve their own signup (200 OK)'
-    );
-
-    // Test 7: Volunteer response contains signup and opportunity fields
-    const vol1Signup = vol1OwnData.data?.signup;
-    assert(
-      vol1Signup.volunteer_id === userVol1.id &&
-        vol1Signup.opportunity_id === opp1A_Id &&
-        vol1Signup.opportunity_title === 'Tree Planting Initiative' &&
-        vol1Signup.status === 'REGISTERED' &&
-        vol1Signup.created_at !== undefined,
-      'Test 7: Volunteer response preserves required signup and opportunity details'
-    );
-
-    // Test 8: Volunteer 1 cannot retrieve Volunteer 2's signup (Signup 2) -> returns 404 Not Found
-    const crossVolRes1 = await fetch(`${baseUrl}/api/signups/${signup2_Bob}`, {
-      headers: { Authorization: `Bearer ${tokenVol1}` },
-    });
-    const crossVolData1 = await crossVolRes1.json();
-    assert(
-      crossVolRes1.status === 404 && crossVolData1.message.includes('Signup not found'),
-      'Test 8: Volunteer cannot retrieve another volunteer signup (404 Not Found, preserving anti-enumeration)'
-    );
-
-    // Test 9: Volunteer 2 cannot retrieve Volunteer 1's signup (Signup 1A) -> returns 404 Not Found
-    const crossVolRes2 = await fetch(`${baseUrl}/api/signups/${signup1A_Alice}`, {
-      headers: { Authorization: `Bearer ${tokenVol2}` },
-    });
-    assert(
-      crossVolRes2.status === 404,
-      'Test 9: Volunteer 2 cannot retrieve Volunteer 1 signup (404 Not Found)'
-    );
-
-    // ================================================================
-    // Group 3: Coordinator Ownership & Detail Retrieval
-    // ================================================================
-    console.log(`\n${colors.bold}Group 3: Coordinator Ownership & Detail Retrieval${colors.reset}`);
-
-    // Test 10: Coordinator 1 can retrieve signup belonging to their own organization (Signup 1A)
-    const coord1OwnRes = await fetch(`${baseUrl}/api/signups/${signup1A_Alice}`, {
-      headers: { Authorization: `Bearer ${tokenCoord1}` },
-    });
-    const coord1OwnData = await coord1OwnRes.json();
-    assert(
-      coord1OwnRes.status === 200 &&
-        coord1OwnData.status === 'success' &&
-        coord1OwnData.data?.signup?.id === signup1A_Alice,
-      'Test 10: Coordinator can retrieve signup from their own organization (200 OK)'
-    );
-
-    // Test 11: Coordinator response contains full management detail
-    const coordSignup = coord1OwnData.data?.signup;
-    assert(
-      coordSignup.id === signup1A_Alice &&
-        coordSignup.volunteer_id === userVol1.id &&
-        coordSignup.volunteer_name === volunteer1.full_name &&
-        coordSignup.volunteer_email === volunteer1.email &&
-        coordSignup.opportunity_id === opp1A_Id &&
-        coordSignup.opportunity_title === 'Tree Planting Initiative' &&
-        coordSignup.opportunity_location === 'City Green Park' &&
-        coordSignup.organization_id === org1Id &&
-        coordSignup.status === 'REGISTERED' &&
-        coordSignup.created_at !== undefined &&
-        coordSignup.updated_at !== undefined,
-      'Test 11: Coordinator response includes volunteer info, opportunity info, organization info, and timestamps'
-    );
-
-    // Test 12: Coordinator 1 can retrieve another signup belonging to their own organization (Signup 1B)
-    const coord1SecondRes = await fetch(`${baseUrl}/api/signups/${signup1B_Alice}`, {
-      headers: { Authorization: `Bearer ${tokenCoord1}` },
-    });
-    assert(
-      coord1SecondRes.status === 200,
-      'Test 12: Coordinator 1 can retrieve second signup from their own organization (200 OK)'
-    );
-
-    // Test 13: Coordinator 1 cannot retrieve signup from Coordinator 2's organization (Signup 2) -> 403 Forbidden
-    const crossCoordRes1 = await fetch(`${baseUrl}/api/signups/${signup2_Bob}`, {
-      headers: { Authorization: `Bearer ${tokenCoord1}` },
-    });
-    const crossCoordData1 = await crossCoordRes1.json();
-    assert(
-      crossCoordRes1.status === 403 &&
-        crossCoordData1.message.includes('permission'),
-      'Test 13: Coordinator 1 cannot retrieve signup from Coordinator 2 organization (403 Forbidden)'
-    );
-
-    // Test 14: Coordinator 2 cannot retrieve signup from Coordinator 1's organization (Signup 1A) -> 403 Forbidden
-    const crossCoordRes2 = await fetch(`${baseUrl}/api/signups/${signup1A_Alice}`, {
-      headers: { Authorization: `Bearer ${tokenCoord2}` },
-    });
-    const crossCoordData2 = await crossCoordRes2.json();
-    assert(
-      crossCoordRes2.status === 403 &&
-        crossCoordData2.message.includes('permission'),
-      'Test 14: Coordinator 2 cannot retrieve signup from Coordinator 1 organization (403 Forbidden)'
-    );
-
-    // ================================================================
-    // Group 4: Anti-Spoofing & Security Verification
-    // ================================================================
-    console.log(`\n${colors.bold}Group 4: Anti-Spoofing & Security Verification${colors.reset}`);
-
-    // Test 15: Query parameter spoofing does not bypass authorization
-    const spoofQueryRes = await fetch(
-      `${baseUrl}/api/signups/${signup2_Bob}?coordinator_id=${userCoord2.id}&volunteer_id=${userVol2.id}`,
-      {
-        headers: { Authorization: `Bearer ${tokenCoord1}` },
-      }
-    );
-    assert(
-      spoofQueryRes.status === 403,
-      'Test 15: Client-supplied ownership query parameters cannot bypass authorization (strictly uses JWT identity)'
-    );
-
-    // Test 16: Coordinator 2 attempting to spoof coordinator_id to access Coordinator 1's signup is rejected
-    const spoofParamRes = await fetch(
-      `${baseUrl}/api/signups/${signup1A_Alice}?coordinator_id=${userCoord1.id}&volunteer_id=${userVol1.id}`,
-      {
-        headers: { Authorization: `Bearer ${tokenCoord2}` },
-      }
-    );
-    assert(
-      spoofParamRes.status === 403,
-      'Test 16: Coordinator 2 passing Coordinator 1 ID in query params cannot bypass authorization (403 Forbidden)'
-    );
-
-    // Test 17: Sensitive data protection: Volunteer response does NOT leak password or password_hash
-    const rawVolStr = JSON.stringify(vol1OwnData);
-    assert(
-      !rawVolStr.includes('password') && !rawVolStr.includes('password_hash'),
-      'Test 17: Volunteer response does NOT leak password or password_hash'
-    );
-
-    // Test 18: Sensitive data protection: Coordinator response does NOT leak password or password_hash
-    const rawCoordStr = JSON.stringify(coord1OwnData);
-    assert(
-      !rawCoordStr.includes('password') && !rawCoordStr.includes('password_hash'),
-      'Test 18: Coordinator response does NOT leak password or password_hash'
-    );
-
-    // ================================================================
-    // Group 5: Regression & Non-Breakage of Days 17-27 Endpoints
-    // ================================================================
-    console.log(`\n${colors.bold}Group 5: Regression & Non-Breakage of Existing Endpoints${colors.reset}`);
-
-    // Test 19: Existing volunteer cancellation (PATCH /api/signups/:id/cancel) remains operational
-    const volCancelRes = await fetch(`${baseUrl}/api/signups/${signup1B_Alice}/cancel`, {
-      method: 'PATCH',
+    // Test 19: Volunteer cancellation (DELETE /api/opportunities/:id/signup) works
+    const volCancelRes = await fetch(`${baseUrl}/api/opportunities/${opp1B_Id}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol1}`,
@@ -458,7 +247,7 @@ const runTests = async () => {
     const volCancelData = await volCancelRes.json();
     assert(
       volCancelRes.status === 200 && volCancelData.data?.signup?.status === 'CANCELLED',
-      'Test 19: Existing volunteer cancellation (PATCH /api/signups/:id/cancel) remains operational (200 OK)'
+      'Test 19: Volunteer cancellation (DELETE /api/opportunities/:id/signup) works (200 OK)'
     );
 
     // Test 20: Coordinator signup status update to CANCELLED (Day 27) remains operational

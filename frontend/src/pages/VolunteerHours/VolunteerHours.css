@@ -11,3 +11,50 @@
     align-items: flex-start;
   }
 }
+
+/* Your impact */
+.impact-body {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) 2fr;
+  gap: var(--space-6, 32px);
+  align-items: start;
+}
+
+.impact-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.impact-stats li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.impact-value {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.impact-label {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.impact-chart-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: var(--space-3);
+}
+
+@media (max-width: 720px) {
+  .impact-body {
+    grid-template-columns: 1fr;
+  }
+}

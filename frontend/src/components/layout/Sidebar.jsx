@@ -1,5 +1,6 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useNotifications } from '../../context/NotificationContext'
 import Icon from '../Icon'
 import { Brand, ThemeToggle } from '../ui'
 
@@ -86,6 +87,7 @@ const ROLE_LABELS = { ADMIN: 'Administrator', COORDINATOR: 'Coordinator', VOLUNT
 
 function Sidebar({ onNavigate, theme, onToggleTheme }) {
   const { user, logout } = useAuth()
+  const { unreadCount } = useNotifications()
   const navigate = useNavigate()
   const isCoordinator = user?.role === 'COORDINATOR'
   const isAdmin = user?.role === 'ADMIN'
@@ -125,6 +127,11 @@ function Sidebar({ onNavigate, theme, onToggleTheme }) {
                   <NavLink to={item.to} end={item.to === '/dashboard' || item.to === '/admin'} className="sidebar-link" onClick={onNavigate}>
                     <Icon name={item.icon} size={16} />
                     {item.label}
+                    {item.to === '/notifications' && unreadCount > 0 && (
+                      <span className="sidebar-badge" aria-label={`${unreadCount} unread`}>
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </NavLink>
                 </li>
               ))}

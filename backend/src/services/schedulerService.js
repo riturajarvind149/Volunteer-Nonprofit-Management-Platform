@@ -86,4 +86,4 @@ const stopSchedulers = () => {
   }
 };
 
-module.exports = { startSchedulers, stopSchedulers, withAdvisoryLock };
+module.exports = { startSchedulers, stopSchedulers };

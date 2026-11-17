@@ -105,4 +105,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { migrate, listMigrationFiles };
+module.exports = { migrate };

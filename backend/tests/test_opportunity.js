@@ -1,5 +1,4 @@
 require('dotenv').config();
-const jwt = require('jsonwebtoken');
 const app = require('../src/app');
 const pool = require('../src/config/db');
 const { cleanupTestUsers } = require('../scripts/test-cleanup');
@@ -80,11 +79,8 @@ const runTests = async () => {
   await cleanupDatabase();
 
   let tokenCoord1;
-  let idCoord1;
   let tokenCoord2;
-  let idCoord2;
   let tokenVol;
-  let idVol;
 
   let orgAId;
   let orgBId;
@@ -117,7 +113,6 @@ const runTests = async () => {
     });
     const loginData1 = await loginRes1.json();
     tokenCoord1 = loginData1.data?.token;
-    idCoord1 = loginData1.data?.user?.id;
 
     const loginRes2 = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
@@ -126,7 +121,6 @@ const runTests = async () => {
     });
     const loginData2 = await loginRes2.json();
     tokenCoord2 = loginData2.data?.token;
-    idCoord2 = loginData2.data?.user?.id;
 
     const loginRes3 = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
@@ -135,7 +129,6 @@ const runTests = async () => {
     });
     const loginData3 = await loginRes3.json();
     tokenVol = loginData3.data?.token;
-    idVol = loginData3.data?.user?.id;
 
     // Create Organization A owned by Coordinator 1
     const orgResA = await fetch(`${baseUrl}/api/organizations`, {
@@ -364,7 +357,6 @@ const runTests = async () => {
         title: 'A',
       }),
     });
-    const data10a = await res10a.json();
 
     const res10b = await fetch(`${baseUrl}/api/opportunities`, {
       method: 'POST',
@@ -377,7 +369,6 @@ const runTests = async () => {
         title: '   ',
       }),
     });
-    const data10b = await res10b.json();
 
     assert(
       res10a.status === 400 && res10b.status === 400,
@@ -513,7 +504,6 @@ const runTests = async () => {
         capacity: 0, // Must be > 0
       }),
     });
-    const data16a = await res16a.json();
 
     const res16b = await fetch(`${baseUrl}/api/opportunities`, {
       method: 'POST',
@@ -526,7 +516,6 @@ const runTests = async () => {
         capacity: -10, // Negative
       }),
     });
-    const data16b = await res16b.json();
 
     assert(
       res16a.status === 400 && res16b.status === 400,
@@ -722,16 +711,16 @@ const runTests = async () => {
     // ----------------------------------------------------------------
     // Test 27: Existing RBAC tests still pass
     // ----------------------------------------------------------------
-    console.log(`\n${colors.bold}Test 27: RBAC coordinator and volunteer test routes${colors.reset}`);
-    const rbacC = await fetch(`${baseUrl}/api/auth/coordinator-test`, {
+    console.log(`\n${colors.bold}Test 27: Coordinator-only route allows coordinators and forbids volunteers${colors.reset}`);
+    const rbacC = await fetch(`${baseUrl}/api/organizations/mine`, {
       headers: { Authorization: `Bearer ${tokenCoord1}` },
     });
-    const rbacV = await fetch(`${baseUrl}/api/auth/coordinator-test`, {
+    const rbacV = await fetch(`${baseUrl}/api/organizations/mine`, {
       headers: { Authorization: `Bearer ${tokenVol}` },
     });
     assert(
       rbacC.status === 200 && rbacV.status === 403,
-      'RBAC endpoints correctly allow coordinator and forbid volunteer',
+      'GET /api/organizations/mine allows a coordinator and forbids a volunteer',
       `Coord: ${rbacC.status}, Vol: ${rbacV.status}`
     );
 
