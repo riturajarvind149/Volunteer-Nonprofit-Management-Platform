@@ -69,7 +69,7 @@ const cleanupTestUsers = async (pool, emails = [], { patterns = [] } = {}) => {
   }
 };
 
-module.exports = { cleanupTestUsers, TEST_EMAIL_PATTERNS };
+module.exports = { cleanupTestUsers };
 
 if (require.main === module) {
   require('dotenv').config({ quiet: true });

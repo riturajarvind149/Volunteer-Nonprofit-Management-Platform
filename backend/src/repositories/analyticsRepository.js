@@ -174,10 +174,9 @@ const getVolunteerAnalytics = async (volunteerId) => {
 /**
  * Retrieve comprehensive analytics for a coordinator across their organizations.
  * @param {string} coordinatorId - Coordinator UUID
- * @param {Object} [options] - Options (e.g., period filter)
  * @returns {Promise<Object>} Aggregated coordinator metrics and analytical breakdowns
  */
-const getCoordinatorAnalytics = async (coordinatorId, { period = 'all' } = {}) => {
+const getCoordinatorAnalytics = async (coordinatorId) => {
   // 1. High-level Summary Metrics
   const summaryQuery = `
     SELECT

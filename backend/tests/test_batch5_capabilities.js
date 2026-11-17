@@ -67,7 +67,6 @@ const runTests = async () => {
   };
 
   let coordToken, otherCoordToken, volunteerToken;
-  let coordUser, volunteerUser;
   let testOrgId, testOppId, testSignupId, testHoursId;
 
   try {
@@ -82,9 +81,7 @@ const runTests = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(coordData),
     });
-    const regCoordBody = await regCoordRes.json();
     assert(regCoordRes.status === 201, 'Register test coordinator returns 201');
-    coordUser = regCoordBody.data.user;
 
     // Login Coordinator
     const loginCoordRes = await fetch(`${baseUrl}/api/auth/login`, {
@@ -114,9 +111,7 @@ const runTests = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(volunteerData),
     });
-    const regVolBody = await regVolRes.json();
     assert(regVolRes.status === 201, 'Register test volunteer returns 201');
-    volunteerUser = regVolBody.data.user;
 
     // Login Volunteer
     const loginVolRes = await fetch(`${baseUrl}/api/auth/login`, {

@@ -1,5 +1,4 @@
 const opportunityService = require('../services/opportunityService');
-const opportunityCompletionService = require('../services/opportunityCompletionService');
 const { buildEventIcs } = require('../utils/ical');
 const { parsePagination, isUuid } = require('../utils/validators');
 const { isValidDateString } = require('../middleware/validateOpportunity');
@@ -133,18 +132,6 @@ const getDashboardStats = handle(async (req, res) => {
   });
 });
 
-/**
- * POST /api/opportunities/process-completions
- */
-const processCompletions = handle(async (req, res) => {
-  const summary = await opportunityCompletionService.processCompletedOpportunities();
-  res.status(200).json({
-    status: 'success',
-    message: 'Opportunity completions processed successfully',
-    data: summary,
-  });
-});
-
 module.exports = {
   create,
   getAll,
@@ -152,5 +139,4 @@ module.exports = {
   getCalendar,
   update,
   getDashboardStats,
-  processCompletions,
 };

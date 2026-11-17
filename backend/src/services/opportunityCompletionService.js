@@ -148,7 +148,7 @@ const isSchedulerRunning = () => {
 };
 
 module.exports = {
-  resolveTimezone,
+  
   processCompletedOpportunities,
   startOpportunityCompletionScheduler,
   stopOpportunityCompletionScheduler,

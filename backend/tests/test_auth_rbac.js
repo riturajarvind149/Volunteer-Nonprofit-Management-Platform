@@ -1,5 +1,4 @@
 require('dotenv').config();
-const jwt = require('jsonwebtoken');
 const app = require('../src/app');
 const pool = require('../src/config/db');
 const authorizeRoles = require('../src/middleware/authorizeRoles');
@@ -106,7 +105,7 @@ const runTests = async () => {
     // Test 1: Coordinator accessing coordinator endpoint -> 200 OK
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 1: Coordinator accesses coordinator endpoint${colors.reset}`);
-    const res1 = await fetch(`${baseUrl}/api/auth/coordinator-test`, {
+    const res1 = await fetch(`${baseUrl}/api/organizations/mine`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${coordinatorToken}` },
     });
@@ -114,8 +113,8 @@ const runTests = async () => {
     assert(
       res1.status === 200 &&
       data1.status === 'success' &&
-      data1.data?.user?.role === 'COORDINATOR',
-      'COORDINATOR -> GET /api/auth/coordinator-test returns HTTP 200 OK',
+      Array.isArray(data1.data?.organizations),
+      'COORDINATOR -> GET /api/organizations/mine returns HTTP 200 OK',
       `Status: ${res1.status}, Body: ${JSON.stringify(data1)}`
     );
 
@@ -123,7 +122,7 @@ const runTests = async () => {
     // Test 2: Volunteer accessing coordinator endpoint -> 403 Forbidden
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 2: Volunteer accesses coordinator endpoint${colors.reset}`);
-    const res2 = await fetch(`${baseUrl}/api/auth/coordinator-test`, {
+    const res2 = await fetch(`${baseUrl}/api/organizations/mine`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${volunteerToken}` },
     });
@@ -133,7 +132,7 @@ const runTests = async () => {
       data2.status === 'error' &&
       typeof data2.message === 'string' &&
       data2.message.toLowerCase().includes('forbidden'),
-      'VOLUNTEER -> GET /api/auth/coordinator-test returns HTTP 403 Forbidden',
+      'VOLUNTEER -> GET /api/organizations/mine returns HTTP 403 Forbidden',
       `Status: ${res2.status}, Body: ${JSON.stringify(data2)}`
     );
 
@@ -141,7 +140,7 @@ const runTests = async () => {
     // Test 3: Volunteer accessing volunteer endpoint -> 200 OK
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 3: Volunteer accesses volunteer endpoint${colors.reset}`);
-    const res3 = await fetch(`${baseUrl}/api/auth/volunteer-test`, {
+    const res3 = await fetch(`${baseUrl}/api/signups/my`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${volunteerToken}` },
     });
@@ -149,8 +148,8 @@ const runTests = async () => {
     assert(
       res3.status === 200 &&
       data3.status === 'success' &&
-      data3.data?.user?.role === 'VOLUNTEER',
-      'VOLUNTEER -> GET /api/auth/volunteer-test returns HTTP 200 OK',
+      Array.isArray(data3.data?.signups),
+      'VOLUNTEER -> GET /api/signups/my returns HTTP 200 OK',
       `Status: ${res3.status}, Body: ${JSON.stringify(data3)}`
     );
 
@@ -158,7 +157,7 @@ const runTests = async () => {
     // Test 4: Coordinator accessing volunteer endpoint -> 403 Forbidden
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 4: Coordinator accesses volunteer endpoint${colors.reset}`);
-    const res4 = await fetch(`${baseUrl}/api/auth/volunteer-test`, {
+    const res4 = await fetch(`${baseUrl}/api/signups/my`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${coordinatorToken}` },
     });
@@ -168,7 +167,7 @@ const runTests = async () => {
       data4.status === 'error' &&
       typeof data4.message === 'string' &&
       data4.message.toLowerCase().includes('forbidden'),
-      'COORDINATOR -> GET /api/auth/volunteer-test returns HTTP 403 Forbidden',
+      'COORDINATOR -> GET /api/signups/my returns HTTP 403 Forbidden',
       `Status: ${res4.status}, Body: ${JSON.stringify(data4)}`
     );
 
@@ -176,7 +175,7 @@ const runTests = async () => {
     // Test 5: Missing JWT -> 401 Unauthorized
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 5: Missing JWT to protected endpoint${colors.reset}`);
-    const res5 = await fetch(`${baseUrl}/api/auth/coordinator-test`, {
+    const res5 = await fetch(`${baseUrl}/api/organizations/mine`, {
       method: 'GET',
     });
     const data5 = await res5.json();
@@ -191,7 +190,7 @@ const runTests = async () => {
     // Test 6: Invalid JWT -> 401 Unauthorized
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 6: Invalid JWT${colors.reset}`);
-    const res6 = await fetch(`${baseUrl}/api/auth/coordinator-test`, {
+    const res6 = await fetch(`${baseUrl}/api/organizations/mine`, {
       method: 'GET',
       headers: { Authorization: 'Bearer this.is.invalid' },
     });
@@ -212,7 +211,7 @@ const runTests = async () => {
     const tamperedPayload = Buffer.from(JSON.stringify({ id: 999, role: 'COORDINATOR' })).toString('base64url');
     const tamperedToken = `${tokenParts[0]}.${tamperedPayload}.${tokenParts[2]}`;
 
-    const res7 = await fetch(`${baseUrl}/api/auth/coordinator-test`, {
+    const res7 = await fetch(`${baseUrl}/api/organizations/mine`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${tamperedToken}` },
     });

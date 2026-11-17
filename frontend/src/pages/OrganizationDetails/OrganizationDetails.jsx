@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
-import { getOrganizationByIdApi, getOrganizationOpportunitiesApi } from '../../services/api'
+import { getOrganizationByIdApi, getOrganizationOpportunitiesApi, getOrganizationImpactApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import OpportunityRow from '../../components/OpportunityRow'
 import { LoadingState, EmptyState, OrgInitials, Alert } from '../../components/ui'
-import { formatDate } from '../../utils/format'
+import { formatDate, formatHours } from '../../utils/format'
 import './OrganizationDetails.css'
 
 const SOCIAL_BASE = {
@@ -63,24 +63,49 @@ function OrganizationContact({ organization }) {
   )
 }
 
+/** Public impact figures. Hidden until the organization has run at least one event or had volunteers. */
+function OrganizationImpact({ impact }) {
+  if (!impact || (!impact.total_volunteers && !impact.completed_events && !impact.verified_hours)) return null
+  const figures = [
+    { value: impact.total_volunteers, label: impact.total_volunteers === 1 ? 'Volunteer' : 'Volunteers' },
+    { value: formatHours(impact.verified_hours), label: 'Verified volunteer hours' },
+    { value: impact.completed_events, label: impact.completed_events === 1 ? 'Event completed' : 'Events completed' },
+    { value: impact.active_opportunities, label: impact.active_opportunities === 1 ? 'Open opportunity' : 'Open opportunities' },
+  ]
+  return (
+    <section className="figures org-impact" aria-label="Impact">
+      {figures.map((f) => (
+        <div key={f.label} className="figure">
+          <span className="figure-value">{f.value}</span>
+          <span className="figure-label">{f.label}</span>
+        </div>
+      ))}
+    </section>
+  )
+}
+
 function OrganizationDetails() {
   const { id } = useParams()
   const { token, user } = useAuth()
   const { isRegistered } = useOpportunities()
   const [organization, setOrganization] = useState(null)
   const [upcoming, setUpcoming] = useState([])
+  const [impact, setImpact] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
     setError('')
     try {
-      const [orgRes, oppRes] = await Promise.all([
+      const [orgRes, oppRes, impactRes] = await Promise.all([
         getOrganizationByIdApi(id, token),
         getOrganizationOpportunitiesApi(id, token, { upcoming: true, limit: 50 }).catch(() => null),
+        // Impact figures are a bonus: the page still works if they can't be loaded.
+        getOrganizationImpactApi(id, token).catch(() => null),
       ])
       setOrganization(orgRes?.data?.organization || null)
       setUpcoming(oppRes?.data?.opportunities || [])
+      setImpact(impactRes?.data?.impact || null)
     } catch (err) {
       setOrganization(null)
       setError(err.message || 'This organization could not be loaded.')
@@ -141,6 +166,8 @@ function OrganizationDetails() {
             : `This organization was ${status.toLowerCase()}.${organization.verification_note ? ` Reviewer note: ${organization.verification_note}` : ''} Contact support to resolve it.`}
         </Alert>
       )}
+
+      <OrganizationImpact impact={impact} />
 
       <div className="org-profile-layout">
         <div className="org-profile-about">

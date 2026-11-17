@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   backend:
-    name: Backend (API tests)
+    name: Backend (lint, API tests)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -56,6 +56,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Lint
+        run: npm run lint
 
       - name: Apply database migrations
         run: npm run migrate

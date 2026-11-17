@@ -165,10 +165,10 @@ const runTests = async () => {
     await registerUser(volunteerEmpty);
 
     // Login users
-    const { token: tokenCoord1, user: userCoord1 } = await loginUser(coordinator1.email, coordinator1.password);
-    const { token: tokenCoord2, user: userCoord2 } = await loginUser(coordinator2.email, coordinator2.password);
+    const { token: tokenCoord1 } = await loginUser(coordinator1.email, coordinator1.password);
+    const { token: tokenCoord2 } = await loginUser(coordinator2.email, coordinator2.password);
     const { token: tokenCoordEmpty } = await loginUser(coordinatorEmpty.email, coordinatorEmpty.password);
-    const { token: tokenVol1, user: userVol1 } = await loginUser(volunteer1.email, volunteer1.password);
+    const { token: tokenVol1 } = await loginUser(volunteer1.email, volunteer1.password);
     const { token: tokenVol2, user: userVol2 } = await loginUser(volunteer2.email, volunteer2.password);
     const { token: tokenVolEmpty } = await loginUser(volunteerEmpty.email, volunteerEmpty.password);
 
@@ -298,7 +298,7 @@ const runTests = async () => {
     const rec1Id = rec1Data.data.volunteer_hours.id;
 
     // - Vol 1, Opp 1 (Coord 1): 1.5 hours, PENDING
-    const rec2Res = await fetch(`${baseUrl}/api/signups/${signup1Id}/hours`, {
+    await fetch(`${baseUrl}/api/signups/${signup1Id}/hours`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -308,7 +308,7 @@ const runTests = async () => {
     });
 
     // - Vol 2, Opp 1 (Coord 1): 3.0 hours, RECORDED
-    const rec3Res = await fetch(`${baseUrl}/api/signups/${signup3Id}/hours`, {
+    await fetch(`${baseUrl}/api/signups/${signup3Id}/hours`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -318,7 +318,7 @@ const runTests = async () => {
     });
 
     // - Vol 1, Opp 2 (Coord 2): 2.5 hours, RECORDED
-    const rec4Res = await fetch(`${baseUrl}/api/signups/${signup2Id}/hours`, {
+    await fetch(`${baseUrl}/api/signups/${signup2Id}/hours`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,0 +1,15 @@
+# Public pages (home, opportunities, organizations) may be indexed.
+# Account pages require sign-in and are not useful in search results.
+User-agent: *
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /admin
+Disallow: /my-signups
+Disallow: /my-hours
+Disallow: /notifications
+Disallow: /manage-opportunities
+Disallow: /coordinator-hours
+Disallow: /analytics
+Disallow: /reports
+Disallow: /verify-email
+Disallow: /reset-password

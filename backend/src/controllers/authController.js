@@ -54,14 +54,6 @@ const getMe = handle(async (req, res) => {
   });
 });
 
-/** Demonstration endpoints (registered only outside production). */
-const coordinatorTest = (req, res) => {
-  res.status(200).json({ status: 'success', message: 'Coordinator authorization successful', data: { user: req.user } });
-};
-const volunteerTest = (req, res) => {
-  res.status(200).json({ status: 'success', message: 'Volunteer authorization successful', data: { user: req.user } });
-};
-
 /**
  * POST /api/auth/change-password
  */
@@ -129,8 +121,6 @@ module.exports = {
   register,
   login,
   getMe,
-  coordinatorTest,
-  volunteerTest,
   changePassword,
   verifyEmail,
   resendVerification,

@@ -156,11 +156,11 @@ const runTests = async () => {
     await registerUser(volunteer2);
 
     // Login users
-    const { token: tokenCoord1, user: userCoord1 } = await loginUser(coordinator1.email, coordinator1.password);
+    const { token: tokenCoord1 } = await loginUser(coordinator1.email, coordinator1.password);
     const { token: tokenCoord2, user: userCoord2 } = await loginUser(coordinator2.email, coordinator2.password);
     const { token: tokenCoordEmpty } = await loginUser(coordinatorEmpty.email, coordinatorEmpty.password);
-    const { token: tokenVol1, user: userVol1 } = await loginUser(volunteer1.email, volunteer1.password);
-    const { token: tokenVol2, user: userVol2 } = await loginUser(volunteer2.email, volunteer2.password);
+    const { token: tokenVol1 } = await loginUser(volunteer1.email, volunteer1.password);
+    const { token: tokenVol2 } = await loginUser(volunteer2.email, volunteer2.password);
 
     // Create Organization 1 (Coord 1)
     const org1Res = await fetch(`${baseUrl}/api/organizations`, {

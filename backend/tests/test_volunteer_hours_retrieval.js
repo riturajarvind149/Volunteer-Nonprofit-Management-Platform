@@ -165,10 +165,10 @@ const runTests = async () => {
     await registerUser(volunteerEmpty);
 
     // Login test users
-    const { token: tokenCoord1, user: userCoord1 } = await loginUser(coordinator1.email, coordinator1.password);
-    const { token: tokenCoord2, user: userCoord2 } = await loginUser(coordinator2.email, coordinator2.password);
+    const { token: tokenCoord1 } = await loginUser(coordinator1.email, coordinator1.password);
+    const { token: tokenCoord2 } = await loginUser(coordinator2.email, coordinator2.password);
     const { token: tokenCoordEmpty } = await loginUser(coordinatorEmpty.email, coordinatorEmpty.password);
-    const { token: tokenVol1, user: userVol1 } = await loginUser(volunteer1.email, volunteer1.password);
+    const { token: tokenVol1 } = await loginUser(volunteer1.email, volunteer1.password);
     const { token: tokenVol2, user: userVol2 } = await loginUser(volunteer2.email, volunteer2.password);
     const { token: tokenVolEmpty } = await loginUser(volunteerEmpty.email, volunteerEmpty.password);
 
@@ -286,7 +286,7 @@ const runTests = async () => {
 
     // 8. Record hours:
     // Coord 1 records 4.0 hours for Vol 1 on Opp 1
-    const rec1Res = await fetch(`${baseUrl}/api/signups/${signup1Id}/hours`, {
+    await fetch(`${baseUrl}/api/signups/${signup1Id}/hours`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -294,11 +294,9 @@ const runTests = async () => {
       },
       body: JSON.stringify({ hours: 4.0, status: 'VERIFIED' }),
     });
-    const rec1Data = await rec1Res.json();
-    const rec1Id = rec1Data.data.volunteer_hours.id;
 
     // Coord 1 records 3.5 hours for Vol 2 on Opp 1
-    const rec2Res = await fetch(`${baseUrl}/api/signups/${signup3Id}/hours`, {
+    await fetch(`${baseUrl}/api/signups/${signup3Id}/hours`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -306,11 +304,9 @@ const runTests = async () => {
       },
       body: JSON.stringify({ hours: 3.5, status: 'RECORDED' }),
     });
-    const rec2Data = await rec2Res.json();
-    const rec2Id = rec2Data.data.volunteer_hours.id;
 
     // Coord 2 records 5.0 hours for Vol 1 on Opp 2
-    const rec3Res = await fetch(`${baseUrl}/api/signups/${signup2Id}/hours`, {
+    await fetch(`${baseUrl}/api/signups/${signup2Id}/hours`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -318,8 +314,6 @@ const runTests = async () => {
       },
       body: JSON.stringify({ hours: 5.0, status: 'VERIFIED' }),
     });
-    const rec3Data = await rec3Res.json();
-    const rec3Id = rec3Data.data.volunteer_hours.id;
 
     console.log(`Test setup completed with 3 recorded hours entries.\n`);
 

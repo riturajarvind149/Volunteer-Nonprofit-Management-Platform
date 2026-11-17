@@ -69,9 +69,6 @@ const search = async ({ q, statuses, includeCoordinatorId, limit = 100, offset =
   return { organizations: rows, total };
 };
 
-/** Backwards-compatible: all organizations (admin use). */
-const findAll = async () => (await search({ limit: 10000 })).organizations;
-
 /** Organizations owned by a coordinator. */
 const findByCoordinatorId = async (coordinatorId) => {
   const { rows } = await pool.query(
@@ -235,7 +232,6 @@ const getOrganizationImpactStats = async (id) => {
 
 module.exports = {
   create,
-  findAll,
   findById,
   findByIdAndCoordinatorId,
   update,
@@ -243,6 +239,6 @@ module.exports = {
   search,
   findByCoordinatorId,
   setVerification,
-  ORG_COLUMNS,
+  
 };
 

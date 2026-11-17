@@ -166,7 +166,7 @@ const create = async ({ signup_id, hours, status = 'RECORDED', recorded_by, idem
   } catch (err) {
     try {
       await client.query('ROLLBACK');
-    } catch (rbErr) {
+    } catch {
       // ignore rollback errors if connection closed
     }
 
@@ -188,22 +188,6 @@ const create = async ({ signup_id, hours, status = 'RECORDED', recorded_by, idem
   } finally {
     client.release();
   }
-};
-
-/**
- * Retrieve all volunteer hours for a signup
- * @param {string} signupId - Signup UUID
- * @returns {Promise<Array>} List of volunteer_hours records
- */
-const findBySignupId = async (signupId) => {
-  const query = `
-    SELECT id, signup_id, hours, status, recorded_by, created_at, updated_at
-    FROM volunteer_hours
-    WHERE signup_id = $1
-    ORDER BY created_at DESC
-  `;
-  const { rows } = await pool.query(query, [signupId]);
-  return rows;
 };
 
 /**
@@ -502,7 +486,6 @@ module.exports = {
   createSelfReported,
   findVerifiedForCertificate,
   create,
-  findBySignupId,
   findById,
   findByVolunteerId,
   findByCoordinatorId,

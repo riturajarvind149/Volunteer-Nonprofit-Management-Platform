@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
+import ErrorBoundary from '../ErrorBoundary'
 import Icon from '../Icon'
 import { Brand } from '../ui'
 import Sidebar from './Sidebar'
+import { useNotifications } from '../../context/NotificationContext'
 import './AppLayout.css'
 
 function AppLayout({ theme, onToggleTheme, children }) {
+  const { pathname } = useLocation()
+  const { unreadCount } = useNotifications()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
 
@@ -27,11 +31,12 @@ function AppLayout({ theme, onToggleTheme, children }) {
           type="button"
           className="app-menu-button"
           onClick={() => setMenuOpen(true)}
-          aria-label="Open navigation"
+          aria-label={unreadCount > 0 ? `Open navigation (${unreadCount} unread notification${unreadCount === 1 ? '' : 's'})` : 'Open navigation'}
           aria-expanded={menuOpen}
           aria-controls="app-sidebar"
         >
           <Icon name="menu" size={20} />
+          {unreadCount > 0 && <span className="app-menu-dot" aria-hidden="true" />}
         </button>
         <Brand to="/dashboard" />
       </header>
@@ -48,7 +53,7 @@ function AppLayout({ theme, onToggleTheme, children }) {
       </aside>
 
       <main id="main" className="app-main">
-        {children ?? <Outlet />}
+        <ErrorBoundary resetKey={pathname}>{children ?? <Outlet />}</ErrorBoundary>
       </main>
     </div>
   )

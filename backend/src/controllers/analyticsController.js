@@ -33,8 +33,7 @@ const getVolunteerAnalytics = async (req, res, next) => {
 const getCoordinatorAnalytics = async (req, res, next) => {
   try {
     const coordinatorId = req.user.id;
-    const { period } = req.query;
-    const analytics = await analyticsService.getCoordinatorAnalytics(coordinatorId, { period });
+    const analytics = await analyticsService.getCoordinatorAnalytics(coordinatorId);
 
     res.status(200).json({
       status: 'success',
