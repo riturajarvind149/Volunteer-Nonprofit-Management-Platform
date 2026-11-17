@@ -224,7 +224,7 @@ const runTests = async () => {
       event_date: '2024-01-10',
       status: 'COMPLETED',
     });
-    const oppDraftId = await createOpp(tokenCoord1, org1Id, 'Draft Winter Food Drive', {
+    await createOpp(tokenCoord1, org1Id, 'Draft Winter Food Drive', {
       event_date: '2028-12-01',
       status: 'DRAFT',
     });
@@ -359,14 +359,12 @@ const runTests = async () => {
       'Test 9: Passing a signup ID to DELETE /opportunities/:opportunityId/signup returns 404'
     );
 
-    // Test 10: Existing PATCH /api/signups/:id/cancel remains fully functional
-    // Volunteer 2 signs up for oppUpcomingId, then cancels via existing PATCH endpoint
-    const signup2Res = await signUpVolunteer(tokenVol2, oppUpcomingId);
-    const signup2Id = signup2Res.data?.signup?.id;
+    // Test 10: Volunteer 2 signs up for oppUpcomingId, then cancels it
+    await signUpVolunteer(tokenVol2, oppUpcomingId);
     const patchCancelRes = await fetch(
-      `${baseUrl}/api/signups/${signup2Id}/cancel`,
+      `${baseUrl}/api/opportunities/${oppUpcomingId}/signup`,
       {
-        method: 'PATCH',
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${tokenVol2}`,
@@ -377,7 +375,7 @@ const runTests = async () => {
     assert(
       patchCancelRes.status === 200 &&
         patchCancelData.data?.signup?.status === 'CANCELLED',
-      'Test 10: Existing PATCH /api/signups/:signupId/cancel remains operational (200 OK)'
+      'Test 10: Volunteer can cancel their signup for an event (200 OK)'
     );
 
     // =========================================================================
@@ -423,27 +421,6 @@ const runTests = async () => {
         record.opportunity_title !== undefined &&
         record.status !== undefined,
       'Test 14: Signup record includes id, opportunity_id, status, and joined opportunity_title'
-    );
-
-    // Test 15: Alias GET /api/opportunities/my-signups returns 200 for volunteer
-    const aliasMyRes = await fetch(`${baseUrl}/api/opportunities/my-signups`, {
-      headers: { Authorization: `Bearer ${tokenVol1}` },
-    });
-    const aliasMyData = await aliasMyRes.json();
-    assert(
-      aliasMyRes.status === 200 &&
-        Array.isArray(aliasMyData.data?.signups) &&
-        aliasMyData.data.signups.length >= 1,
-      'Test 15: Alias GET /api/opportunities/my-signups returns 200 OK with identical shape'
-    );
-
-    // Test 16: Coordinator rejected from alias GET /api/opportunities/my-signups (403 Forbidden)
-    const coordAliasRes = await fetch(`${baseUrl}/api/opportunities/my-signups`, {
-      headers: { Authorization: `Bearer ${tokenCoord1}` },
-    });
-    assert(
-      coordAliasRes.status === 403,
-      'Test 16: Coordinator access to alias GET /api/opportunities/my-signups returns 403 Forbidden'
     );
 
     // Test 17: Volunteer identity is derived from token (Bob does not see Alice's signups)
@@ -509,8 +486,7 @@ const runTests = async () => {
 
     // Setup live activity for Volunteer Charlie:
     // 1. Sign up for upcoming opportunity (oppUpcomingId: 2028-05-20)
-    const charlieSignup1 = await signUpVolunteer(tokenVolStats, oppUpcomingId);
-    const charlieSignup1Id = charlieSignup1.data?.signup?.id;
+    await signUpVolunteer(tokenVolStats, oppUpcomingId);
 
     // 2. Sign up for completed opportunity (oppCompletedId: 2024-01-10)
     // Note: status is COMPLETED or event_date in the past. To sign up directly in test, insert signup row:

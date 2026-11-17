@@ -140,7 +140,7 @@ const runTests = async () => {
     // Login users
     const { token: tokenCoord1, user: userCoord1 } = await loginUser(coordinator1.email, coordinator1.password);
     const { token: tokenCoord2, user: userCoord2 } = await loginUser(coordinator2.email, coordinator2.password);
-    const { token: tokenVol1, user: userVol1 } = await loginUser(volunteer1.email, volunteer1.password);
+    const { token: tokenVol1 } = await loginUser(volunteer1.email, volunteer1.password);
 
     // Setup:
     // 1. Coordinator 1 creates Org 1

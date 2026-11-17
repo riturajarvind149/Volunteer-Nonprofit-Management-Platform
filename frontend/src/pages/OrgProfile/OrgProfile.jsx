@@ -5,6 +5,7 @@ import { getMyOrganizationsApi, getManagedOpportunitiesApi } from '../../service
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, OrgInitials } from '../../components/ui'
 import { formatDate, isUpcoming } from '../../utils/format'
+import OrgEditForm from './OrgEditForm'
 import './OrgProfile.css'
 
 function OrgProfile() {
@@ -13,19 +14,21 @@ function OrgProfile() {
   const [opportunities, setOpportunities] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [savedId, setSavedId] = useState(null)
 
   const load = useCallback(async () => {
     setError('')
     try {
       const [orgsRes, oppsRes] = await Promise.all([getMyOrganizationsApi(token), getManagedOpportunitiesApi(token)])
-      setOrganizations((orgsRes?.data?.organizations || []).filter((org) => org.coordinator_id === user.id))
+      setOrganizations((orgsRes?.data?.organizations || []).filter((org) => org.coordinator_id === user?.id))
       setOpportunities(oppsRes?.data?.opportunities || [])
     } catch (err) {
       setError(err.message || 'Your organizations could not be loaded.')
     } finally {
       setLoading(false)
     }
-  }, [token, user.id])
+  }, [token, user?.id])
 
   useEffect(() => { load() }, [load])
 
@@ -75,13 +78,32 @@ function OrgProfile() {
                 <p className="muted">Created {formatDate(org.created_at, { month: 'long' })}</p>
               </div>
               <div className="org-card-actions">
+                {editingId !== org.id && (
+                  <button type="button" className="btn btn-secondary" onClick={() => { setEditingId(org.id); setSavedId(null) }}>
+                    <Icon name="edit" size={15} />Edit details
+                  </button>
+                )}
                 <Link to={`/organizations/${org.id}`} className="btn btn-ghost">Public page</Link>
                 <Link to={`/opportunities/create?org=${org.id}`} className="btn btn-primary"><Icon name="plus" size={15} />New opportunity</Link>
               </div>
             </header>
-            <p className={`org-card-desc${org.description ? '' : ' muted'}`}>
-              {org.description || 'No description yet. Volunteers will see an empty About section.'}
-            </p>
+            {savedId === org.id && <Alert tone="success">Changes saved. They’re live on your public page.</Alert>}
+            {editingId === org.id ? (
+              <OrgEditForm
+                organization={org}
+                token={token}
+                onCancel={() => setEditingId(null)}
+                onSaved={(updated) => {
+                  setOrganizations((prev) => prev.map((o) => (o.id === org.id ? { ...o, ...updated } : o)))
+                  setEditingId(null)
+                  setSavedId(org.id)
+                }}
+              />
+            ) : (
+              <p className={`org-card-desc${org.description ? '' : ' muted'}`}>
+                {org.description || 'No description yet. Use “Edit details” to tell volunteers what you do.'}
+              </p>
+            )}
             <dl className="org-card-stats">
               {statsFor(org.id).map((stat) => (
                 <div key={stat.label}>
@@ -94,9 +116,6 @@ function OrgProfile() {
         ))
       )}
 
-      {organizations.length > 0 && (
-        <p className="muted org-note">Organization names and descriptions can’t be edited yet — the server has no update endpoint for organizations.</p>
-      )}
     </div>
   )
 }

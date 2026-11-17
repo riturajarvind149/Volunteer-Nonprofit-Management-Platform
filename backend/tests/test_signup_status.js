@@ -154,16 +154,14 @@ const runTests = async () => {
     };
 
     // Register all users
-    const userCoord1Data = await registerUser(coordinator1);
+    await registerUser(coordinator1);
     const userCoord2Data = await registerUser(coordinator2);
     const userVol1Data = await registerUser(volunteer1);
-    const userVol2Data = await registerUser(volunteer2);
+    await registerUser(volunteer2);
     const userVol3Data = await registerUser(volunteer3);
 
-    const userCoord1 = userCoord1Data.data.user;
     const userCoord2 = userCoord2Data.data.user;
     const userVol1 = userVol1Data.data.user;
-    const userVol2 = userVol2Data.data.user;
     const userVol3 = userVol3Data.data.user;
 
     const tokenCoord1 = (await loginUser(coordinator1.email, coordinator1.password)).data.token;
@@ -532,7 +530,7 @@ const runTests = async () => {
     });
 
     // Volunteer Bob signs up -> fills capacity 1/1
-    const singleSignup_Bob = await signupVolunteer(oppSingleCapId, tokenVol2);
+    await signupVolunteer(oppSingleCapId, tokenVol2);
 
     // Now opportunity is full (Bob is REGISTERED).
     // Coordinator attempts to reactivate Alice's CANCELLED signup -> must fail with 409 Conflict
@@ -618,9 +616,9 @@ const runTests = async () => {
     // ================================================================
     console.log(`\n${colors.bold}Group 6: Interaction with Capacity & Volunteer Cancellation${colors.reset}`);
 
-    // Test 23: Volunteer cancellation endpoint PATCH /api/signups/:id/cancel still works
-    const volCancelRes = await fetch(`${baseUrl}/api/signups/${singleSignup_Bob}/cancel`, {
-      method: 'PATCH',
+    // Test 23: Volunteer cancellation (DELETE /api/opportunities/:id/signup) works
+    const volCancelRes = await fetch(`${baseUrl}/api/opportunities/${oppSingleCapId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol2}`,
@@ -630,7 +628,7 @@ const runTests = async () => {
     assert(
       volCancelRes.status === 200 &&
         volCancelData.data?.signup?.status === 'CANCELLED',
-      'Test 23: Existing volunteer cancellation endpoint (PATCH /api/signups/:id/cancel) remains fully functional'
+      'Test 23: Volunteer cancellation (DELETE /api/opportunities/:id/signup) works'
     );
 
     // Test 24: Opportunity capacity logic properly frees slot when coordinator cancels

@@ -112,7 +112,6 @@ const runTests = async () => {
 
   let coord1Id;
   let coord2Id;
-  let vol1Id;
 
   let activeSignupId;
   let cancelledSignupId;
@@ -153,7 +152,6 @@ const runTests = async () => {
 
     const vol1Login = await loginUser(volunteer1.email, volunteer1.password);
     tokenVol1 = vol1Login.data.token;
-    vol1Id = vol1Login.data.user.id;
 
     // Create Org 1 for Coordinator 1
     const org1Res = await fetch(`${baseUrl}/api/organizations`, {
@@ -234,8 +232,8 @@ const runTests = async () => {
     const signupCancelData = await signupCancelRes.json();
     cancelledSignupId = signupCancelData.data.signup.id;
 
-    await fetch(`${baseUrl}/api/signups/${cancelledSignupId}/cancel`, {
-      method: 'PATCH',
+    await fetch(`${baseUrl}/api/opportunities/${oppCancelledId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol1}`,

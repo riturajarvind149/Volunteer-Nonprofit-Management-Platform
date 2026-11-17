@@ -1,0 +1,28 @@
+.server-wake {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-4);
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(520px, calc(100vw - 32px));
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+}
+
+.server-wake strong {
+  color: var(--ink);
+}
+
+.server-wake-spinner {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}

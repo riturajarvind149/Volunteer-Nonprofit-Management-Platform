@@ -182,9 +182,6 @@ const promote = async (opportunityId) => {
   }
 };
 
-/** Remove a volunteer from the waitlist once they hold a signup. */
-const removeIfPresent = async (opportunityId, volunteerId) => leave(opportunityId, volunteerId);
-
 module.exports = {
   join,
   leave,
@@ -192,5 +189,4 @@ module.exports = {
   findByVolunteer,
   findByOpportunity,
   promote,
-  removeIfPresent,
 };

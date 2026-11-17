@@ -20,14 +20,13 @@ const getVolunteerAnalytics = async (volunteerId) => {
 /**
  * Get coordinator analytics
  * @param {string} coordinatorId - Coordinator UUID
- * @param {Object} [options] - Options (e.g. period)
  * @returns {Promise<Object>} Coordinator analytics metrics and charts
  */
-const getCoordinatorAnalytics = async (coordinatorId, options = {}) => {
+const getCoordinatorAnalytics = async (coordinatorId) => {
   if (!coordinatorId) {
     throw new AppError('Coordinator ID is required', 400);
   }
-  return await analyticsRepository.getCoordinatorAnalytics(coordinatorId, options);
+  return await analyticsRepository.getCoordinatorAnalytics(coordinatorId);
 };
 
 module.exports = {

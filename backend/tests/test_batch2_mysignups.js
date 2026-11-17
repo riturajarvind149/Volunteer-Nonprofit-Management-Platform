@@ -263,15 +263,11 @@ const runTests = async () => {
       method: 'POST',
       headers: { Authorization: `Bearer ${tokenAlice}` },
     });
-    const aliceSign1Data = await aliceSign1Res.json();
-    const aliceSignup1Id = aliceSign1Data.data?.signup?.id;
 
     const aliceSign2Res = await fetch(`${baseUrl}/api/opportunities/${opp2Id}/signup`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${tokenAlice}` },
     });
-    const aliceSign2Data = await aliceSign2Res.json();
-    const aliceSignup2Id = aliceSign2Data.data?.signup?.id;
 
     assert(
       aliceSign1Res.status === 201 && aliceSign2Res.status === 201,

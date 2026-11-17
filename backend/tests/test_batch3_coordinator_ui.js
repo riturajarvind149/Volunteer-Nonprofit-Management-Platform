@@ -483,7 +483,7 @@ const runTests = async () => {
     );
 
     // Test 25: Coordinator A attempting to reduce capacity below active signups (now 1) rejected with 409 Conflict
-    const conflictCapRes = await fetch(`${baseUrl}/api/opportunities/${createdOppId}`, {
+    await fetch(`${baseUrl}/api/opportunities/${createdOppId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

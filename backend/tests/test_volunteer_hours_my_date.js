@@ -139,7 +139,7 @@ const runTests = async () => {
 
     // Login users
     const { token: tokenCoord } = await loginUser(coordinator.email, coordinator.password);
-    const { token: tokenVol1, user: userVol1 } = await loginUser(volunteer1.email, volunteer1.password);
+    const { token: tokenVol1 } = await loginUser(volunteer1.email, volunteer1.password);
     const { token: tokenVol2, user: userVol2 } = await loginUser(volunteer2.email, volunteer2.password);
 
     // Create Organization (Coordinator)

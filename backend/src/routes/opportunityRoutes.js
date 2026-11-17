@@ -26,17 +26,6 @@ router.get(
   opportunityController.getDashboardStats
 );
 
-/** POST /api/opportunities/process-completions — manual trigger of the completion job */
-router.post(
-  '/process-completions',
-  authenticate,
-  authorizeRoles('COORDINATOR', 'ADMIN'),
-  opportunityController.processCompletions
-);
-
-/** GET /api/opportunities/my-signups */
-router.get('/my-signups', authenticate, authorizeRoles('VOLUNTEER'), signupController.getMySignups);
-
 /** GET /api/opportunities/:id — public for published opportunities of verified orgs */
 router.get('/:id', optionalAuthenticate, validateOpportunityId, opportunityController.getById);
 

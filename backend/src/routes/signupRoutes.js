@@ -14,12 +14,6 @@ router.get('/my', authenticate, authorizeRoles('VOLUNTEER'), signupController.ge
 /** GET /api/signups/my/waitlist — volunteer's waitlist positions */
 router.get('/my/waitlist', authenticate, authorizeRoles('VOLUNTEER'), signupController.getMyWaitlist);
 
-/** GET /api/signups/:id */
-router.get('/:id', authenticate, validateSignupId, signupController.getSignupById);
-
-/** PATCH /api/signups/:id/cancel — volunteer cancels own signup */
-router.patch('/:id/cancel', authenticate, authorizeRoles('VOLUNTEER'), validateSignupId, signupController.cancelSignup);
-
 /** PATCH /api/signups/:id/status — coordinator changes status */
 router.patch(
   '/:id/status',

@@ -483,59 +483,8 @@ const runTests = async () => {
       'Test 18: Volunteer with no signups receives an empty array []'
     );
 
-    // ================================================================
-    // Group 6: GET /api/signups/:id Ownership & Isolation
-    // ================================================================
-    console.log(`\n${colors.bold}Group 6: Signup by ID & Ownership Isolation (GET /api/signups/:id)${colors.reset}`);
-
-    // Test 19: Unauthenticated GET /api/signups/:id returns 401
-    const unauthIdRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}`);
-    assert(
-      unauthIdRes.status === 401,
-      'Test 19: Unauthenticated GET /api/signups/:id returns 401 Unauthorized'
-    );
-
-    // Test 20: Invalid UUID format returns 400
-    const invalidIdRes = await fetch(`${baseUrl}/api/signups/not-a-uuid`, {
-      headers: { Authorization: `Bearer ${tokenVol1}` },
-    });
-    const invalidIdData = await invalidIdRes.json();
-    assert(
-      invalidIdRes.status === 400 &&
-        invalidIdData.message.includes('valid UUID'),
-      'Test 20: Invalid signup UUID returns 400 Bad Request'
-    );
-
-    // Test 21: Non-existent signup UUID returns 404
+    // A well-formed UUID that matches no signup or opportunity
     const nonExistentSignupId = 'c0000000-0000-0000-0000-000000000000';
-    const nonExistentSignupRes = await fetch(`${baseUrl}/api/signups/${nonExistentSignupId}`, {
-      headers: { Authorization: `Bearer ${tokenVol1}` },
-    });
-    assert(
-      nonExistentSignupRes.status === 404,
-      'Test 21: Non-existent signup UUID returns 404 Not Found'
-    );
-
-    // Test 22: Volunteer 2 cannot access Volunteer 1's signup (returns 404 Not Found, preventing ID enumeration)
-    const crossVolRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}`, {
-      headers: { Authorization: `Bearer ${tokenVol2}` },
-    });
-    assert(
-      crossVolRes.status === 404,
-      'Test 22: Access to another volunteer signup returns 404 Not Found (Data Isolation)'
-    );
-
-    // Test 23: Volunteer 1 can retrieve their own signup by ID (200 OK)
-    const ownSignupRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}`, {
-      headers: { Authorization: `Bearer ${tokenVol1}` },
-    });
-    const ownSignupData = await ownSignupRes.json();
-    assert(
-      ownSignupRes.status === 200 &&
-        ownSignupData.data?.signup?.id === aliceSignupId &&
-        ownSignupData.data?.signup?.opportunity_title === 'Beach Cleanup Drive',
-      'Test 23: Volunteer retrieves own signup with joined opportunity details (200 OK)'
-    );
 
     // ================================================================
     // Group 7: Concurrency & Transaction Integrity
@@ -605,8 +554,8 @@ const runTests = async () => {
     console.log(`\n${colors.bold}Group 8: Volunteer Signup Cancellation / Withdrawal${colors.reset}`);
 
     // Test 26: Missing JWT returns 401 Unauthorized
-    const unauthCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
-      method: 'PATCH',
+    const unauthCancelRes = await fetch(`${baseUrl}/api/opportunities/${publishedOppId}/signup`, {
+      method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
     });
     assert(
@@ -615,8 +564,8 @@ const runTests = async () => {
     );
 
     // Test 27: Coordinator role rejected with 403 Forbidden
-    const coordCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
-      method: 'PATCH',
+    const coordCancelRes = await fetch(`${baseUrl}/api/opportunities/${publishedOppId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenCoord}`,
@@ -627,9 +576,9 @@ const runTests = async () => {
       'Test 27: Coordinator cancellation attempt rejected with 403 Forbidden (RBAC enforced)'
     );
 
-    // Test 28: Invalid signup UUID returns 400 Bad Request
-    const invalidCancelIdRes = await fetch(`${baseUrl}/api/signups/not-a-valid-uuid/cancel`, {
-      method: 'PATCH',
+    // Test 28: Invalid opportunity UUID returns 400 Bad Request
+    const invalidCancelIdRes = await fetch(`${baseUrl}/api/opportunities/not-a-valid-uuid/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol1}`,
@@ -639,12 +588,12 @@ const runTests = async () => {
     assert(
       invalidCancelIdRes.status === 400 &&
         invalidCancelIdData.message.includes('valid UUID'),
-      'Test 28: Invalid signup UUID on cancel returns 400 Bad Request'
+      'Test 28: Invalid opportunity UUID on cancel returns 400 Bad Request'
     );
 
-    // Test 29: Non-existent signup UUID returns 404 Not Found
-    const nonExistentCancelRes = await fetch(`${baseUrl}/api/signups/${nonExistentSignupId}/cancel`, {
-      method: 'PATCH',
+    // Test 29: Cancelling with no signup for that opportunity returns 404 Not Found
+    const nonExistentCancelRes = await fetch(`${baseUrl}/api/opportunities/${nonExistentSignupId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol1}`,
@@ -652,12 +601,12 @@ const runTests = async () => {
     });
     assert(
       nonExistentCancelRes.status === 404,
-      'Test 29: Non-existent signup UUID on cancel returns 404 Not Found'
+      'Test 29: Cancelling an opportunity the volunteer has no signup for returns 404 Not Found'
     );
 
-    // Test 30: Volunteer attempts to cancel another volunteer's signup returns 404 (Ownership Isolation)
-    const crossCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
-      method: 'PATCH',
+    // Test 30: Another volunteer cancelling the same opportunity can't touch Alice's signup (404, ownership isolation)
+    const crossCancelRes = await fetch(`${baseUrl}/api/opportunities/${publishedOppId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol2}`,
@@ -669,8 +618,8 @@ const runTests = async () => {
     );
 
     // Test 31: Volunteer successfully cancels own signup (200 OK)
-    const validCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
-      method: 'PATCH',
+    const validCancelRes = await fetch(`${baseUrl}/api/opportunities/${publishedOppId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol1}`,
@@ -706,8 +655,8 @@ const runTests = async () => {
     );
 
     // Test 34: Already cancelled signup cannot be cancelled again (returns 400 Bad Request)
-    const repeatCancelRes = await fetch(`${baseUrl}/api/signups/${aliceSignupId}/cancel`, {
-      method: 'PATCH',
+    const repeatCancelRes = await fetch(`${baseUrl}/api/opportunities/${publishedOppId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol1}`,
@@ -1008,8 +957,8 @@ const runTests = async () => {
     const vol2Cap1SignupId = vol2Cap1Data.data.signup.id;
 
     // Volunteer 2 cancels (0/1 active)
-    await fetch(`${baseUrl}/api/signups/${vol2Cap1SignupId}/cancel`, {
-      method: 'PATCH',
+    await fetch(`${baseUrl}/api/opportunities/${cap1OppId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenVol2}`,
@@ -1095,16 +1044,15 @@ const runTests = async () => {
     const racer2LoginData = await loginUser(racerReReg2.email, racerReReg2.password);
 
     // Racer 1 signs up, then cancels (0/1 active)
-    const r1SignupRes = await fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
+    await fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${racer1LoginData.data.token}`,
       },
     });
-    const r1SignupData = await r1SignupRes.json();
-    await fetch(`${baseUrl}/api/signups/${r1SignupData.data.signup.id}/cancel`, {
-      method: 'PATCH',
+    await fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${racer1LoginData.data.token}`,
@@ -1112,16 +1060,15 @@ const runTests = async () => {
     });
 
     // Racer 2 also signs up, then cancels (0/1 active)
-    const r2SignupRes = await fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
+    await fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${racer2LoginData.data.token}`,
       },
     });
-    const r2SignupData = await r2SignupRes.json();
-    await fetch(`${baseUrl}/api/signups/${r2SignupData.data.signup.id}/cancel`, {
-      method: 'PATCH',
+    await fetch(`${baseUrl}/api/opportunities/${raceReRegOppId}/signup`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${racer2LoginData.data.token}`,

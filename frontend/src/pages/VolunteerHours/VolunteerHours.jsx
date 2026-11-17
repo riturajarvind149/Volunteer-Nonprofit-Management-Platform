@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { getMyHoursApi, getMyHoursSummaryApi, downloadCertificateApi } from '../../services/api'
+import { getMyHoursApi, getMyHoursSummaryApi, downloadCertificateApi, getVolunteerAnalyticsApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge } from '../../components/ui'
 import './VolunteerHours.css'
 import DateRangeForm from '../../components/DateRangeForm'
+import MonthlyBars from '../../components/MonthlyBars'
 import { formatDate, formatHours, pluralize } from '../../utils/format'
 
 const STATUS_FILTERS = [
@@ -54,6 +55,41 @@ function CertificateButton({ verifiedHours }) {
   )
 }
 
+/** Organizations helped, events completed, recent activity and hours per month. */
+function ImpactPanel({ analytics }) {
+  if (!analytics) return null
+  const m = analytics.metrics || {}
+  const stats = [
+    { value: m.organizations_supported ?? 0, label: m.organizations_supported === 1 ? 'organization supported' : 'organizations supported' },
+    { value: m.completed_events ?? 0, label: (m.completed_events === 1 ? 'event' : 'events') + ' completed' },
+    { value: m.upcoming_events ?? 0, label: (m.upcoming_events === 1 ? 'event' : 'events') + ' coming up' },
+    { value: m.streak_weeks ?? 0, label: (m.streak_weeks === 1 ? 'active week' : 'active weeks') + ' (last 12)' },
+  ]
+  const rows = (analytics.hours_by_month || []).map((r) => ({ month: r.month, year: r.year, value: r.hours }))
+
+  return (
+    <section className="panel impact-panel" aria-labelledby="impact-title">
+      <div className="panel-header">
+        <h2 id="impact-title">Your impact</h2>
+      </div>
+      <div className="panel-body impact-body">
+        <ul role="list" className="impact-stats">
+          {stats.map((s) => (
+            <li key={s.label}>
+              <span className="impact-value">{s.value}</span>
+              <span className="impact-label">{s.label}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="impact-chart">
+          <h3 className="impact-chart-title">Hours logged per month</h3>
+          <MonthlyBars rows={rows} format={formatHours} unit="hours" label="Hours logged per month, last six months" />
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function VolunteerHours() {
   const { token } = useAuth()
   const [records, setRecords] = useState([])
@@ -62,6 +98,7 @@ function VolunteerHours() {
   const [status, setStatus] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [analytics, setAnalytics] = useState(null)
 
   const load = useCallback(async () => {
     setError('')
@@ -78,6 +115,15 @@ function VolunteerHours() {
   }, [token, range])
 
   useEffect(() => { load() }, [load])
+
+  // Impact figures don't depend on the date filter, so load them once.
+  useEffect(() => {
+    let active = true
+    getVolunteerAnalyticsApi(token)
+      .then((res) => active && setAnalytics(res?.data || null))
+      .catch(() => {}) // Optional extra: the page works without it.
+    return () => { active = false }
+  }, [token])
 
   const visible = status ? records.filter((r) => r.status === status) : records
   const visibleTotal = visible.reduce((sum, r) => sum + Number(r.hours || 0), 0)
@@ -113,6 +159,8 @@ function VolunteerHours() {
           <span className="figure-note">{pluralize(summary?.total_records ?? 0, 'entry', 'entries')}</span>
         </div>
       </section>
+
+      <ImpactPanel analytics={analytics} />
 
       <section className="panel" aria-labelledby="history-title">
         <div className="panel-header">

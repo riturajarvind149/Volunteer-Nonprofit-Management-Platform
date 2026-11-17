@@ -332,5 +332,5 @@ module.exports = {
   findAdmins,
   searchUsers,
   deleteUserCascade,
-  PUBLIC_COLUMNS,
+  
 };

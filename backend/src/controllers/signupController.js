@@ -50,52 +50,6 @@ const getMySignups = async (req, res, next) => {
 };
 
 /**
- * Retrieve a single signup by ID
- * GET /api/signups/:id
- */
-const getSignupById = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const user = req.user;
-
-    const signup = await signupService.getSignupById(id, user);
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Signup retrieved successfully',
-      data: {
-        signup,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Cancel a volunteer signup
- * PATCH /api/signups/:id/cancel
- */
-const cancelSignup = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const volunteerId = req.user.id;
-
-    const signup = await signupService.cancelSignup(id, volunteerId);
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Signup cancelled successfully',
-      data: {
-        signup,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
  * Retrieve attendees for an opportunity (Coordinator owner only)
  * GET /api/opportunities/:id/signups
  */
@@ -260,8 +214,6 @@ module.exports = {
   leaveWaitlist,
   createSignup,
   getMySignups,
-  getSignupById,
-  cancelSignup,
   cancelSignupByOpportunity,
   getOpportunityAttendees,
   updateSignupStatus,

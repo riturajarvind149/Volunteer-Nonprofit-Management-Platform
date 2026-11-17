@@ -202,7 +202,7 @@ module.exports = {
   getEmailStatus,
   sendEmail,
   queueEmail,
-  escapeHtml,
+  
   getOutbox,
   clearOutbox,
 };

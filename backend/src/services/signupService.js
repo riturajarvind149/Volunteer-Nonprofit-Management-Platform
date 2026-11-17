@@ -51,7 +51,7 @@ const createSignup = async (opportunityId, volunteerId) => {
         });
       }
     }
-  } catch (notifErr) {
+  } catch {
     // Non-blocking
   }
 
@@ -65,72 +65,6 @@ const createSignup = async (opportunityId, volunteerId) => {
  */
 const getMySignups = async (volunteerId) => {
   return await signupRepository.findByVolunteerId(volunteerId);
-};
-
-/**
- * Retrieves a single signup by ID ensuring role-based ownership:
- * - VOLUNTEER: Can only retrieve their own signup (returns 404 if not found or not owned, preventing ID enumeration).
- * - COORDINATOR: Can retrieve signups belonging to opportunities owned by their organization
- *                (returns 404 if signup does not exist, 403 if belonging to another coordinator's organization).
- * @param {string} id - Signup UUID
- * @param {Object|string} user - Authenticated user object { id, role } or userId string
- * @returns {Promise<Object>} Signup record with opportunity and organization details
- * @throws {AppError} 404 if signup not found or if volunteer does not own it
- * @throws {AppError} 403 if coordinator does not own the opportunity's organization
- */
-const getSignupById = async (id, user) => {
-  const userId = typeof user === 'object' ? user.id : user;
-  const role = typeof user === 'object' ? user.role : 'VOLUNTEER';
-
-  const signup = await signupRepository.findById(id);
-
-  // If signup does not exist: return 404 according to existing convention
-  if (!signup) {
-    throw new AppError('Signup not found', 404);
-  }
-
-  // Role-specific ownership checks
-  if (role === 'COORDINATOR') {
-    if (signup.coordinator_id !== userId) {
-      throw new AppError(
-        'You do not have permission to view this signup',
-        403
-      );
-    }
-  } else {
-    // Preserve strict 404 anti-enumeration behavior for volunteers
-    if (signup.volunteer_id !== userId) {
-      throw new AppError('Signup not found', 404);
-    }
-  }
-
-  return signup;
-};
-
-/**
- * Cancels a volunteer signup ensuring ownership and active status
- * @param {string} signupId - Signup UUID
- * @param {string} volunteerId - Authenticated volunteer UUID
- * @returns {Promise<Object>} Updated signup record
- * @throws {AppError} 404 if signup not found or belongs to another user
- * @throws {AppError} 400 if signup is already cancelled
- */
-const cancelSignup = async (signupId, volunteerId) => {
-  const signup = await signupRepository.findById(signupId);
-
-  // Return 404 if not found OR if not owned by the requesting volunteer (prevents data enumeration)
-  if (!signup || signup.volunteer_id !== volunteerId) {
-    throw new AppError('Signup not found', 404);
-  }
-
-  // Validate that signup is not already CANCELLED
-  if (signup.status === 'CANCELLED') {
-    throw new AppError('Signup is already cancelled', 400);
-  }
-
-  const cancelled = await signupRepository.updateStatus(signupId, 'CANCELLED');
-  await waitlistService.promoteAndNotify(signup.opportunity_id);
-  return cancelled;
 };
 
 /**
@@ -272,8 +206,6 @@ module.exports = {
   setAttendance,
   createSignup,
   getMySignups,
-  getSignupById,
-  cancelSignup,
   cancelSignupByOpportunity,
   getOpportunityAttendees,
   updateSignupStatus,
