@@ -25,7 +25,7 @@ router.post('/register', sensitiveLimiter, validateRegister, register);
 router.post('/login', loginLimiter, validateLogin, login);
 router.get('/me', authenticate, getMe);
 router.post('/change-password', authenticate, loginLimiter, changePassword);
-router.post('/verify-email', verifyEmail);
+router.post('/verify-email', loginLimiter, verifyEmail);
 router.post('/resend-verification', sensitiveLimiter, resendVerification);
 router.post('/forgot-password', sensitiveLimiter, forgotPassword);
 router.post('/reset-password', loginLimiter, resetPassword);

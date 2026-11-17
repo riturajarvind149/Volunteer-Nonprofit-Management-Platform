@@ -183,7 +183,7 @@ const runTests = async () => {
         title,
         description: 'Test Opportunity',
         category: 'Community',
-        event_date: options.event_date || '2027-01-15',
+        event_date: options.event_date || '2030-01-15',
         start_time: '10:00:00',
         end_time: '12:00:00',
         location: 'Community Park',

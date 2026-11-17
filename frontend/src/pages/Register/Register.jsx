@@ -87,7 +87,14 @@ function Register() {
           <p>Your role decides what you see after signing in. It can’t be changed later.</p>
         </div>
 
-        {serverError && <Alert>{serverError}</Alert>}
+        {serverError && (
+          <Alert>
+            {serverError}{' '}
+            {/already registered/i.test(serverError) && (
+              <Link to="/login">Sign in instead</Link>
+            )}
+          </Alert>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <fieldset className="role-options" disabled={loading}>

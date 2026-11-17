@@ -1,5 +1,4 @@
 const authService = require('../services/authService');
-const { config } = require('../config/env');
 
 const handle = (fn) => async (req, res, next) => {
   try {
@@ -16,7 +15,7 @@ const register = handle(async (req, res) => {
   const { full_name, email, password, role } = req.body;
   const user = await authService.registerUser({ full_name, email, password, role });
 
-  const needsVerification = config.requireEmailVerification && !user.email_verified_at;
+  const needsVerification = authService.isVerificationRequired() && !user.email_verified_at;
   res.status(201).json({
     status: 'success',
     message: needsVerification
@@ -77,10 +76,13 @@ const changePassword = handle(async (req, res) => {
 });
 
 /**
- * POST /api/auth/verify-email  { token }
+ * POST /api/auth/verify-email  { token }  (link)  or  { email, code }  (6-digit code)
  */
 const verifyEmail = handle(async (req, res) => {
-  const result = await authService.verifyEmail(req.body?.token);
+  const { token, email, code } = req.body || {};
+  const result = code !== undefined
+    ? await authService.verifyEmailCode(email, code)
+    : await authService.verifyEmail(token);
   res.status(200).json({ status: 'success', message: result.message });
 });
 
@@ -89,7 +91,11 @@ const verifyEmail = handle(async (req, res) => {
  */
 const resendVerification = handle(async (req, res) => {
   const result = await authService.resendVerification(req.body?.email);
-  res.status(200).json({ status: 'success', message: result.message });
+  res.status(200).json({
+    status: 'success',
+    message: result.message,
+    data: { already_verified: Boolean(result.alreadyVerified) },
+  });
 });
 
 /**
@@ -101,10 +107,13 @@ const forgotPassword = handle(async (req, res) => {
 });
 
 /**
- * POST /api/auth/reset-password  { token, password }
+ * POST /api/auth/reset-password  { token, password }  or  { email, code, password }
  */
 const resetPassword = handle(async (req, res) => {
-  const result = await authService.resetPassword(req.body?.token, req.body?.password);
+  const { token, email, code, password } = req.body || {};
+  const result = code !== undefined
+    ? await authService.resetPasswordWithCode(email, code, password)
+    : await authService.resetPassword(token, password);
   res.status(200).json({ status: 'success', message: result.message });
 });
 
