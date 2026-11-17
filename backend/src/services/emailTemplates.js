@@ -20,26 +20,28 @@ const eventLine = (opp) =>
   `${formatDate(opp.event_date)}, ${formatTime(opp.start_time)}–${formatTime(opp.end_time)} at ${opp.location}`;
 
 module.exports = {
-  verifyEmail: ({ name, token }) => ({
-    subject: `Verify your email for ${config.appName}`,
+  verifyEmail: ({ name, token, code }) => ({
+    subject: `${code} is your ${config.appName} verification code`,
     heading: 'Confirm your email address',
     paragraphs: [
       `Hi ${name},`,
-      `Thanks for joining ${config.appName}! Please confirm your email address to activate your account. This link expires in 24 hours.`,
+      `Thanks for joining ${config.appName}! Enter this code on the verification page to activate your account, or use the button below. Both expire in 24 hours.`,
     ],
+    code: { label: 'Your verification code', value: code },
     cta: { label: 'Verify email', url: link(`/verify-email?token=${encodeURIComponent(token)}`) },
-    footer: "If you didn't create an account, you can safely ignore this email.",
+    footer: "Never share this code. If you didn't create an account, you can safely ignore this email.",
   }),
 
-  passwordReset: ({ name, token }) => ({
-    subject: `Reset your ${config.appName} password`,
+  passwordReset: ({ name, token, code }) => ({
+    subject: `${code} is your ${config.appName} password reset code`,
     heading: 'Reset your password',
     paragraphs: [
       `Hi ${name},`,
-      'We received a request to reset your password. This link expires in 60 minutes and can only be used once.',
+      'We received a request to reset your password. Enter this code on the reset page, or use the button below. Both expire in 60 minutes and can only be used once.',
     ],
+    code: { label: 'Your password reset code', value: code },
     cta: { label: 'Choose a new password', url: link(`/reset-password?token=${encodeURIComponent(token)}`) },
-    footer: "If you didn't request this, you can ignore this email — your password won't change.",
+    footer: "Never share this code. If you didn't request this, you can ignore this email — your password won't change.",
   }),
 
   passwordChanged: ({ name }) => ({

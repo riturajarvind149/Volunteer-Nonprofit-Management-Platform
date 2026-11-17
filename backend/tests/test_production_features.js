@@ -58,6 +58,15 @@ const tokenFromEmail = (to, pathPart) => {
   return new URL(mail.cta.url).searchParams.get('token');
 };
 
+/** The most recent email to an address whose link contains pathPart. */
+const latestEmail = (to, pathPart) =>
+  [...emailService.getOutbox()].reverse().find((m) => m.to === to && m.cta?.url.includes(pathPart)) || null;
+
+/** Pull the 6-digit code out of the most recent email sent to an address. */
+const codeFromEmail = (to, pathPart) => latestEmail(to, pathPart)?.code || null;
+
+const otherCode = (code) => (code === '000000' ? '111111' : '000000');
+
 const register = async (prefix, role) => {
   const email = `${prefix}.${stamp}@prodtest.org`;
   createdUserEmails.push(email);
@@ -159,9 +168,69 @@ const run = async () => {
   const volId = volLogin.data.data.user.id;
 
   // ------------------------------------------------------------------
+  section('Email codes (OTP)');
+  const otp = await register('otp', 'VOLUNTEER');
+  const otpCode = codeFromEmail(otp.email, '/verify-email');
+  assert(/^\d{6}$/.test(otpCode || ''), 'Verification email contains a 6-digit code');
+  const otpMail = latestEmail(otp.email, '/verify-email');
+  assert(otpMail.subject.includes(otpCode) && otpMail.text.includes(otpCode), 'Code appears in the subject and the email body');
+
+  const wrongOtp = await api('POST', '/api/auth/verify-email', { body: { email: otp.email, code: otherCode(otpCode) } });
+  assert(
+    wrongOtp.status === 400 && wrongOtp.data.code === 'INVALID_CODE' && /4 attempts left/.test(wrongOtp.data.message),
+    'Wrong code is rejected and shows attempts left'
+  );
+  const badFormat = await api('POST', '/api/auth/verify-email', { body: { email: otp.email, code: '12ab' } });
+  assert(badFormat.status === 400 && badFormat.data.code === 'INVALID_CODE', 'Malformed code is rejected');
+  const unknownOtp = await api('POST', '/api/auth/verify-email', { body: { email: `nobody.${stamp}@prodtest.org`, code: otpCode } });
+  assert(unknownOtp.status === 404 && unknownOtp.data.code === 'EMAIL_NOT_REGISTERED', 'Code for an unregistered email says so');
+  const okOtp = await api('POST', '/api/auth/verify-email', { body: { email: otp.email.toUpperCase(), code: otpCode } });
+  assert(okOtp.status === 200, 'Correct code verifies the email (email is case-insensitive)');
+  const otpLogin = await api('POST', '/api/auth/login', { body: { email: otp.email, password: 'Password123!' } });
+  assert(otpLogin.status === 200, 'Login works after verifying with a code');
+  const linkAfterCode = await api('POST', '/api/auth/verify-email', { body: { token: tokenFromEmail(otp.email, '/verify-email') } });
+  assert(linkAfterCode.status === 400, 'Link from the same email stops working once the code is used');
+  const resendVerified = await api('POST', '/api/auth/resend-verification', { body: { email: otp.email } });
+  assert(resendVerified.status === 200 && resendVerified.data.data.already_verified === true, 'Resend for a verified account says it is already verified');
+  const resendUnknown = await api('POST', '/api/auth/resend-verification', { body: { email: `nobody.${stamp}@prodtest.org` } });
+  assert(resendUnknown.status === 404 && resendUnknown.data.code === 'EMAIL_NOT_REGISTERED', 'Resend for an unregistered email says so');
+
+  const locked = await register('otplock', 'VOLUNTEER');
+  const lockedCode = codeFromEmail(locked.email, '/verify-email');
+  let lastWrong;
+  for (let i = 0; i < 5; i += 1) {
+    lastWrong = await api('POST', '/api/auth/verify-email', { body: { email: locked.email, code: otherCode(lockedCode) } });
+  }
+  assert(/Too many incorrect attempts/.test(lastWrong.data.message || ''), 'Fifth wrong code locks the code');
+  const afterLock = await api('POST', '/api/auth/verify-email', { body: { email: locked.email, code: lockedCode } });
+  assert(afterLock.status === 400 && afterLock.data.code === 'INVALID_CODE', 'Correct code no longer works after the lockout');
+  await api('POST', '/api/auth/resend-verification', { body: { email: locked.email } });
+  const freshCode = codeFromEmail(locked.email, '/verify-email');
+  const freshOk = await api('POST', '/api/auth/verify-email', { body: { email: locked.email, code: freshCode } });
+  assert(freshOk.status === 200, 'A newly requested code works after a lockout');
+
+  const otpReset = await api('POST', '/api/auth/forgot-password', { body: { email: otp.email } });
+  assert(otpReset.status === 200 && /reset code has been sent/.test(otpReset.data.message), 'Forgot-password confirms the code was sent');
+  const resetCode = codeFromEmail(otp.email, '/reset-password');
+  assert(/^\d{6}$/.test(resetCode || ''), 'Reset email contains a 6-digit code');
+  const weakCodeReset = await api('POST', '/api/auth/reset-password', { body: { email: otp.email, code: resetCode, password: 'short' } });
+  assert(weakCodeReset.status === 400 && weakCodeReset.data.code !== 'INVALID_CODE', 'Weak password is rejected before the code is checked');
+  const wrongReset = await api('POST', '/api/auth/reset-password', { body: { email: otp.email, code: otherCode(resetCode), password: 'NewPassword456' } });
+  assert(wrongReset.status === 400 && /4 attempts left/.test(wrongReset.data.message), 'Wrong reset code is rejected (weak password did not use an attempt)');
+  const codeReset = await api('POST', '/api/auth/reset-password', { body: { email: otp.email, code: resetCode, password: 'NewPassword456' } });
+  assert(codeReset.status === 200, 'Password reset with a code succeeds');
+  const newPwLogin = await api('POST', '/api/auth/login', { body: { email: otp.email, password: 'NewPassword456' } });
+  assert(newPwLogin.status === 200, 'Login works with the password set by code');
+  const reuseReset = await api('POST', '/api/auth/reset-password', { body: { email: otp.email, code: resetCode, password: 'Another789xyz' } });
+  assert(reuseReset.status === 400, 'Reset code is single-use');
+
+  // ------------------------------------------------------------------
   section('Password reset & session revocation');
   const unknownReset = await api('POST', '/api/auth/forgot-password', { body: { email: `nobody.${stamp}@prodtest.org` } });
-  assert(unknownReset.status === 200, 'Forgot-password does not reveal unknown emails');
+  assert(
+    unknownReset.status === 404 && unknownReset.data.code === 'EMAIL_NOT_REGISTERED',
+    'Forgot-password tells the user the email is not registered'
+  );
   await api('POST', '/api/auth/forgot-password', { body: { email: vol.email } });
   const resetToken = tokenFromEmail(vol.email, '/reset-password');
   assert(Boolean(resetToken), 'Password reset email is sent');
@@ -178,6 +247,46 @@ const run = async () => {
   assert(logoutAll.status === 200, 'Logout from all sessions succeeds');
   assert((await api('GET', '/api/auth/me', { token: volToken })).status === 401, 'Logout-all revokes the current token');
   volToken = (await api('POST', '/api/auth/login', { body: { email: vol.email, password: 'Password123!' } })).data.data.token;
+
+  // Without working email, verification must not lock new users out.
+  const savedMailEnv = { NODE_ENV: process.env.NODE_ENV, SMTP_HOST: process.env.SMTP_HOST };
+  try {
+    process.env.NODE_ENV = 'development';
+    delete process.env.SMTP_HOST;
+    const noMail = await register('nomail', 'VOLUNTEER');
+    assert(
+      noMail.res.status === 201 && noMail.res.data.data.requires_email_verification === false,
+      'Without email configured, registration does not demand verification'
+    );
+    const noMailLogin = await api('POST', '/api/auth/login', { body: { email: noMail.email, password: 'Password123!' } });
+    assert(noMailLogin.status === 200, 'Without email configured, new users can sign in immediately');
+  } finally {
+    process.env.NODE_ENV = savedMailEnv.NODE_ENV;
+    if (savedMailEnv.SMTP_HOST === undefined) delete process.env.SMTP_HOST;
+    else process.env.SMTP_HOST = savedMailEnv.SMTP_HOST;
+  }
+
+  // Email configured but failing at the moment of registration (e.g. blocked port or bad key):
+  // the user must not be left stuck with an unverifiable account.
+  const savedFailEnv = { NODE_ENV: process.env.NODE_ENV, BREVO_API_KEY: process.env.BREVO_API_KEY };
+  const realFetch = global.fetch;
+  try {
+    process.env.NODE_ENV = 'development';
+    process.env.BREVO_API_KEY = 'xkeysib-simulated-for-tests';
+    global.fetch = (url, init) =>
+      String(url).startsWith('https://api.brevo.com')
+        ? Promise.resolve(new Response(JSON.stringify({ message: 'Key not found' }), { status: 401 }))
+        : realFetch(url, init);
+    const failing = await register('mailfail', 'VOLUNTEER');
+    assert(failing.res.status === 201, 'Registration succeeds even when the verification email fails');
+    const failingLogin = await api('POST', '/api/auth/login', { body: { email: failing.email, password: 'Password123!' } });
+    assert(failingLogin.status === 200, 'A user whose verification email failed is not locked out');
+  } finally {
+    global.fetch = realFetch;
+    process.env.NODE_ENV = savedFailEnv.NODE_ENV;
+    if (savedFailEnv.BREVO_API_KEY === undefined) delete process.env.BREVO_API_KEY;
+    else process.env.BREVO_API_KEY = savedFailEnv.BREVO_API_KEY;
+  }
 
   const roleEscalation = await api('POST', '/api/auth/register', {
     body: { full_name: 'Sneaky', email: `sneaky.${stamp}@prodtest.org`, password: 'Password123!', role: 'ADMIN' },
@@ -216,7 +325,7 @@ const run = async () => {
     title: `Beach Cleanup ${stamp}`,
     description: 'Help clean the beach',
     category: 'Environment',
-    event_date: '2027-06-15',
+    event_date: '2030-06-15',
     start_time: '09:00:00',
     end_time: '12:00:00',
     location: 'Marina Beach',
@@ -231,6 +340,12 @@ const run = async () => {
   const oppId = draft.data.data.opportunity.id;
 
   assert((await api('GET', '/api/admin/stats', { token: coordToken })).status === 403, 'Non-admin cannot access admin API');
+  const adminStats = await api('GET', '/api/admin/stats', { token: adminToken });
+  assert(
+    adminStats.status === 200 && adminStats.data.data.email?.state === 'ok' && !('pass' in adminStats.data.data.email),
+    'Admin stats report email delivery status without secrets',
+    JSON.stringify(adminStats.data.data.email)
+  );
   const pending = await api('GET', '/api/admin/organizations?status=PENDING', { token: adminToken });
   assert(pending.data.data.organizations.some((o) => o.id === orgId), 'Admin sees pending organizations');
   const rejectNoNote = await api('PATCH', `/api/admin/organizations/${orgId}/verification`, {

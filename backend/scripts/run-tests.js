@@ -36,6 +36,7 @@ const SUITES = [
   'test_production_features.js',
   'test_volunteer_details.js',
   'test_deployment_readiness.js',
+  'test_email_transports.js',
 ];
 
 const filter = process.argv[2];

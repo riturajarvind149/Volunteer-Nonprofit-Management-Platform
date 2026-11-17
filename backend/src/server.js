@@ -13,6 +13,7 @@ const app = require('./app');
 const pool = require('./config/db');
 const { migrate } = require('./db/migrate');
 const { startSchedulers, stopSchedulers } = require('./services/schedulerService');
+const { checkEmailSetup } = require('./services/emailService');
 
 const PORT = process.env.PORT || 5000;
 let server;
@@ -29,6 +30,9 @@ const start = async () => {
       startSchedulers();
       logger.info('[Scheduler] Background jobs started');
     }
+
+    // Report email delivery status up front (runs in the background, never blocks startup).
+    checkEmailSetup();
   });
 };
 
