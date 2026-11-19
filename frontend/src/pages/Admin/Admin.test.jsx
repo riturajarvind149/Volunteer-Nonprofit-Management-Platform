@@ -24,8 +24,8 @@ const PENDING_ORG = {
   name: 'Coast Care Trust',
   description: 'Beach cleanups every weekend.',
   verification_status: 'PENDING',
-  coordinator_name: 'Ravi',
-  coordinator_email: 'ravi@example.org',
+  owner_name: 'Ravi',
+  owner_email: 'ravi@example.org',
   opportunity_count: 2,
   created_at: '2026-11-01',
 }
@@ -59,7 +59,7 @@ describe('Organization review', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
 
     expect(reviewOrganizationApi).toHaveBeenCalledWith('org-1', 'APPROVED', undefined, 'test-token')
-    expect(await screen.findByText(/is now approved\. The coordinator has been emailed\./)).toBeInTheDocument()
+    expect(await screen.findByText(/is now approved\. The NGO admin has been emailed\./)).toBeInTheDocument()
   })
 
   it('requires a note before rejecting', async () => {
@@ -71,7 +71,7 @@ describe('Organization review', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Add a note explaining why')
     expect(reviewOrganizationApi).not.toHaveBeenCalled()
 
-    await userEvent.type(screen.getByLabelText(/Note to the coordinator/), 'Could not verify registration')
+    await userEvent.type(screen.getByLabelText(/Note to the NGO admin/), 'Could not verify registration')
     await userEvent.click(screen.getByRole('button', { name: 'Reject' }))
     expect(reviewOrganizationApi).toHaveBeenCalledWith('org-1', 'REJECTED', 'Could not verify registration', 'test-token')
   })

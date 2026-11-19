@@ -407,14 +407,12 @@ const validateUpdateOpportunity = (req, res, next) => {
   if (req.body) {
     delete req.body.id;
     delete req.body.organization_id;
-    delete req.body.coordinator_id;
     delete req.body.created_at;
     delete req.body.updated_at;
   }
 
   if (req.query) {
     delete req.query.organization_id;
-    delete req.query.coordinator_id;
   }
 
   req.body = sanitized;

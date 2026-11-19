@@ -127,10 +127,21 @@ module.exports = {
     cta: { label: 'View my hours', url: link('/my-hours') },
   }),
 
-  orgSubmitted: ({ orgName, coordinatorName }) => ({
+  coordinatorInvitation: ({ orgName, inviterName, token, days }) => ({
+    subject: `${inviterName} invited you to coordinate for ${orgName} on ${config.appName}`,
+    heading: `Join ${orgName} as a coordinator`,
+    paragraphs: [
+      `${inviterName} has invited you to help run ${orgName} on ${config.appName}: publishing volunteer opportunities, managing rosters and recording hours.`,
+      `Accept to create your coordinator account, or sign in if you already have one. This invitation expires in ${days} days.`,
+    ],
+    cta: { label: 'Accept invitation', url: link(`/invitations/accept?token=${encodeURIComponent(token)}`) },
+    footer: "If you weren't expecting this, you can ignore this email — nothing happens unless you accept.",
+  }),
+
+  orgSubmitted: ({ orgName, ownerName }) => ({
     subject: `New organization awaiting review: ${orgName}`,
     heading: 'Organization pending verification',
-    paragraphs: [`${coordinatorName} registered "${orgName}". Please review it in the admin console.`],
+    paragraphs: [`${ownerName} registered "${orgName}". Please review it in the admin console.`],
     cta: { label: 'Open admin console', url: link('/admin') },
   }),
 

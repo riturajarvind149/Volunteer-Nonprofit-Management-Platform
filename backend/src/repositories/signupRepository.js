@@ -273,7 +273,6 @@ const findById = async (id) => {
       o.organization_id AS opportunity_organization_id,
       org.id AS organization_id,
       org.name AS organization_name,
-      org.coordinator_id,
       s.status,
       s.created_at,
       s.updated_at
@@ -346,11 +345,11 @@ const findAttendeesByOpportunityId = async (opportunityId) => {
 };
 
 /**
- * Retrieve a signup record along with opportunity, organization, and owning coordinator ID
+ * Retrieve a signup record along with its opportunity and organization IDs
  * @param {string} id - Signup UUID
- * @returns {Promise<Object|null>} Record with coordinator_id or null if not found
+ * @returns {Promise<Object|null>} Record with organization_id or null if not found
  */
-const findByIdWithCoordinator = async (id) => {
+const findByIdWithOrganization = async (id) => {
   const query = `
     SELECT 
       s.id,
@@ -361,8 +360,7 @@ const findByIdWithCoordinator = async (id) => {
       s.updated_at,
       o.capacity AS opportunity_capacity,
       o.status AS opportunity_status,
-      org.id AS organization_id,
-      org.coordinator_id
+      o.organization_id
     FROM signups s
     JOIN opportunities o ON s.opportunity_id = o.id
     JOIN organizations org ON o.organization_id = org.id
@@ -462,7 +460,7 @@ module.exports = {
   reactivateSignupTransaction,
   findByVolunteerId,
   findById,
-  findByIdWithCoordinator,
+  findByIdWithOrganization,
   findByVolunteerAndOpportunity,
   countActiveSignupsByOpportunityId,
   updateStatus,

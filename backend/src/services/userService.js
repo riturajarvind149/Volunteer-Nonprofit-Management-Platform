@@ -195,7 +195,12 @@ const exportUserData = async (userId) => {
          JOIN opportunities o ON o.id = w.opportunity_id WHERE w.volunteer_id = $1`,
       [userId]
     ),
-    pool.query('SELECT id, name, verification_status, created_at FROM organizations WHERE coordinator_id = $1', [userId]),
+    pool.query(
+      `SELECT org.id, org.name, org.verification_status, org.created_at, om.role AS my_role
+         FROM organization_members om JOIN organizations org ON org.id = om.organization_id
+        WHERE om.user_id = $1`,
+      [userId]
+    ),
   ]);
 
   return {
@@ -222,10 +227,14 @@ const deleteAccount = async (userId, password) => {
     throw new AppError('Password is incorrect', 400);
   }
 
-  const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM organizations WHERE coordinator_id = $1', [userId]);
+  // Owners must hand over their organization first; coordinators simply leave (membership is removed).
+  const { rows } = await pool.query(
+    "SELECT COUNT(*)::int AS n FROM organization_members WHERE user_id = $1 AND role = 'OWNER'",
+    [userId]
+  );
   if (rows[0].n > 0) {
     throw new AppError(
-      'You still manage an organization. Transfer or close it (contact support) before deleting your account.',
+      'You still own an organization. Transfer or close it (contact support) before deleting your account.',
       409
     );
   }

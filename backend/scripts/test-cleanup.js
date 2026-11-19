@@ -48,16 +48,16 @@ const cleanupTestUsers = async (pool, emails = [], { patterns = [] } = {}) => {
                 SELECT s.id FROM signups s
                   JOIN opportunities o ON o.id = s.opportunity_id
                   JOIN organizations org ON org.id = o.organization_id
-                 WHERE org.coordinator_id = ANY($1::uuid[]))`,
+                 WHERE org.id IN (SELECT organization_id FROM organization_members WHERE user_id = ANY($1::uuid[])))`,
       [ids]
     );
     await client.query('DELETE FROM audit_logs WHERE actor_id = ANY($1::uuid[]) OR entity_id = ANY($1::uuid[])', [ids]);
     await client.query(
       `DELETE FROM audit_logs
-        WHERE entity_id IN (SELECT id FROM organizations WHERE coordinator_id = ANY($1::uuid[]))`,
+        WHERE entity_id IN (SELECT id FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id = ANY($1::uuid[])))`,
       [ids]
     );
-    await client.query('DELETE FROM organizations WHERE coordinator_id = ANY($1::uuid[])', [ids]);
+    await client.query('DELETE FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id = ANY($1::uuid[]))', [ids]);
     await client.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [ids]);
     await client.query('COMMIT');
     return ids.length;

@@ -128,6 +128,8 @@ const downloadFile = async (endpoint, token, fallbackName) => {
 
 // ---- Auth ----
 export const registerApi = (payload) => authFetch('/auth/register', { method: 'POST', body: payload })
+/** Public NGO sign-up: { full_name, email, password, phone, organization: { ...NGO details } } */
+export const registerOrganizationApi = (payload) => authFetch('/auth/register-organization', { method: 'POST', body: payload })
 export const loginApi = (payload) => authFetch('/auth/login', { method: 'POST', body: payload })
 export const getMeApi = (token) => authFetch('/auth/me', { token })
 export const verifyEmailApi = (token) => authFetch('/auth/verify-email', { method: 'POST', body: { token } })
@@ -156,9 +158,25 @@ export const getMyOrganizationsApi = (token) => authFetch('/organizations/mine',
 export const getOrganizationByIdApi = (id, token) => authFetch('/organizations/' + id, { token })
 export const getOrganizationOpportunitiesApi = (id, token, params = {}) =>
   authFetch('/organizations/' + id + '/opportunities' + toQuery(params), { token })
-export const createOrganizationApi = (payload, token) => authFetch('/organizations', { method: 'POST', body: payload, token })
+/** A signed-in coordinator without an NGO registers one (NGO details only). */
+export const registerMyNgoApi = (details, token) => authFetch('/organizations', { method: 'POST', body: details, token })
 export const updateOrganizationApi = (id, fields, token) =>
   authFetch('/organizations/' + id, { method: 'PATCH', body: fields, token })
+// ---- NGO team ----
+export const getTeamApi = (organizationId, token) => authFetch('/organizations/' + organizationId + '/team', { token })
+export const inviteCoordinatorApi = (organizationId, email, token) =>
+  authFetch('/organizations/' + organizationId + '/invitations', { method: 'POST', body: { email }, token })
+export const revokeInvitationApi = (organizationId, invitationId, token) =>
+  authFetch('/organizations/' + organizationId + '/invitations/' + invitationId, { method: 'DELETE', token })
+/** Remove a coordinator, or leave the NGO when userId is your own id. */
+export const removeMemberApi = (organizationId, userId, token) =>
+  authFetch('/organizations/' + organizationId + '/members/' + userId, { method: 'DELETE', token })
+export const transferOwnershipApi = (organizationId, userId, token) =>
+  authFetch('/organizations/' + organizationId + '/transfer-ownership', { method: 'POST', body: { user_id: userId }, token })
+export const previewInvitationApi = (invitationToken) => authFetch('/invitations/preview', { method: 'POST', body: { token: invitationToken } })
+/** Accept as a new account ({ full_name, password }) or, with `token`, as the signed-in invited account. */
+export const acceptInvitationApi = (invitationToken, details = {}, token) =>
+  authFetch('/invitations/accept', { method: 'POST', body: { token: invitationToken, ...details }, token })
 /** Public impact figures: volunteers, hours, events, fill rate. */
 export const getOrganizationImpactApi = (id, token) => authFetch('/organizations/' + id + '/impact', { token })
 

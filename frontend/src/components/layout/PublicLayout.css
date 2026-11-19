@@ -120,3 +120,10 @@
     display: none;
   }
 }
+
+/* Narrow phones: keep the logo mark but drop the wordmark so the sign-in and sign-up buttons fit. */
+@media (max-width: 420px) {
+  .public-header .brand-name {
+    display: none;
+  }
+}

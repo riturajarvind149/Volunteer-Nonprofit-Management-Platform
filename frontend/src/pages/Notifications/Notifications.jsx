@@ -17,6 +17,7 @@ const TYPE_ICONS = {
   EVENT_COMPLETED: 'check',
   HOURS: 'clock',
   ORG_REVIEW: 'building',
+  TEAM: 'users',
 }
 
 const relativeTime = (value) => {

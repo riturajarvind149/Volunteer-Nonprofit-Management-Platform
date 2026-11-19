@@ -38,7 +38,6 @@ const validateSignupId = (req, res, next) => {
   // Prevent client from attempting to spoof ownership identifiers via request body or query params
   const sensitiveParams = [
     'volunteer_id',
-    'coordinator_id',
     'organization_id',
     'opportunity_id',
   ];
@@ -100,7 +99,6 @@ const validateUpdateSignupStatus = (req, res, next) => {
   // 5. Ignore/strip attempts to modify ownership or immutable fields
   if (req.body.volunteer_id !== undefined) delete req.body.volunteer_id;
   if (req.body.opportunity_id !== undefined) delete req.body.opportunity_id;
-  if (req.body.coordinator_id !== undefined) delete req.body.coordinator_id;
   if (req.body.organization_id !== undefined) delete req.body.organization_id;
   if (req.body.hours !== undefined) delete req.body.hours;
   if (req.body.created_at !== undefined) delete req.body.created_at;

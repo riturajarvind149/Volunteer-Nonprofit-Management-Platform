@@ -214,9 +214,9 @@ function CoordinatorDashboard({ user, token }) {
 
   const tasks = [
     !hasOrganization && {
-      text: 'Create an organization before you can publish opportunities.',
-      to: '/organizations?new=1',
-      cta: 'Create organization',
+      text: 'You’re not part of an NGO yet. Ask your NGO admin to invite you, or register your NGO.',
+      to: '/organizations/register',
+      cta: 'Register your NGO',
     },
     awaitingHours > 0 && {
       text: `${formatHours(awaitingHours)} volunteer hours are waiting for verification.`,

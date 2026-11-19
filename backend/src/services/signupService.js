@@ -1,6 +1,7 @@
 const signupRepository = require('../repositories/signupRepository');
 const opportunityRepository = require('../repositories/opportunityRepository');
 const organizationRepository = require('../repositories/organizationRepository');
+const organizationMemberRepository = require('../repositories/organizationMemberRepository');
 const userRepository = require('../repositories/userRepository');
 const notificationService = require('./notificationService');
 const waitlistService = require('./waitlistService');
@@ -28,7 +29,7 @@ const createSignup = async (opportunityId, volunteerId) => {
 
   // Non-blocking notification dispatch
   try {
-    const opp = await opportunityRepository.findOpportunityByIdWithCoordinator(opportunityId);
+    const opp = await opportunityRepository.findOpportunityById(opportunityId);
     const volunteer = await userRepository.findById(volunteerId);
     if (opp && volunteer) {
       await notificationService.notify({
@@ -41,9 +42,11 @@ const createSignup = async (opportunityId, volunteerId) => {
         attachments: [icsAttachment(opp)],
       });
 
-      if (opp.coordinator_id) {
+      // Everyone who manages the organization hears about new registrations.
+      const managers = await organizationMemberRepository.findMembers(opp.organization_id);
+      for (const manager of managers) {
         await notificationService.createNotification({
-          user_id: opp.coordinator_id,
+          user_id: manager.id,
           title: 'New Registration',
           message: `A volunteer registered for ${opp.title}`,
           type: 'REGISTRATION',
@@ -68,12 +71,12 @@ const getMySignups = async (volunteerId) => {
 };
 
 /**
- * Retrieves attendee signups for an opportunity ensuring coordinator ownership of the organization
+ * Retrieves attendee signups for an opportunity; the coordinator must belong to its organization
  * @param {string} opportunityId - Opportunity UUID
  * @param {string} coordinatorId - Authenticated coordinator UUID
  * @returns {Promise<Object>} Object containing opportunity and list of attendees
  * @throws {AppError} 404 if opportunity not found
- * @throws {AppError} 403 if coordinator does not own the organization
+ * @throws {AppError} 403 if the coordinator is not a member of the organization
  */
 const getOpportunityAttendees = async (opportunityId, coordinatorId) => {
   // 1. Verify opportunity exists
@@ -82,8 +85,8 @@ const getOpportunityAttendees = async (opportunityId, coordinatorId) => {
     throw new AppError('Opportunity not found', 404);
   }
 
-  // 2. Verify coordinator owns the organization that created this opportunity
-  const organization = await organizationRepository.findByIdAndCoordinatorId(
+  // 2. Verify the coordinator belongs to the organization that created this opportunity
+  const organization = await organizationRepository.findManagedById(
     opportunity.organization_id,
     coordinatorId
   );
@@ -118,13 +121,13 @@ const getOpportunityAttendees = async (opportunityId, coordinatorId) => {
  */
 const updateSignupStatus = async (id, status, coordinatorId) => {
   // 1. Verify signup exists and retrieve ownership & opportunity metadata
-  const signup = await signupRepository.findByIdWithCoordinator(id);
+  const signup = await signupRepository.findByIdWithOrganization(id);
   if (!signup) {
     throw new AppError('Signup not found', 404);
   }
 
-  // 2. Enforce ownership chain: coordinator owns the organization that created the opportunity
-  if (signup.coordinator_id !== coordinatorId) {
+  // 2. The coordinator must belong to the organization that created the opportunity
+  if (!(await organizationMemberRepository.findRole(signup.organization_id, coordinatorId))) {
     throw new AppError('You do not have permission to update this signup', 403);
   }
 
@@ -190,9 +193,9 @@ const setAttendance = async (signupId, attendanceStatus, coordinatorId) => {
   if (!allowed.includes(normalized)) {
     throw new AppError('attendance_status must be PRESENT, ABSENT or null', 400);
   }
-  const signup = await signupRepository.findByIdWithCoordinator(signupId);
+  const signup = await signupRepository.findByIdWithOrganization(signupId);
   if (!signup) throw new AppError('Signup not found', 404);
-  if (signup.coordinator_id !== coordinatorId) {
+  if (!(await organizationMemberRepository.findRole(signup.organization_id, coordinatorId))) {
     throw new AppError('You do not have permission to update this signup', 403);
   }
   if (signup.status === 'CANCELLED') {

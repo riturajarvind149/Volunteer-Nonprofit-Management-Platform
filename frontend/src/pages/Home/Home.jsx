@@ -315,8 +315,8 @@ function Home() {
         <h2 id="roles-title" className="home-section-heading" data-reveal>One account system, two jobs to do</h2>
         <div className="home-roles-grid">
           {[
-            { label: 'For volunteers', title: 'Find a shift that fits, then show up.', items: VOLUNTEER_FEATURES, role: 'volunteer', cta: 'Register as a volunteer' },
-            { label: 'For nonprofit coordinators', title: 'Fill your events and keep an accurate record.', items: COORDINATOR_FEATURES, role: 'coordinator', cta: 'Register as a coordinator' },
+            { label: 'For volunteers', title: 'Find a shift that fits, then show up.', items: VOLUNTEER_FEATURES, role: 'volunteer', to: '/register', cta: 'Register as a volunteer' },
+            { label: 'For NGOs and their coordinators', title: 'Fill your events and keep an accurate record.', items: COORDINATOR_FEATURES, role: 'ngo', to: '/register/ngo', cta: 'Register your NGO' },
           ].map((card) => (
             <TiltCard key={card.role} as="article" className="home-role" data-reveal>
               <div className="home-role-body">
@@ -328,7 +328,7 @@ function Home() {
                   ))}
                 </ul>
                 {!isAuthenticated && (
-                  <Link to={`/register?role=${card.role}`} className="home-role-link tilt-layer">
+                  <Link to={card.to} className="home-role-link tilt-layer">
                     {card.cta} <Icon name="arrow-right" size={15} />
                   </Link>
                 )}
@@ -355,11 +355,11 @@ function Home() {
           <div className="home-closing">
             <div className="tilt-layer">
               <h2>Ready to get started?</h2>
-              <p>You’ll need a name, an email address and a password. Pick volunteer or coordinator as you sign up.</p>
+              <p>Volunteers sign up in a minute. NGOs register, get verified, then invite their coordinators.</p>
             </div>
             <div className="home-actions tilt-layer">
-              <Link to="/register" className="btn btn-primary btn-lg">Create an account</Link>
-              <Link to="/login" className="btn btn-secondary btn-lg">Sign in</Link>
+              <Link to="/register" className="btn btn-primary btn-lg">Create a volunteer account</Link>
+              <Link to="/register/ngo" className="btn btn-secondary btn-lg">Register your NGO</Link>
             </div>
           </div>
         </TiltCard>

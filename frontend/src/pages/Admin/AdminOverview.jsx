@@ -105,7 +105,7 @@ function AdminOverview() {
         </div>
         {pending.length === 0 ? (
           <EmptyState icon="check-circle" title="Nothing to review">
-            New organizations appear here as soon as a coordinator registers one.
+            New NGOs appear here as soon as they register.
           </EmptyState>
         ) : (
           <ul role="list" className="admin-pending-list">
@@ -115,7 +115,7 @@ function AdminOverview() {
                 <div className="admin-pending-main">
                   <span className="cell-primary">{org.name}</span>
                   <span className="cell-sub">
-                    {org.coordinator_name} · {org.coordinator_email} · submitted {formatDate(org.created_at)}
+                    {org.owner_name} · {org.owner_email} · submitted {formatDate(org.created_at)}
                   </span>
                 </div>
                 <Link to="/admin/organizations" className="btn btn-primary btn-sm">

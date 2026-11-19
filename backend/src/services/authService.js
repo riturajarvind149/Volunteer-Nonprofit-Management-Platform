@@ -7,6 +7,8 @@ const templates = require('./emailTemplates');
 const { config } = require('../config/env');
 const logger = require('../utils/logger');
 const AppError = require('../utils/AppError');
+const pool = require('../config/db');
+const organizationService = require('./organizationService');
 
 const SALT_ROUNDS = 12;
 const EMAIL_VERIFICATION_TTL_MIN = 24 * 60;
@@ -119,6 +121,23 @@ const sendVerificationEmail = async (user) => {
 };
 
 /**
+ * Send the verification code + link, or mark the address verified when
+ * verification is off or email can't be delivered (so nobody gets stuck).
+ */
+const startEmailVerification = async (newUser) => {
+  if (isVerificationRequired()) {
+    const sent = await sendVerificationEmail(newUser);
+    // Email turned out to be down (e.g. blocked SMTP port) — don't leave the user stuck unverified.
+    if (!sent.delivered && !emailService.canDeliverEmail()) {
+      logger.warn({ userId: newUser.id }, '[email] verification email could not be delivered; account verified automatically');
+      return (await userRepository.markEmailVerified(newUser.id)) || newUser;
+    }
+    return newUser;
+  }
+  return (await userRepository.markEmailVerified(newUser.id)) || newUser;
+};
+
+/**
  * Service to handle user registration business logic
  */
 const registerUser = async ({ full_name, email, password, role }) => {
@@ -154,18 +173,42 @@ const registerUser = async ({ full_name, email, password, role }) => {
   delete newUser.password_hash;
 
   // 4. Email verification (auto-verify when the feature is disabled)
-  if (isVerificationRequired()) {
-    const sent = await sendVerificationEmail(newUser);
-    // Email turned out to be down (e.g. blocked SMTP port) — don't leave the user stuck unverified.
-    if (!sent.delivered && !emailService.canDeliverEmail()) {
-      logger.warn({ userId: newUser.id }, '[email] verification email could not be delivered; account verified automatically');
-      newUser = (await userRepository.markEmailVerified(newUser.id)) || newUser;
-    }
-  } else {
-    newUser = (await userRepository.markEmailVerified(newUser.id)) || newUser;
+  return startEmailVerification(newUser);
+};
+
+/**
+ * Public NGO sign-up: creates the NGO admin's account, the NGO (pending verification)
+ * and the owner membership in one transaction, then starts email verification.
+ * @returns {Promise<{user: Object, organization: Object}>}
+ */
+const registerOrganization = async ({ full_name, email, password, phone }, details) => {
+  validatePasswordStrength(password);
+  if (await userRepository.findByEmail(email)) {
+    throw new AppError('Email is already registered', 409);
+  }
+  await organizationService.assertCanRegisterNgo(null, details);
+
+  const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+  const client = await pool.connect();
+  let user;
+  let organization;
+  try {
+    await client.query('BEGIN');
+    user = await userRepository.createUser({ full_name, email, password_hash, role: 'COORDINATOR', phone }, client);
+    organization = await organizationService.createNgo(user.id, details, client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    if (error.code === '23505') throw new AppError('Email is already registered', 409);
+    throw error;
+  } finally {
+    client.release();
   }
 
-  return newUser;
+  delete user.password_hash;
+  user = await startEmailVerification(user);
+  await organizationService.notifyAdminsOfNewNgo(organization, user.full_name);
+  return { user, organization };
 };
 
 /**
@@ -366,8 +409,9 @@ const logoutAllSessions = async (userId) => {
 
 module.exports = {
   registerUser,
+  registerOrganization,
   loginUser,
-  
+  generateToken,
   getUserProfile,
   changePassword,
   verifyEmail,

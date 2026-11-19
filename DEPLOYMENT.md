@@ -95,6 +95,22 @@ and `/api/health/db` → `{"status":"ok","database":"connected"}`.
 4. Set `BREVO_API_KEY` + `EMAIL_FROM` and send yourself a password-reset email to test it.
 5. Turn on `REQUIRE_EMAIL_VERIFICATION=true` and `REQUIRE_ORG_APPROVAL=true`.
 
+### Upgrading to NGO registration and teams (migrations 005–008)
+
+This release replaces "a coordinator owns an NGO" with NGO registration and NGO teams. The migrations run
+automatically when the new backend starts:
+
+- **005** creates `organization_members`; everyone who created an NGO becomes its **NGO admin** (owner).
+- **006** adds NGO registration details (type, registration number, city).
+- **007** creates coordinator invitations.
+- **008** removes the old `organizations.coordinator_id` column (after re-checking every NGO has an owner).
+
+Nothing is lost: existing NGOs keep their creator as NGO admin, and their events, rosters and hours are unchanged.
+Coordinators who never created an NGO can register one, or be invited by an NGO admin.
+
+Deploy the backend **before** the frontend, at a quiet time: while Render switches from the old server to the new
+one (about a minute), the old server can't read NGO data because migration 008 has removed the old column.
+
 ---
 
 ## Troubleshooting
@@ -104,6 +120,7 @@ and `/api/health/db` → `{"status":"ok","database":"connected"}`.
 | Browser console shows **CORS** errors | `FRONTEND_URL` on the backend must exactly match the frontend origin (scheme + host, no trailing slash or path). Redeploy after changing it. |
 | Frontend shows “Can’t reach the server” | `VITE_API_URL` points to the wrong host, or the Render service is asleep (free instances take ~30 s to wake). |
 | Render build looks for `package.json` in the repo root | Root Directory must be `backend`. |
+| An invited coordinator never gets the email | Check the Render logs for `[email]` lines and Brevo → Transactional → Logs. The NGO admin can press **Resend** on the Team page; each resend replaces the old link. |
 | Users never receive verification / reset emails | Check `BREVO_API_KEY` / `EMAIL_FROM` and the Render logs for `[email]` lines. The site now shows the reason directly (not registered, already verified, limit of 5 per hour, send failed). Then check Brevo → Transactional → Logs. |
 | Link in the email opens `localhost` | `APP_URL` is set on the server. Remove it on Render — links then use `FRONTEND_URL`. Users can always type the **6-digit code** from the email instead of opening the link. |
 | “Please verify your email” but no email arrives | Use **Send a new code** on the verification screen, or **Forgot password** — resetting the password also verifies the email. Accounts created while email was down are verified automatically. |

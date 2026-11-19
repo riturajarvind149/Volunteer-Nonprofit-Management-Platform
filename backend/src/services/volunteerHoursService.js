@@ -1,6 +1,7 @@
 const volunteerHoursRepository = require('../repositories/volunteerHoursRepository');
 const signupRepository = require('../repositories/signupRepository');
 const organizationRepository = require('../repositories/organizationRepository');
+const organizationMemberRepository = require('../repositories/organizationMemberRepository');
 const userRepository = require('../repositories/userRepository');
 const notificationService = require('./notificationService');
 const templates = require('./emailTemplates');
@@ -37,8 +38,8 @@ const recordHours = async ({ signupId, hours, status, idempotencyKey = null }, c
     throw new AppError('Cannot record hours for a cancelled signup', 400);
   }
 
-  // 3. Verify coordinator ownership: Coordinator -> Organization -> Opportunity -> Signup
-  const organization = await organizationRepository.findByIdAndCoordinatorId(
+  // 3. The coordinator must belong to the organization: Member -> Organization -> Opportunity -> Signup
+  const organization = await organizationRepository.findManagedById(
     signup.opportunity_organization_id,
     coordinatorId
   );
@@ -105,14 +106,14 @@ const getOrganizationHours = async (coordinatorId) => {
  * @throws {AppError} 403 if coordinator does not own the organization
  */
 const updateStatus = async (id, status, coordinatorId) => {
-  // 1. Verify volunteer hours record exists and get owning coordinator
-  const record = await volunteerHoursRepository.findByIdWithCoordinator(id);
+  // 1. Verify volunteer hours record exists
+  const record = await volunteerHoursRepository.findByIdWithOrganization(id);
   if (!record) {
     throw new AppError('Volunteer hours record not found', 404);
   }
 
-  // 2. Enforce ownership chain: coordinator owns the organization
-  if (record.coordinator_id !== coordinatorId) {
+  // 2. The coordinator must belong to the record's organization
+  if (!(await organizationMemberRepository.findRole(record.organization_id, coordinatorId))) {
     throw new AppError(
       'You do not have permission to update status for this volunteer hours record',
       403
@@ -215,13 +216,17 @@ const logOwnHours = async ({ signupId, hours, notes }, volunteerId) => {
   });
 
   try {
-    await notificationService.createNotification({
-      user_id: signup.coordinator_id,
-      title: 'Hours awaiting review',
-      message: `${signup.volunteer_name} logged ${hours} hours for ${signup.opportunity_title}.`,
-      type: 'HOURS',
-      reference_id: record.id,
-    });
+    // Everyone who manages the organization can review the entry.
+    const managers = await organizationMemberRepository.findMembers(signup.organization_id);
+    for (const manager of managers) {
+      await notificationService.createNotification({
+        user_id: manager.id,
+        title: 'Hours awaiting review',
+        message: `${signup.volunteer_name} logged ${hours} hours for ${signup.opportunity_title}.`,
+        type: 'HOURS',
+        reference_id: record.id,
+      });
+    }
   } catch {
     // non-blocking
   }

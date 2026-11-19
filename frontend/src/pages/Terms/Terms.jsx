@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import '../Privacy/Legal.css'
 
-const LAST_UPDATED = 'October 2026'
+const LAST_UPDATED = 'November 2026'
 
 function Terms() {
   return (
@@ -43,8 +43,12 @@ function Terms() {
                 posted by organizations, and to view their volunteering activity and hours.
               </li>
               <li>
-                <strong>Coordinators</strong> to create and manage organizations, post volunteer
-                opportunities, manage volunteer signups, and record volunteer hours.
+                <strong>NGOs</strong> to register on ServeHub through an <strong>NGO admin</strong>, who manages the
+                NGO&rsquo;s profile and invites its <strong>coordinators</strong>.
+              </li>
+              <li>
+                <strong>Coordinators</strong>, appointed by an NGO, to post volunteer opportunities, manage volunteer
+                signups, and record volunteer hours for that NGO.
               </li>
             </ul>
           </section>
@@ -62,8 +66,8 @@ function Terms() {
               <li>Accept responsibility for all activity that occurs under your account</li>
             </ul>
             <p>
-              You may register as a Volunteer or as a Coordinator. You are responsible for
-              selecting the appropriate role for your intended use.
+              You may create a volunteer account, or register an NGO as its NGO admin. Coordinator accounts are
+              created only through an invitation from an NGO admin.
             </p>
           </section>
 
@@ -78,10 +82,11 @@ function Terms() {
           </section>
 
           <section className="legal-section">
-            <h2>Coordinator Conduct</h2>
-            <p>As a coordinator using ServeHub, you agree to:</p>
+            <h2>NGO Admin and Coordinator Conduct</h2>
+            <p>As an NGO admin or coordinator using ServeHub, you agree to:</p>
             <ul>
-              <li>Only create organizations that you are authorized to represent</li>
+              <li>Only register an NGO that you are authorized to represent, with accurate registration details</li>
+              <li>Only invite people the NGO has authorized to act as its coordinators, and remove access promptly when they leave</li>
               <li>Post accurate and complete information about volunteer opportunities</li>
               <li>Treat volunteer information with appropriate care and confidentiality</li>
               <li>Record volunteer hours accurately and fairly</li>

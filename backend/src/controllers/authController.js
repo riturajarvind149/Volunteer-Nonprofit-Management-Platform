@@ -29,6 +29,21 @@ const register = handle(async (req, res) => {
 });
 
 /**
+ * POST /api/auth/register-organization — public NGO sign-up (NGO admin + NGO in one step)
+ */
+const registerOrganization = handle(async (req, res) => {
+  const { user, organization } = await authService.registerOrganization(req.representative, req.ngo);
+  const needsVerification = authService.isVerificationRequired() && !user.email_verified_at;
+  res.status(201).json({
+    status: 'success',
+    message: needsVerification
+      ? 'NGO registered. Please check your email to verify your account.'
+      : 'NGO registered successfully',
+    data: { user, organization, requires_email_verification: needsVerification },
+  });
+});
+
+/**
  * POST /api/auth/login
  */
 const login = handle(async (req, res) => {
@@ -119,6 +134,7 @@ const logoutAll = handle(async (req, res) => {
 
 module.exports = {
   register,
+  registerOrganization,
   login,
   getMe,
   changePassword,

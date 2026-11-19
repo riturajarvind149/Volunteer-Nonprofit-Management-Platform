@@ -54,7 +54,6 @@ const runTests = async () => {
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [testEmails]);
 
   let volunteerResponseData = null;
-  let coordinatorResponseData = null;
 
   try {
     // ----------------------------------------------------------------
@@ -85,9 +84,9 @@ const runTests = async () => {
     );
 
     // ----------------------------------------------------------------
-    // 2. Valid coordinator registration
+    // 2. Coordinators can't sign up here (NGOs register; NGOs appoint coordinators)
     // ----------------------------------------------------------------
-    console.log(`\n${colors.bold}Test 2: Valid coordinator registration${colors.reset}`);
+    console.log(`\n${colors.bold}Test 2: Coordinator sign-up is closed${colors.reset}`);
     const res2 = await fetch(`${baseUrl}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -99,13 +98,14 @@ const runTests = async () => {
       }),
     });
     const data2 = await res2.json();
-    coordinatorResponseData = data2;
+    const coordCreated = await pool.query('SELECT 1 FROM users WHERE email = $1', ['sarah.coord@test.org']);
 
     assert(
-      res2.status === 201 && data2.status === 'success' && data2.data?.user?.role === 'COORDINATOR',
-      'Coordinator registration returns HTTP 201 with role COORDINATOR',
+      res2.status === 400 && data2.code === 'COORDINATOR_SIGNUP_CLOSED' && /Register your NGO/.test(data2.message),
+      'Coordinator sign-up returns HTTP 400 pointing to NGO registration',
       JSON.stringify(data2)
     );
+    assert(coordCreated.rows.length === 0, 'No coordinator account is created');
 
     // ----------------------------------------------------------------
     // 3. Missing required field
@@ -255,34 +255,31 @@ const runTests = async () => {
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 8: Verify password/hash is NOT returned in API response${colors.reset}`);
     const userObj1 = volunteerResponseData?.data?.user;
-    const userObj2 = coordinatorResponseData?.data?.user;
-
     const noLeak1 = userObj1 && userObj1.password === undefined && userObj1.password_hash === undefined;
-    const noLeak2 = userObj2 && userObj2.password === undefined && userObj2.password_hash === undefined;
 
     assert(
-      noLeak1 && noLeak2,
-      'Neither password nor password_hash is returned in API responses',
-      `volunteer keys: ${Object.keys(userObj1 || {})}, coordinator keys: ${Object.keys(userObj2 || {})}`
+      noLeak1,
+      'Neither password nor password_hash is returned in the API response',
+      `keys: ${Object.keys(userObj1 || {})}`
     );
 
     // ----------------------------------------------------------------
     // 9. Verify user actually exists in PostgreSQL
     // ----------------------------------------------------------------
     console.log(`\n${colors.bold}Test 9: Verify user actually exists in PostgreSQL${colors.reset}`);
-    const dbCoordRes = await pool.query(
+    const dbVolRes = await pool.query(
       'SELECT id, full_name, email, role, created_at, updated_at FROM users WHERE email = $1',
-      ['sarah.coord@test.org']
+      ['john.volunteer@test.org']
     );
-    const dbCoord = dbCoordRes.rows[0];
+    const dbVol = dbVolRes.rows[0];
 
     assert(
-      dbCoord &&
-        dbCoord.full_name === 'Sarah Coordinator' &&
-        dbCoord.role === 'COORDINATOR' &&
-        dbCoord.id === userObj2?.id,
+      dbVol &&
+        dbVol.full_name === 'John Volunteer' &&
+        dbVol.role === 'VOLUNTEER' &&
+        dbVol.id === userObj1?.id,
       'User is persisted in PostgreSQL with correct ID, role, and timestamps',
-      JSON.stringify(dbCoord)
+      JSON.stringify(dbVol)
     );
 
     // ----------------------------------------------------------------

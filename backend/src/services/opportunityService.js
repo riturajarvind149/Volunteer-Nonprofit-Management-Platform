@@ -1,5 +1,6 @@
 const opportunityRepository = require('../repositories/opportunityRepository');
 const organizationRepository = require('../repositories/organizationRepository');
+const organizationMemberRepository = require('../repositories/organizationMemberRepository');
 const signupRepository = require('../repositories/signupRepository');
 const waitlistRepository = require('../repositories/waitlistRepository');
 const notificationService = require('./notificationService');
@@ -14,8 +15,13 @@ const AppError = require('../utils/AppError');
  * Service layer for opportunity business logic.
  */
 
-const isOwner = (opp, user) => Boolean(user && opp.coordinator_id === user.id);
-const canManage = (opp, user) => Boolean(user && (user.role === 'ADMIN' || isOwner(opp, user)));
+/** Platform admins and members of the opportunity's organization may manage it. */
+const canManage = async (opp, user) => {
+  if (!user) return false;
+  if (user.role === 'ADMIN') return true;
+  if (user.role !== 'COORDINATOR') return false;
+  return Boolean(await organizationMemberRepository.findRole(opp.organization_id, user.id));
+};
 
 /** Publicly visible = published/completed by a verified organization. */
 const isPubliclyVisible = (opp) =>
@@ -23,11 +29,11 @@ const isPubliclyVisible = (opp) =>
   (opp.organization_verification_status === 'APPROVED' ||
     (!config.requireOrgApproval && !['REJECTED', 'SUSPENDED'].includes(opp.organization_verification_status)));
 
-const stripPrivate = (opp, user) => {
+const stripPrivate = (opp, manageable) => {
   if (!opp) return opp;
   const copy = { ...opp };
   delete copy.reminder_sent_at;
-  if (!canManage(opp, user)) delete copy.check_in_code;
+  if (!manageable) delete copy.check_in_code;
   return copy;
 };
 
@@ -42,11 +48,11 @@ const assertCanPublish = (organization) => {
 };
 
 /**
- * Creates a new opportunity ensuring coordinator ownership of the organization
+ * Creates a new opportunity; the coordinator must belong to the organization.
  */
 const createOpportunity = async (opportunityData, coordinatorId) => {
-  // 1. Verify that the authenticated coordinator owns the requested organization
-  const organization = await organizationRepository.findByIdAndCoordinatorId(
+  // 1. Verify that the authenticated coordinator is a member of the requested organization
+  const organization = await organizationRepository.findManagedById(
     opportunityData.organization_id,
     coordinatorId
   );
@@ -87,7 +93,7 @@ const searchOpportunities = async (user, params) => {
     filters.status = params.status;
   } else {
     filters.publicOnly = true;
-    if (user?.role === 'COORDINATOR') filters.includeCoordinatorId = user.id;
+    if (user?.role === 'COORDINATOR') filters.includeMemberId = user.id;
     if (params.status && ['PUBLISHED', 'COMPLETED'].includes(params.status)) filters.status = params.status;
   }
   filters.requireApprovedOrg = config.requireOrgApproval;
@@ -95,7 +101,7 @@ const searchOpportunities = async (user, params) => {
   const { opportunities, total } = await opportunityRepository.searchOpportunities(filters);
 
   return {
-    opportunities: opportunities.map((o) => stripPrivate(o, user)),
+    opportunities: opportunities.map((o) => stripPrivate(o, false)),
     pagination: paginationMeta({ page: params.page, limit: params.limit }, total),
   };
 };
@@ -109,11 +115,13 @@ const getOpportunityById = async (id, user) => {
   if (!opportunity) {
     throw new AppError('Opportunity not found', 404);
   }
-  if (!isPubliclyVisible(opportunity) && !canManage(opportunity, user)) {
+  const manageable = await canManage(opportunity, user);
+  if (!isPubliclyVisible(opportunity) && !manageable) {
     throw new AppError('Opportunity not found', 404);
   }
 
-  const result = stripPrivate(opportunity, user);
+  const result = stripPrivate(opportunity, manageable);
+  result.can_manage = manageable;
 
   if (user?.role === 'VOLUNTEER') {
     const signup = await signupRepository.findByVolunteerAndOpportunity(user.id, id);
@@ -145,14 +153,14 @@ const notifyRegistered = async (opp, buildMessage) => {
  * waitlist when capacity grows.
  */
 const updateOpportunity = async (id, updateData, coordinatorId) => {
-  // 1. Verify opportunity exists and retrieve owning coordinator
-  const opp = await opportunityRepository.findOpportunityByIdWithCoordinator(id);
+  // 1. Verify opportunity exists
+  const opp = await opportunityRepository.findOpportunityById(id);
   if (!opp) {
     throw new AppError('Opportunity not found', 404);
   }
 
-  // 2. Verify coordinator owns the organization for this opportunity
-  if (opp.coordinator_id !== coordinatorId) {
+  // 2. Verify the coordinator belongs to the opportunity's organization
+  if (!(await organizationMemberRepository.findRole(opp.organization_id, coordinatorId))) {
     throw new AppError('You do not have permission to update this opportunity', 403);
   }
 
@@ -242,10 +250,11 @@ const getDashboardStats = async (user) => {
 };
 
 /**
- * Retrieves opportunities belonging to a specific coordinator's organizations
+ * Retrieves opportunities of every organization the coordinator belongs to
  */
 const getManagedOpportunities = async (coordinatorId) => {
-  return await opportunityRepository.findOpportunitiesByCoordinatorId(coordinatorId);
+  const opportunities = await opportunityRepository.findManagedByUser(coordinatorId);
+  return opportunities.map((o) => ({ ...o, can_manage: true }));
 };
 
 /**
@@ -261,6 +270,4 @@ module.exports = {
   updateOpportunity,
   getDashboardStats,
   getForCalendar,
-  
-  canManage,
 };

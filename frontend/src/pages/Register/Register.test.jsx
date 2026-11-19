@@ -44,17 +44,25 @@ describe('Register page', () => {
     expect(screen.queryByText('Re-enter your password.')).not.toBeInTheDocument()
   })
 
-  it('defaults to volunteer and preselects coordinator from ?role=coordinator', () => {
-    renderRegister('/register?role=coordinator')
-    expect(screen.getByRole('radio', { name: /Coordinator/ })).toBeChecked()
-    expect(screen.getByRole('radio', { name: /Volunteer/ })).not.toBeChecked()
+  it('creates volunteer accounts only and points NGOs to their own registration', () => {
+    renderRegister()
+    expect(screen.getByRole('heading', { name: 'Create your volunteer account' })).toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    // Both ways to join are offered up front, with the volunteer one selected.
+    expect(screen.getByRole('link', { name: /I represent an NGO/ })).toHaveAttribute('href', '/register/ngo')
+    expect(screen.getByRole('link', { name: /I want to volunteer/ })).toHaveAttribute('aria-current', 'page')
+    expect(screen.queryByText(/Coordinator accounts are now set up by NGOs/)).not.toBeInTheDocument()
   })
 
-  it('registers with the chosen role and sends the user to sign in', async () => {
+  it('explains that coordinator accounts now come from NGOs when opened with ?role=coordinator', () => {
+    renderRegister('/register?role=coordinator')
+    expect(screen.getByText(/Coordinator accounts are now set up by NGOs/)).toBeInTheDocument()
+  })
+
+  it('registers a volunteer and sends them to sign in', async () => {
     registerApi.mockResolvedValue({ status: 'success' })
     renderRegister()
 
-    await userEvent.click(screen.getByRole('radio', { name: /Coordinator/ }))
     await fill({ name: '  Asha Rao ' })
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
 
@@ -64,7 +72,6 @@ describe('Register page', () => {
       full_name: 'Asha Rao',
       email: 'asha@example.org',
       password: 'Secret123!',
-      role: 'COORDINATOR',
     })
   })
 

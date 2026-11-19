@@ -82,7 +82,7 @@ function OpportunityForm() {
   const [searchParams] = useSearchParams()
   const orgParam = searchParams.get('org')
   const navigate = useNavigate()
-  const { user, token } = useAuth()
+  const { token } = useAuth()
   const { createOpportunity, updateOpportunity } = useOpportunities()
 
   const [form, setForm] = useState(BLANK)
@@ -103,7 +103,7 @@ function OpportunityForm() {
           isEdit ? getOpportunityByIdApi(id, token) : Promise.resolve(null),
         ])
         if (!active) return
-        const mine = (orgsRes?.data?.organizations || []).filter((org) => org.coordinator_id === user.id)
+        const mine = orgsRes?.data?.organizations || []
         setOrganizations(mine)
         if (isEdit) {
           const opportunity = oppRes?.data?.opportunity
@@ -126,7 +126,7 @@ function OpportunityForm() {
     }
     load()
     return () => { active = false }
-  }, [id, isEdit, token, user.id, orgParam])
+  }, [id, isEdit, token, orgParam])
 
   if (loading) return <LoadingState label="Loading…" />
 
@@ -141,13 +141,13 @@ function OpportunityForm() {
     )
   }
 
-  if (isEdit && original.coordinator_id !== user.id) {
+  if (isEdit && !original.can_manage) {
     return (
       <div className="page page-narrow">
         <PageHeader title="Edit opportunity" back={back} />
         <div className="panel">
           <EmptyState icon="shield" title="You can’t edit this opportunity">
-            Only the coordinator of the organization that published it can make changes.
+            Only the organization that published it can make changes.
           </EmptyState>
         </div>
       </div>
@@ -161,10 +161,10 @@ function OpportunityForm() {
         <div className="panel">
           <EmptyState
             icon="building"
-            title="Create an organization first"
-            action={<Link to="/organizations?new=1" className="btn btn-primary">Create organization</Link>}
+            title="You’re not part of an NGO yet"
+            action={<Link to="/organizations/register" className="btn btn-primary">Register your NGO</Link>}
           >
-            Every opportunity belongs to an organization you manage.
+            Every opportunity is published by an NGO. Ask your NGO admin to invite you, or register your NGO.
           </EmptyState>
         </div>
       </div>
