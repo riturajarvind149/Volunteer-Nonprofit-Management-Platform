@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import './Legal.css'
 
-const LAST_UPDATED = 'October 2026'
+const LAST_UPDATED = 'November 2026'
 
 function Privacy() {
   return (
@@ -43,14 +43,16 @@ function Privacy() {
               <li>Full name</li>
               <li>Email address</li>
               <li>Password (stored as a hashed value — the plain-text password is not retained)</li>
-              <li>Account role (Volunteer or Coordinator)</li>
+              <li>Account role (Volunteer, Coordinator or administrator)</li>
+              <li>Phone number, if you register an NGO</li>
             </ul>
 
-            <h3>Organization Information (Coordinators only)</h3>
+            <h3>NGO Information</h3>
             <p>
-              If you register as a Coordinator and create an organization, you provide an
-              organization name and description. This information is stored in the application
-              database and is visible to other authenticated users.
+              When you register an NGO you provide its name, type, city, and optionally a description, website and
+              registration number or NGO Darpan ID. The ServeHub team uses these to verify the NGO; its name,
+              description and contact details are shown on its public page once it is verified. An NGO admin can
+              invite coordinators by email, and the team list (names and emails) is visible to that NGO&rsquo;s members.
             </p>
 
             <h3>Volunteer Activity</h3>

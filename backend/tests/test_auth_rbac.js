@@ -1,5 +1,6 @@
 require('dotenv').config();
 const app = require('../src/app');
+const fetch = require('./helpers/testFetch');
 const pool = require('../src/config/db');
 const authorizeRoles = require('../src/middleware/authorizeRoles');
 

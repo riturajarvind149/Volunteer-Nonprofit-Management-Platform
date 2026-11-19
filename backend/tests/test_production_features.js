@@ -16,6 +16,7 @@ process.env.RATE_LIMIT_ENABLED = 'false';
 
 const bcrypt = require('bcrypt');
 const app = require('../src/app');
+const fetch = require('./helpers/testFetch');
 const pool = require('../src/config/db');
 const { migrate } = require('../src/db/migrate');
 const emailService = require('../src/services/emailService');
@@ -523,7 +524,7 @@ const cleanup = async () => {
         'DELETE FROM volunteer_hours WHERE recorded_by = ANY($1) OR signup_id IN (SELECT id FROM signups WHERE volunteer_id = ANY($1))',
         [ids]
       );
-      await pool.query('DELETE FROM organizations WHERE coordinator_id = ANY($1)', [ids]);
+      await pool.query('DELETE FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id = ANY($1))', [ids]);
       await pool.query('DELETE FROM audit_logs WHERE actor_id = ANY($1)', [ids]);
       await pool.query('DELETE FROM users WHERE id = ANY($1)', [ids]);
     }

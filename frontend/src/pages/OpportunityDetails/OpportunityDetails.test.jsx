@@ -25,7 +25,6 @@ const OPEN = {
   id: 'opp-1',
   organization_id: 'org-1',
   organization_name: 'Community Food Rescue',
-  coordinator_id: COORDINATOR.id,
   title: 'Saturday food sorting',
   description: 'Sort donations for the weekend distribution.',
   category: 'Food',
@@ -244,7 +243,8 @@ describe('Opportunity sign-up panel', () => {
   })
 
   it('shows roster and edit actions to the organizing coordinator', async () => {
-    setup({ user: COORDINATOR })
+    // The server marks the opportunity as manageable for members of its organization.
+    setup({ user: COORDINATOR, opportunity: { ...OPEN, can_manage: true } })
     const roster = await screen.findByRole('link', { name: /Open roster/ })
     expect(roster).toHaveAttribute('href', '/opportunities/opp-1/attendees')
     expect(screen.getByRole('link', { name: /Edit opportunity/ })).toHaveAttribute('href', '/opportunities/opp-1/edit')
@@ -252,7 +252,7 @@ describe('Opportunity sign-up panel', () => {
   })
 
   it('does not let another coordinator register or edit', async () => {
-    setup({ user: { ...COORDINATOR, id: 'someone-else' } })
+    setup({ user: { ...COORDINATOR, id: 'someone-else' }, opportunity: { ...OPEN, can_manage: false } })
     const note = await screen.findByText(/Coordinator accounts can’t register for opportunities/)
     expect(note).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Edit opportunity/ })).not.toBeInTheDocument()

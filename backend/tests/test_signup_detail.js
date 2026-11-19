@@ -1,5 +1,6 @@
 require('dotenv').config();
 const app = require('../src/app');
+const fetch = require('./helpers/testFetch');
 const pool = require('../src/config/db');
 
 let server;
@@ -95,25 +96,25 @@ const runTests = async () => {
          SELECT id FROM users WHERE email = ANY($1)
        ) OR opportunity_id IN (
          SELECT id FROM opportunities WHERE organization_id IN (
-           SELECT id FROM organizations WHERE coordinator_id IN (
+           SELECT id FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id IN (
              SELECT id FROM users WHERE email = ANY($1)
-           )
+           ))
          )
        )`,
       [testEmails]
     );
     await pool.query(
       `DELETE FROM opportunities WHERE organization_id IN (
-         SELECT id FROM organizations WHERE coordinator_id IN (
+         SELECT id FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id IN (
            SELECT id FROM users WHERE email = ANY($1)
-         )
+         ))
        )`,
       [testEmails]
     );
     await pool.query(
-      `DELETE FROM organizations WHERE coordinator_id IN (
+      `DELETE FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id IN (
          SELECT id FROM users WHERE email = ANY($1)
-       )`,
+       ))`,
       [testEmails]
     );
     await pool.query(
@@ -278,7 +279,7 @@ const runTests = async () => {
       'Test 21: Day 27 PATCH /api/signups/:id/status to REGISTERED remains operational (200 OK)'
     );
 
-    // Test 22: Day 17 POST /api/organizations remains operational
+    // Test 22: POST /api/organizations enforces one NGO per account
     const regOrgRes = await fetch(`${baseUrl}/api/organizations`, {
       method: 'POST',
       headers: {
@@ -290,9 +291,10 @@ const runTests = async () => {
         description: 'Detail regression testing',
       }),
     });
+    const regOrgData = await regOrgRes.json();
     assert(
-      regOrgRes.status === 201,
-      'Test 22: Day 17 POST /api/organizations remains operational (201 Created)'
+      regOrgRes.status === 409 && regOrgData.code === 'ALREADY_OWNS_ORGANIZATION',
+      'Test 22: A coordinator who already runs an NGO cannot register another (409)'
     );
 
     // Test 23: Day 18 POST /api/opportunities remains operational

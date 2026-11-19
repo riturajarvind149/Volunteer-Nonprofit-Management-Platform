@@ -134,7 +134,8 @@ function OrganizationDetails() {
     )
   }
 
-  const isOwner = user?.role === 'COORDINATOR' && organization.coordinator_id === user.id
+  // Members (owner or coordinators) manage the organization.
+  const isOwner = user?.role === 'COORDINATOR' && Boolean(organization.my_role)
   const status = organization.verification_status
 
   return (

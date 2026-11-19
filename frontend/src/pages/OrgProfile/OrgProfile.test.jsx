@@ -12,7 +12,7 @@ const ORG = {
   id: 'org-1',
   name: 'Green Earth',
   description: 'Tree planting',
-  coordinator_id: COORDINATOR.id,
+  my_role: 'OWNER',
   website: null,
   email: null,
   phone: null,
@@ -78,5 +78,19 @@ describe('My organizations — editing', () => {
     setup()
     await screen.findByRole('heading', { name: 'Green Earth' })
     expect(screen.queryByText(/can’t be edited/)).not.toBeInTheDocument()
+  })
+})
+
+describe('My organizations — coordinator (not owner)', () => {
+  it('lets coordinators see the organization but not edit its profile', async () => {
+    localStorage.setItem(TOKEN_KEY, 'test-token')
+    getMeApi.mockResolvedValue({ data: { user: COORDINATOR } })
+    getMyOrganizationsApi.mockResolvedValue({ data: { organizations: [{ ...ORG, my_role: 'COORDINATOR' }] } })
+    getManagedOpportunitiesApi.mockResolvedValue({ data: { opportunities: [] } })
+    renderWithProviders(<OrgProfile />, { route: '/organization-profile', path: '/organization-profile' })
+
+    expect(await screen.findByRole('heading', { name: 'Green Earth' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit details' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /New opportunity/ })).toBeInTheDocument()
   })
 })

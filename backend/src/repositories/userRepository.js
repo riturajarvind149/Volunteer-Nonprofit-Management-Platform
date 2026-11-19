@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { memberOf } = require('./organizationMemberRepository');
 
 const PUBLIC_COLUMNS =
   'id, full_name, email, role, phone, location, bio, skills, avatar_url, email_verified_at, is_active, email_notifications, last_login_at, created_at, updated_at, ' +
@@ -41,14 +42,14 @@ const findPasswordHashById = async (id) => {
   return rows[0]?.password_hash || null;
 };
 
-const createUser = async ({ full_name, email, password_hash, role }) => {
+const createUser = async ({ full_name, email, password_hash, role, phone = null }, client = pool) => {
   const query = `
-    INSERT INTO users (full_name, email, password_hash, role)
-    VALUES ($1, $2, $3, $4)
+    INSERT INTO users (full_name, email, password_hash, role, phone)
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING ${PUBLIC_COLUMNS}
   `;
-  const values = [full_name, email, password_hash, role];
-  const { rows } = await pool.query(query, values);
+  const values = [full_name, email, password_hash, role, phone];
+  const { rows } = await client.query(query, values);
   return rows[0];
 };
 
@@ -162,20 +163,20 @@ const getUserStats = async (userId, role) => {
         (SELECT COUNT(o.id)::int
          FROM opportunities o
          JOIN organizations org ON o.organization_id = org.id
-         WHERE org.coordinator_id = $1
+         WHERE ${memberOf('org.id', '$1')}
         ) AS total_opportunities,
         (SELECT COUNT(DISTINCT s.volunteer_id)::int
          FROM signups s
          JOIN opportunities o ON s.opportunity_id = o.id
          JOIN organizations org ON o.organization_id = org.id
-         WHERE org.coordinator_id = $1 AND s.status = 'REGISTERED'
+         WHERE ${memberOf('org.id', '$1')} AND s.status = 'REGISTERED'
         ) AS total_volunteers,
         (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)
          FROM volunteer_hours vh
          JOIN signups s ON vh.signup_id = s.id
          JOIN opportunities o ON s.opportunity_id = o.id
          JOIN organizations org ON o.organization_id = org.id
-         WHERE org.coordinator_id = $1
+         WHERE ${memberOf('org.id', '$1')}
         ) AS total_hours
     `;
     const { rows } = await pool.query(query, [userId]);

@@ -1,5 +1,6 @@
 require('dotenv').config();
 const app = require('../src/app');
+const fetch = require('./helpers/testFetch');
 const pool = require('../src/config/db');
 
 let server;
@@ -57,11 +58,12 @@ const runTests = async () => {
     role: 'VOLUNTEER',
   };
 
-  const testEmails = [testCoordinator.email, testVolunteer.email];
+  const secondCoordinator = { full_name: 'Second Org Coordinator', email: 'org.coordinator2@test.org', password: 'Password123!', role: 'COORDINATOR' };
+  const testEmails = [testCoordinator.email, testVolunteer.email, secondCoordinator.email];
 
   // Clean up any leftover test data
   await pool.query(
-    'DELETE FROM organizations WHERE coordinator_id IN (SELECT id FROM users WHERE email = ANY($1))',
+    `DELETE FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id IN (SELECT id FROM users WHERE email = ANY($1)))`,
     [testEmails]
   );
   await pool.query('DELETE FROM users WHERE email = ANY($1)', [testEmails]);
@@ -136,13 +138,17 @@ const runTests = async () => {
     );
 
     // ----------------------------------------------------------------
-    // Test 2: Created organization contains correct coordinator_id
+    // Test 2: The creator becomes the organization's owner
     // ----------------------------------------------------------------
-    console.log(`\n${colors.bold}Test 2: Created organization contains correct coordinator_id${colors.reset}`);
+    console.log(`\n${colors.bold}Test 2: The creator becomes the organization's owner${colors.reset}`);
     assert(
-      data1.data?.organization?.coordinator_id === coordinatorId,
-      'Organization coordinator_id strictly matches authenticated user ID',
-      `Expected: ${coordinatorId}, Got: ${data1.data?.organization?.coordinator_id}`
+      data1.data?.organization?.my_role === 'OWNER' &&
+        (await pool.query(
+          "SELECT user_id FROM organization_members WHERE organization_id = $1 AND role = 'OWNER'",
+          [data1.data.organization.id]
+        )).rows[0]?.user_id === coordinatorId,
+      'The authenticated user is stored as the organization owner (my_role OWNER)',
+      `my_role: ${data1.data?.organization?.my_role}`
     );
 
     // ----------------------------------------------------------------
@@ -205,7 +211,7 @@ const runTests = async () => {
     assert(
       res5.status === 400 &&
       data5.status === 'error' &&
-      data5.message.toLowerCase().includes('name is required'),
+      data5.message.toLowerCase().includes('ngo name'),
       'Missing name returns HTTP 400 Bad Request',
       `Status: ${res5.status}, Message: ${data5.message}`
     );
@@ -337,8 +343,8 @@ const runTests = async () => {
       res11.status === 200 &&
       data11.status === 'success' &&
       data11.data?.organization?.id === createdOrgId &&
-      data11.data?.organization?.coordinator_id === coordinatorId,
-      'GET /api/organizations/:id returns HTTP 200 with full organization profile',
+      data11.data?.organization?.my_role === null,
+      'GET /api/organizations/:id returns HTTP 200 with full organization profile (a volunteer has no role in it)',
       `Status: ${res11.status}, ID: ${data11.data?.organization?.id}`
     );
 
@@ -378,15 +384,39 @@ const runTests = async () => {
     );
 
     // ----------------------------------------------------------------
-    // Test 14: coordinator_id cannot be overridden by request body
+    // Test 14: One NGO per account; coordinator_id cannot be overridden by request body
     // ----------------------------------------------------------------
-    console.log(`\n${colors.bold}Test 14: coordinator_id cannot be overridden by request body${colors.reset}`);
+    console.log(`\n${colors.bold}Test 14: One NGO per account, and coordinator_id cannot be overridden${colors.reset}`);
+    const secondNgo = await fetch(`${baseUrl}/api/organizations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${coordinatorToken}` },
+      body: JSON.stringify({ name: 'A Second NGO', registration_type: 'TRUST', city: 'Pune' }),
+    });
+    const secondNgoData = await secondNgo.json();
+    assert(
+      secondNgo.status === 409 && secondNgoData.code === 'ALREADY_OWNS_ORGANIZATION',
+      'A coordinator who already runs an NGO cannot register a second one (409)',
+      `Status: ${secondNgo.status}, Code: ${secondNgoData.code}`
+    );
+
+    // A coordinator without an NGO registers one while trying to spoof the owner.
+    await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(secondCoordinator),
+    });
+    const secondLogin = await (await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: secondCoordinator.email, password: secondCoordinator.password }),
+    })).json();
+    const secondCoordinatorId = secondLogin.data?.user?.id;
     const maliciousCoordinatorId = '11111111-1111-4111-a111-111111111111';
     const res14 = await fetch(`${baseUrl}/api/organizations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${coordinatorToken}`,
+        Authorization: `Bearer ${secondLogin.data?.token}`,
       },
       body: JSON.stringify({
         name: 'Spoofed Ownership NGO',
@@ -397,10 +427,13 @@ const runTests = async () => {
     const data14 = await res14.json();
     assert(
       res14.status === 201 &&
-      data14.data?.organization?.coordinator_id === coordinatorId &&
-      data14.data?.organization?.coordinator_id !== maliciousCoordinatorId,
-      'Backend ignores coordinator_id from request body and binds authenticated user ID',
-      `Coordinator in DB: ${data14.data?.organization?.coordinator_id}, Attempted: ${maliciousCoordinatorId}`
+      data14.data?.organization?.my_role === 'OWNER' &&
+      (await pool.query(
+        "SELECT user_id FROM organization_members WHERE organization_id = $1 AND role = 'OWNER'",
+        [data14.data.organization.id]
+      )).rows[0]?.user_id === secondCoordinatorId,
+      'Backend ignores coordinator_id from request body; the authenticated user becomes the owner',
+      `Attempted owner: ${maliciousCoordinatorId}`
     );
 
     // ----------------------------------------------------------------
@@ -507,7 +540,7 @@ const runTests = async () => {
   } finally {
     // Clean up test data
     await pool.query(
-      'DELETE FROM organizations WHERE coordinator_id IN (SELECT id FROM users WHERE email = ANY($1))',
+      `DELETE FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id IN (SELECT id FROM users WHERE email = ANY($1)))`,
       [testEmails]
     );
     await pool.query('DELETE FROM users WHERE email = ANY($1)', [testEmails]);

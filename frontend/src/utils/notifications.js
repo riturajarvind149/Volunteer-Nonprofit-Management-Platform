@@ -12,6 +12,8 @@ export function notificationLink(notification, role) {
       return role === 'COORDINATOR' ? `/opportunities/${ref}/attendees` : `/opportunities/${ref}`
     case 'HOURS':
       return role === 'COORDINATOR' ? '/coordinator-hours' : '/my-hours'
+    case 'TEAM':
+      return ref ? `/organizations/${ref}/team` : '/organization-profile'
     case 'ORG_REVIEW':
       if (role === 'ADMIN') return '/admin/organizations'
       return ref ? `/organizations/${ref}` : '/organization-profile'

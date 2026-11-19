@@ -1,6 +1,5 @@
 const AppError = require('../utils/AppError');
 
-const ALLOWED_ROLES = ['VOLUNTEER', 'COORDINATOR'];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const validateRegister = (req, res, next) => {
@@ -17,10 +16,6 @@ const validateRegister = (req, res, next) => {
 
   if (!password || typeof password !== 'string') {
     return next(new AppError('Password is required', 400));
-  }
-
-  if (!role || typeof role !== 'string') {
-    return next(new AppError('Role is required', 400));
   }
 
   // 2. Validate full_name length
@@ -40,10 +35,20 @@ const validateRegister = (req, res, next) => {
     return next(new AppError('Password must be at least 8 characters long', 400));
   }
 
-  // 5. Validate role
-  const normalizedRole = role.trim().toUpperCase();
-  if (!ALLOWED_ROLES.includes(normalizedRole)) {
-    return next(new AppError('Invalid role. Role must be either VOLUNTEER or COORDINATOR', 400));
+  // 5. This sign-up creates volunteer accounts only. NGOs register through
+  //    /api/auth/register-organization, and coordinators are appointed by their NGO.
+  const normalizedRole = typeof role === 'string' && role.trim() ? role.trim().toUpperCase() : 'VOLUNTEER';
+  if (normalizedRole === 'COORDINATOR') {
+    return next(
+      new AppError(
+        'Coordinator accounts can’t be created here. Register your NGO, or ask your NGO admin to invite you.',
+        400,
+        'COORDINATOR_SIGNUP_CLOSED'
+      )
+    );
+  }
+  if (normalizedRole !== 'VOLUNTEER') {
+    return next(new AppError('Invalid role. This sign-up creates volunteer accounts only.', 400));
   }
 
   // Attach sanitized values back to req.body

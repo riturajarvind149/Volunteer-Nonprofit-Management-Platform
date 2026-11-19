@@ -1,7 +1,14 @@
 const pool = require('../config/db');
+const { memberOf } = require('./organizationMemberRepository');
 
 const ORG_COLUMNS =
-  'id, name, description, coordinator_id, phone, email, website, address, social_links, logo_url, verification_status, verification_note, verified_at, created_at, updated_at';
+  'id, name, description, phone, email, website, address, social_links, logo_url, ' +
+  'registration_type, registration_number, city, ' +
+  'verification_status, verification_note, verified_at, created_at, updated_at';
+
+/** `my_role` column: the viewer's role in each organization (OWNER / COORDINATOR / null). */
+const myRole = (userParam) =>
+  `(SELECT om.role FROM organization_members om WHERE om.organization_id = organizations.id AND om.user_id = ${userParam}) AS my_role`;
 
 /**
  * Data-access repository for organizations table.
@@ -9,22 +16,51 @@ const ORG_COLUMNS =
  */
 
 /**
- * Insert a new organization record
- * @param {Object} orgData
- * @param {string} orgData.name
- * @param {string|null} orgData.description
- * @param {string} orgData.coordinator_id
- * @returns {Promise<Object>} Created organization record
+ * Create an organization and make `ownerId` its owner.
+ * Runs inside the caller's transaction when `client` is given, otherwise in its own.
+ * @returns {Promise<Object>} Created organization record (with my_role = 'OWNER')
  */
-const create = async ({ name, description, coordinator_id, verification_status = 'PENDING' }) => {
-  const query = `
-    INSERT INTO organizations (name, description, coordinator_id, verification_status, verified_at)
-    VALUES ($1, $2, $3, $4::varchar, CASE WHEN $4::varchar = 'APPROVED' THEN CURRENT_TIMESTAMP ELSE NULL END)
-    RETURNING ${ORG_COLUMNS}
-  `;
-  const values = [name, description || null, coordinator_id, verification_status];
-  const { rows } = await pool.query(query, values);
-  return rows[0];
+const create = async (
+  { name, description, ownerId, verification_status = 'PENDING', registration_type = null, registration_number = null, city = null, website = null },
+  client = null
+) => {
+  const insert = async (db) => {
+    const { rows } = await db.query(
+      `INSERT INTO organizations
+         (name, description, verification_status, verified_at, registration_type, registration_number, city, website)
+       VALUES ($1, $2, $3::varchar, CASE WHEN $3::varchar = 'APPROVED' THEN CURRENT_TIMESTAMP ELSE NULL END, $4, $5, $6, $7)
+       RETURNING ${ORG_COLUMNS}`,
+      [name, description || null, verification_status, registration_type, registration_number, city, website]
+    );
+    await db.query(
+      `INSERT INTO organization_members (organization_id, user_id, role, added_by) VALUES ($1, $2, 'OWNER', $2)`,
+      [rows[0].id, ownerId]
+    );
+    return { ...rows[0], my_role: 'OWNER' };
+  };
+
+  if (client) return insert(client);
+  const own = await pool.connect();
+  try {
+    await own.query('BEGIN');
+    const organization = await insert(own);
+    await own.query('COMMIT');
+    return organization;
+  } catch (err) {
+    await own.query('ROLLBACK');
+    throw err;
+  } finally {
+    own.release();
+  }
+};
+
+/** An organization with this name (any letter case) that hasn't been rejected, or null. */
+const findActiveByName = async (name) => {
+  const { rows } = await pool.query(
+    `SELECT id, name FROM organizations WHERE LOWER(name) = LOWER($1) AND verification_status <> 'REJECTED' LIMIT 1`,
+    [name]
+  );
+  return rows[0] || null;
 };
 
 /**
@@ -32,20 +68,21 @@ const create = async ({ name, description, coordinator_id, verification_status =
  * @param {Object} opts
  * @param {string} [opts.q] - name/description search
  * @param {string[]} [opts.statuses] - allowed verification statuses (undefined = any)
- * @param {string} [opts.includeCoordinatorId] - always include this coordinator's own orgs
+ * @param {string} [opts.includeMemberId] - always include organizations this user is a member of
+ * @param {string} [opts.viewerId] - adds `my_role` for this user
  * @param {number} opts.limit
  * @param {number} opts.offset
  */
-const search = async ({ q, statuses, includeCoordinatorId, limit = 100, offset = 0 }) => {
+const search = async ({ q, statuses, includeMemberId, viewerId, limit = 100, offset = 0 }) => {
   const values = [];
   const visibility = [];
   if (statuses) {
     values.push(statuses);
     visibility.push(`verification_status = ANY($${values.length})`);
   }
-  if (includeCoordinatorId) {
-    values.push(includeCoordinatorId);
-    visibility.push(`coordinator_id = $${values.length}`);
+  if (includeMemberId) {
+    values.push(includeMemberId);
+    visibility.push(memberOf('organizations.id', `$${values.length}`));
   }
   const where = [];
   if (visibility.length) where.push(`(${visibility.join(' OR ')})`);
@@ -56,9 +93,14 @@ const search = async ({ q, statuses, includeCoordinatorId, limit = 100, offset =
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   const total = (await pool.query(`SELECT COUNT(*)::int AS n FROM organizations ${whereSql}`, values)).rows[0].n;
+  let roleColumn = 'NULL::varchar AS my_role';
+  if (viewerId) {
+    values.push(viewerId);
+    roleColumn = myRole(`$${values.length}`);
+  }
   values.push(limit, offset);
   const { rows } = await pool.query(
-    `SELECT ${ORG_COLUMNS},
+    `SELECT ${ORG_COLUMNS}, ${roleColumn},
             (SELECT COUNT(*)::int FROM opportunities o
               WHERE o.organization_id = organizations.id AND o.status = 'PUBLISHED' AND o.event_date >= CURRENT_DATE) AS open_opportunities
        FROM organizations ${whereSql}
@@ -69,11 +111,14 @@ const search = async ({ q, statuses, includeCoordinatorId, limit = 100, offset =
   return { organizations: rows, total };
 };
 
-/** Organizations owned by a coordinator. */
-const findByCoordinatorId = async (coordinatorId) => {
+/** Organizations the user is a member of (owner or coordinator), with their role. */
+const findByMember = async (userId) => {
   const { rows } = await pool.query(
-    `SELECT ${ORG_COLUMNS} FROM organizations WHERE coordinator_id = $1 ORDER BY created_at ASC`,
-    [coordinatorId]
+    `SELECT ${ORG_COLUMNS}, ${myRole('$1')}
+       FROM organizations
+      WHERE ${memberOf('organizations.id', '$1')}
+      ORDER BY created_at ASC`,
+    [userId]
   );
   return rows;
 };
@@ -95,34 +140,28 @@ const setVerification = async (id, { status, note, adminId }) => {
 };
 
 /**
- * Retrieve a single organization by its UUID
+ * Retrieve a single organization by its UUID.
  * @param {string} id - Organization UUID
+ * @param {string} [viewerId] - adds `my_role` for this user
  * @returns {Promise<Object|null>} Organization record or null if not found
  */
-const findById = async (id) => {
-  const query = `
-    SELECT ${ORG_COLUMNS}
-    FROM organizations
-    WHERE id = $1
-  `;
-  const { rows } = await pool.query(query, [id]);
+const findById = async (id, viewerId = null) => {
+  const { rows } = await pool.query(
+    `SELECT ${ORG_COLUMNS}, ${myRole('$2::uuid')} FROM organizations WHERE id = $1`,
+    [id, viewerId]
+  );
   return rows[0] || null;
 };
 
 /**
- * Verify organization ownership by organization ID and coordinator ID
- * @param {string} id - Organization UUID
- * @param {string} coordinator_id - Coordinator user UUID
- * @returns {Promise<Object|null>} Matching organization record if owned, otherwise null
+ * The organization, if the user is a member of it (owner or coordinator).
+ * @returns {Promise<Object|null>} Organization record with `my_role`, or null
  */
-const findByIdAndCoordinatorId = async (id, coordinator_id) => {
-  const query = `
-    SELECT ${ORG_COLUMNS}
-    FROM organizations
-    WHERE id = $1
-      AND coordinator_id = $2
-  `;
-  const { rows } = await pool.query(query, [id, coordinator_id]);
+const findManagedById = async (id, userId) => {
+  const { rows } = await pool.query(
+    `SELECT ${ORG_COLUMNS}, ${myRole('$2')} FROM organizations WHERE id = $1 AND ${memberOf('organizations.id', '$2')}`,
+    [id, userId]
+  );
   return rows[0] || null;
 };
 
@@ -232,13 +271,13 @@ const getOrganizationImpactStats = async (id) => {
 
 module.exports = {
   create,
+  findActiveByName,
   findById,
-  findByIdAndCoordinatorId,
+  findManagedById,
   update,
   getOrganizationImpactStats,
   search,
-  findByCoordinatorId,
+  findByMember,
   setVerification,
-  
 };
 

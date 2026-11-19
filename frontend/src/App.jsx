@@ -13,6 +13,10 @@ import OrganizationDetails from './pages/OrganizationDetails/OrganizationDetails
 import Opportunities from './pages/Opportunities/Opportunities'
 import Login from './pages/Login/Login'
 import Register from './pages/Register/Register'
+import NgoRegister from './pages/NgoRegister/NgoRegister'
+import RegisterMyNgo from './pages/NgoRegister/RegisterMyNgo'
+import AcceptInvitation from './pages/AcceptInvitation/AcceptInvitation'
+import Team from './pages/Team/Team'
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword'
 import ResetPassword from './pages/ResetPassword/ResetPassword'
 import VerifyEmail from './pages/VerifyEmail/VerifyEmail'
@@ -92,6 +96,8 @@ function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/register/ngo" element={<NgoRegister />} />
+        <Route path="/invitations/accept" element={<AcceptInvitation />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
@@ -135,6 +141,8 @@ function AppRoutes() {
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/organization-profile" element={<OrgProfile />} />
+            <Route path="/organizations/register" element={<RegisterMyNgo />} />
+            <Route path="/organizations/:id/team" element={<Team />} />
           </Route>
         </Route>
       </Route>

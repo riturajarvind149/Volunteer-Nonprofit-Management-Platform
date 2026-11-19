@@ -76,7 +76,6 @@ const validateRecordHours = (req, res, next) => {
 
   // 5. Sanitize req.body to prevent identity spoofing
   if (req.body.recorded_by !== undefined) delete req.body.recorded_by;
-  if (req.body.coordinator_id !== undefined) delete req.body.coordinator_id;
   if (req.body.id !== undefined) delete req.body.id;
   if (req.body.idempotency_key !== undefined) delete req.body.idempotency_key;
   if (req.body.idempotencyKey !== undefined) delete req.body.idempotencyKey;
@@ -121,7 +120,6 @@ const validateUpdateHoursStatus = (req, res, next) => {
 
   // 3. Sanitize req.body to prevent tampering with other fields
   if (req.body.recorded_by !== undefined) delete req.body.recorded_by;
-  if (req.body.coordinator_id !== undefined) delete req.body.coordinator_id;
   if (req.body.volunteer_id !== undefined) delete req.body.volunteer_id;
   if (req.body.signup_id !== undefined) delete req.body.signup_id;
   if (req.body.hours !== undefined) delete req.body.hours;
