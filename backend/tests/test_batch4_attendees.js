@@ -1,5 +1,6 @@
 require('dotenv').config();
 const app = require('../src/app');
+const fetch = require('./helpers/testFetch');
 const pool = require('../src/config/db');
 const signupRepository = require('../src/repositories/signupRepository');
 
@@ -105,25 +106,25 @@ const runTests = async () => {
            SELECT id FROM users WHERE email = ANY($1)
          ) OR opportunity_id IN (
            SELECT id FROM opportunities WHERE organization_id IN (
-             SELECT id FROM organizations WHERE coordinator_id IN (
+             SELECT id FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id IN (
                SELECT id FROM users WHERE email = ANY($1)
-             )
+             ))
            )
          )`,
         [testEmails]
       );
       await pool.query(
         `DELETE FROM opportunities WHERE organization_id IN (
-           SELECT id FROM organizations WHERE coordinator_id IN (
+           SELECT id FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id IN (
              SELECT id FROM users WHERE email = ANY($1)
-           )
+           ))
          )`,
         [testEmails]
       );
       await pool.query(
-        `DELETE FROM organizations WHERE coordinator_id IN (
+        `DELETE FROM organizations WHERE id IN (SELECT organization_id FROM organization_members WHERE user_id IN (
            SELECT id FROM users WHERE email = ANY($1)
-         )`,
+         ))`,
         [testEmails]
       );
       await pool.query(`DELETE FROM users WHERE email = ANY($1)`, [testEmails]);

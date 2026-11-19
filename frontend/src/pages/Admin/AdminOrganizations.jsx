@@ -7,6 +7,7 @@ import Icon from '../../components/Icon'
 import Pagination from '../../components/Pagination'
 import { PageHeader, LoadingState, Alert, EmptyState, OrgInitials, StatusBadge } from '../../components/ui'
 import { formatDate } from '../../utils/format'
+import { registrationTypeLabel } from '../../utils/ngo'
 import './Admin.css'
 
 const STATUS_TABS = [
@@ -38,7 +39,7 @@ function ReviewPanel({ org, onDone }) {
 
   const decide = async (action) => {
     if (action.needsNote && !note.trim()) {
-      setError(`Add a note explaining why — it’s emailed to the coordinator.`)
+      setError(`Add a note explaining why — it’s emailed to the NGO admin.`)
       return
     }
     setBusy(action.status)
@@ -57,7 +58,19 @@ function ReviewPanel({ org, onDone }) {
   return (
     <div className="admin-review">
       <dl className="admin-review-facts">
-        <div><dt>Coordinator</dt><dd>{org.coordinator_name} · <a href={`mailto:${org.coordinator_email}`}>{org.coordinator_email}</a></dd></div>
+        <div>
+          <dt>NGO admin</dt>
+          <dd>
+            {org.owner_name} · <a href={`mailto:${org.owner_email}`}>{org.owner_email}</a>
+            {org.owner_phone && <> · <a href={`tel:${org.owner_phone.replace(/[^+\d]/g, '')}`}>{org.owner_phone}</a></>}
+          </dd>
+        </div>
+        <div><dt>Type</dt><dd>{registrationTypeLabel(org.registration_type) || <span className="muted">Not given</span>}</dd></div>
+        <div>
+          <dt>Registration no. / Darpan ID</dt>
+          <dd>{org.registration_number || <span className="muted">Not given</span>}</dd>
+        </div>
+        {org.city && <div><dt>City</dt><dd>{org.city}</dd></div>}
         <div><dt>Submitted</dt><dd>{formatDate(org.created_at, { month: 'long' })}</dd></div>
         <div><dt>Opportunities</dt><dd>{org.opportunity_count}</dd></div>
         {org.email && <div><dt>Contact email</dt><dd>{org.email}</dd></div>}
@@ -72,7 +85,7 @@ function ReviewPanel({ org, onDone }) {
 
       <div className="field">
         <label className="field-label" htmlFor={`note-${org.id}`}>
-          Note to the coordinator <span className="opt">(required to reject or suspend)</span>
+          Note to the NGO admin <span className="opt">(required to reject or suspend)</span>
         </label>
         <textarea
           id={`note-${org.id}`}
@@ -141,7 +154,7 @@ function AdminOrganizations() {
     setOpenId(null)
     setNotice({
       tone: 'success',
-      text: `“${org.name}” is now ${VERIFICATION_LABELS[updated?.verification_status || action.status].toLowerCase()}. The coordinator has been emailed.`,
+      text: `“${org.name}” is now ${VERIFICATION_LABELS[updated?.verification_status || action.status].toLowerCase()}. The NGO admin has been emailed.`,
     })
     load()
   }
@@ -152,7 +165,7 @@ function AdminOrganizations() {
     <div className="page">
       <PageHeader
         title="Organization review"
-        description="Approve organizations before they can publish opportunities. Rejections and suspensions need a note, which is emailed to the coordinator."
+        description="Approve organizations before they can publish opportunities. Rejections and suspensions need a note, which is emailed to the NGO admin."
       />
 
       <div className="admin-toolbar">
@@ -169,7 +182,7 @@ function AdminOrganizations() {
           <input
             type="search"
             className="input"
-            placeholder="Name or coordinator email"
+            placeholder="NGO name or NGO admin email"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(1) }}
           />
@@ -202,7 +215,7 @@ function AdminOrganizations() {
                     <OrgInitials name={org.name} />
                     <span className="admin-org-main">
                       <span className="cell-primary">{org.name}</span>
-                      <span className="cell-sub">{org.coordinator_name} · {org.coordinator_email}</span>
+                      <span className="cell-sub">{org.owner_name} · {org.owner_email}</span>
                     </span>
                     <StatusBadge status={org.verification_status} label={VERIFICATION_LABELS[org.verification_status]} />
                     <span className="admin-org-date muted">{formatDate(org.created_at)}</span>

@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const pool = require('../config/db');
+const { memberOf } = require('./organizationMemberRepository');
 
 /**
  * Data-access repository for opportunities table.
@@ -79,7 +80,6 @@ const OPP_SELECT = `
   org.name AS organization_name,
   org.logo_url AS organization_logo_url,
   org.verification_status AS organization_verification_status,
-  org.coordinator_id,
   ${ACTIVE_COUNT_SQL} AS active_signups,
   (o.capacity - ${ACTIVE_COUNT_SQL}) AS spots_remaining,
   (SELECT COUNT(*)::int FROM waitlist_entries w WHERE w.opportunity_id = o.id) AS waitlist_count
@@ -95,8 +95,8 @@ const SORTS = {
  * Search opportunities with visibility rules and filters.
  * @param {Object} f
  * @param {boolean} [f.publicOnly] - only PUBLISHED/COMPLETED from APPROVED orgs
- * @param {string} [f.includeCoordinatorId] - with publicOnly: also include this coordinator's own opportunities
- * @param {string} [f.coordinatorId] - only this coordinator's opportunities
+ * @param {string} [f.includeMemberId] - with publicOnly: also include opportunities of organizations this user belongs to
+ * @param {string} [f.memberId] - only opportunities of organizations this user belongs to
  * @param {string} [f.organization_id]
  * @param {string} [f.q] - text search on title / description / location / organization name
  * @param {string} [f.category]
@@ -119,14 +119,14 @@ const searchOpportunities = async (f = {}) => {
     return `$${values.length}`;
   };
 
-  if (f.coordinatorId) {
-    where.push(`org.coordinator_id = ${param(f.coordinatorId)}`);
+  if (f.memberId) {
+    where.push(memberOf('org.id', param(f.memberId)));
   } else if (f.publicOnly) {
     const visible =
       f.requireApprovedOrg === false
         ? "(o.status IN ('PUBLISHED','COMPLETED') AND org.verification_status NOT IN ('REJECTED','SUSPENDED'))"
         : "(o.status IN ('PUBLISHED','COMPLETED') AND org.verification_status = 'APPROVED')";
-    where.push(f.includeCoordinatorId ? `(${visible} OR org.coordinator_id = ${param(f.includeCoordinatorId)})` : visible);
+    where.push(f.includeMemberId ? `(${visible} OR ${memberOf('org.id', param(f.includeMemberId))})` : visible);
   }
   if (f.organization_id) where.push(`o.organization_id = ${param(f.organization_id)}`);
   if (f.status) where.push(`o.status = ${param(f.status)}`);
@@ -209,18 +209,18 @@ const claimReminder = async (id) => {
 };
 
 /**
- * Retrieve all opportunities managed by a specific coordinator
- * @param {string} coordinatorId - Coordinator user UUID
- * @returns {Promise<Array>} List of coordinator's opportunities
+ * All opportunities of the organizations a user belongs to (owner or coordinator).
+ * @param {string} userId - User UUID
+ * @returns {Promise<Array>} Opportunities, including their check-in codes
  */
-const findOpportunitiesByCoordinatorId = async (coordinatorId) => {
+const findManagedByUser = async (userId) => {
   const { rows } = await pool.query(
     `SELECT ${OPP_SELECT}, o.check_in_code
        FROM opportunities o
        JOIN organizations org ON o.organization_id = org.id
-      WHERE org.coordinator_id = $1
+      WHERE ${memberOf('org.id', '$1')}
       ORDER BY o.event_date ASC, o.start_time ASC`,
-    [coordinatorId]
+    [userId]
   );
   return rows;
 };
@@ -241,13 +241,6 @@ const findOpportunityById = async (id) => {
   );
   return rows[0] || null;
 };
-
-/**
- * Retrieve a single opportunity along with its organization's coordinator_id
- * @param {string} id - Opportunity UUID
- * @returns {Promise<Object|null>} Opportunity record with coordinator_id or null
- */
-const findOpportunityByIdWithCoordinator = async (id) => findOpportunityById(id);
 
 /**
  * Update an existing opportunity record with provided partial fields
@@ -344,7 +337,7 @@ const getVolunteerStats = async (volunteerId) => {
 };
 
 /**
- * Retrieve live dashboard statistics for a coordinator
+ * Retrieve live dashboard statistics for a coordinator (across every organization they belong to)
  * @param {string} coordinatorId - Coordinator user UUID
  * @returns {Promise<Object>} Coordinator stats: organizations_count, active_opportunities, total_volunteers_registered
  */
@@ -353,19 +346,19 @@ const getCoordinatorStats = async (coordinatorId) => {
     SELECT
       (SELECT COUNT(*)::int
        FROM organizations
-       WHERE coordinator_id = $1
+       WHERE ${memberOf('organizations.id', '$1')}
       ) AS organizations_count,
       (SELECT COUNT(*)::int
        FROM opportunities o
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1
+       WHERE ${memberOf('org.id', '$1')}
          AND o.status = 'PUBLISHED'
       ) AS active_opportunities,
       (SELECT COUNT(*)::int
        FROM signups s
        JOIN opportunities o ON s.opportunity_id = o.id
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1
+       WHERE ${memberOf('org.id', '$1')}
          AND s.status = 'REGISTERED'
       ) AS total_volunteers_registered
   `;
@@ -457,9 +450,8 @@ const findRegisteredAttendeesWithoutCompletionNotification = async (opportunityI
 
 module.exports = {
   createOpportunity,
-  findOpportunitiesByCoordinatorId,
+  findManagedByUser,
   findOpportunityById,
-  findOpportunityByIdWithCoordinator,
   updateOpportunity,
   getVolunteerStats,
   getCoordinatorStats,

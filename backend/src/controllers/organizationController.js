@@ -10,22 +10,16 @@ const handle = (fn) => async (req, res, next) => {
   }
 };
 
-/** POST /api/organizations */
+/** POST /api/organizations — a signed-in coordinator without an NGO registers one and becomes its NGO admin */
 const create = handle(async (req, res) => {
-  const { name, description } = req.body;
-  // Always use authenticated coordinator ID from req.user
-  const organization = await organizationService.createOrganization({
-    name,
-    description,
-    coordinator_id: req.user.id,
-  });
+  const organization = await organizationService.registerNgoForUser(req.user, req.ngo);
 
   res.status(201).json({
     status: 'success',
     message:
       organization.verification_status === 'PENDING'
-        ? 'Organization created and submitted for verification'
-        : 'Organization created successfully',
+        ? 'NGO registered and submitted for verification'
+        : 'NGO registered successfully',
     data: { organization },
   });
 });
@@ -44,10 +38,9 @@ const getAll = handle(async (req, res) => {
   });
 });
 
-/** GET /api/organizations/mine (coordinator) */
+/** GET /api/organizations/mine — organizations the coordinator belongs to, with their role */
 const getMine = handle(async (req, res) => {
-  const organizationRepository = require('../repositories/organizationRepository');
-  const organizations = await organizationRepository.findByCoordinatorId(req.user.id);
+  const organizations = await organizationService.getMyOrganizations(req.user.id);
   res.status(200).json({ status: 'success', data: { organizations } });
 });
 

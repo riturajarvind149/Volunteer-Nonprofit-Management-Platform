@@ -1,6 +1,7 @@
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const app = require('../src/app');
+const fetch = require('./helpers/testFetch');
 const pool = require('../src/config/db');
 
 let server;

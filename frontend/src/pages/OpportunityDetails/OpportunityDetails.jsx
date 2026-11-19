@@ -58,7 +58,7 @@ function SignupPanel({ opportunity, onChanged }) {
   const [detailsPrompt, setDetailsPrompt] = useState(null)
 
   const isCoordinator = user?.role === 'COORDINATOR'
-  const isOwner = isCoordinator && opportunity.coordinator_id === user?.id
+  const isOwner = isCoordinator && Boolean(opportunity.can_manage)
   // The API reports the viewer's own signup; fall back to the cached list for older responses.
   const mySignupStatus = opportunity.my_signup?.status
   const registered = mySignupStatus ? mySignupStatus === 'REGISTERED' : isRegistered(opportunity.id)
@@ -162,7 +162,7 @@ function SignupPanel({ opportunity, onChanged }) {
   }
 
   if (isCoordinator) {
-    return <p className="signup-note">Coordinator accounts can’t register for opportunities. Only the organizing coordinator can edit this listing.</p>
+    return <p className="signup-note">Coordinator accounts can’t register for opportunities. Only the NGO that runs it can edit this listing.</p>
   }
 
   let unavailableReason = ''

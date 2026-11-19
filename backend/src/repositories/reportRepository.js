@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { memberOf } = require('./organizationMemberRepository');
 
 /**
  * Data-access repository for organization reports and exports.
@@ -27,7 +28,7 @@ const getVolunteerParticipationReport = async (coordinatorId, { from_date, to_da
     JOIN opportunities o ON s.opportunity_id = o.id
     JOIN organizations org ON o.organization_id = org.id
     LEFT JOIN volunteer_hours vh ON vh.signup_id = s.id
-    WHERE org.coordinator_id = $1
+    WHERE ${memberOf('org.id', '$1')}
       AND ($2::text IS NULL OR s.created_at >= ($2 || ' 00:00:00Z')::timestamptz)
       AND ($3::text IS NULL OR s.created_at < (($3 || ' 00:00:00Z')::timestamptz + INTERVAL '1 day'))
     GROUP BY u.id, u.full_name, u.email
@@ -65,7 +66,7 @@ const getVolunteerHoursReport = async (coordinatorId, { from_date, to_date, stat
     JOIN users u ON s.volunteer_id = u.id
     JOIN opportunities o ON s.opportunity_id = o.id
     JOIN organizations org ON o.organization_id = org.id
-    WHERE org.coordinator_id = $1
+    WHERE ${memberOf('org.id', '$1')}
       AND ($2::text IS NULL OR vh.created_at >= ($2 || ' 00:00:00Z')::timestamptz)
       AND ($3::text IS NULL OR vh.created_at < (($3 || ' 00:00:00Z')::timestamptz + INTERVAL '1 day'))
       AND ($4::text IS NULL OR vh.status = $4)
@@ -107,7 +108,7 @@ const getOpportunityPerformanceReport = async (coordinatorId, { from_date, to_da
     JOIN organizations org ON o.organization_id = org.id
     LEFT JOIN signups s ON o.id = s.opportunity_id
     LEFT JOIN volunteer_hours vh ON s.id = vh.signup_id
-    WHERE org.coordinator_id = $1
+    WHERE ${memberOf('org.id', '$1')}
       AND ($2::text IS NULL OR o.event_date >= $2::date)
       AND ($3::text IS NULL OR o.event_date <= $3::date)
     GROUP BY o.id, o.title, o.category, o.status, o.event_date, o.capacity

@@ -3,13 +3,9 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { registerApi } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import { Alert } from '../../components/ui'
+import SignupChooser from '../../components/SignupChooser'
 import { passwordError, PASSWORD_HINT } from '../../utils/password'
 import '../Auth.css'
-
-const ROLES = [
-  { value: 'VOLUNTEER', title: 'Volunteer', desc: 'Find and register for opportunities' },
-  { value: 'COORDINATOR', title: 'Coordinator', desc: 'Publish opportunities for a nonprofit' },
-]
 
 const FIELDS = [
   { id: 'name', label: 'Full name', type: 'text', autoComplete: 'name' },
@@ -33,8 +29,9 @@ function Register() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
   const [searchParams] = useSearchParams()
+  // Old links may still ask for a coordinator account; those are now created by NGOs.
+  const cameForCoordinator = searchParams.get('role')?.toUpperCase() === 'COORDINATOR'
   const [form, setForm] = useState({
-    role: searchParams.get('role')?.toUpperCase() === 'COORDINATOR' ? 'COORDINATOR' : 'VOLUNTEER',
     name: '',
     email: '',
     password: '',
@@ -66,7 +63,6 @@ function Register() {
         full_name: form.name.trim(),
         email,
         password: form.password,
-        role: form.role,
       })
       if (response?.data?.requires_email_verification) {
         navigate('/verify-email', { state: { email } })
@@ -82,10 +78,19 @@ function Register() {
   return (
     <div className="auth">
       <div className="auth-panel">
+        <SignupChooser active="volunteer" />
+
         <div className="auth-heading">
-          <h1>Create your account</h1>
-          <p>Your role decides what you see after signing in. It can’t be changed later.</p>
+          <h1>Create your volunteer account</h1>
+          <p>Find opportunities near you, register in seconds and keep a verified record of your hours.</p>
         </div>
+
+        {cameForCoordinator && (
+          <Alert tone="info">
+            Coordinator accounts are now set up by NGOs: your NGO admin invites you by email. Representing an NGO?{' '}
+            <Link to="/register/ngo">Register your NGO</Link>.
+          </Alert>
+        )}
 
         {serverError && (
           <Alert>
@@ -97,25 +102,6 @@ function Register() {
         )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
-          <fieldset className="role-options" disabled={loading}>
-            <legend className="field-label">I’m joining as</legend>
-            <div className="role-option-grid">
-              {ROLES.map((role) => (
-                <label key={role.value} className="role-option">
-                  <input
-                    type="radio"
-                    name="role"
-                    value={role.value}
-                    checked={form.role === role.value}
-                    onChange={handleChange}
-                  />
-                  <span className="role-option-title">{role.title}</span>
-                  <span className="role-option-desc">{role.desc}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
           {FIELDS.map((field) => {
             const describedBy = [errors[field.id] && `${field.id}-error`, field.hint && `${field.id}-hint`].filter(Boolean).join(' ')
             return (
@@ -150,6 +136,8 @@ function Register() {
 
         <p className="auth-switch">
           Already registered? <Link to="/login">Sign in</Link>
+          <br />
+          Coordinators join through an invitation from their NGO admin.
         </p>
       </div>
     </div>

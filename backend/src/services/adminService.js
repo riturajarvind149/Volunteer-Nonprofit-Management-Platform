@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const userRepository = require('../repositories/userRepository');
 const organizationRepository = require('../repositories/organizationRepository');
+const organizationMemberRepository = require('../repositories/organizationMemberRepository');
 const notificationService = require('./notificationService');
 const templates = require('./emailTemplates');
 const AppError = require('../utils/AppError');
@@ -38,12 +39,15 @@ const listOrganizations = async ({ status, q, page, limit, offset }) => {
   }
   const { rows } = await pool.query(
     `SELECT org.id, org.name, org.description, org.email, org.phone, org.website, org.address,
+            org.registration_type, org.registration_number, org.city,
+            u.phone AS owner_phone,
             org.verification_status, org.verification_note, org.verified_at, org.created_at,
-            u.id AS coordinator_id, u.full_name AS coordinator_name, u.email AS coordinator_email,
+            u.id AS owner_id, u.full_name AS owner_name, u.email AS owner_email,
             (SELECT COUNT(*)::int FROM opportunities o WHERE o.organization_id = org.id) AS opportunity_count,
             COUNT(*) OVER()::int AS total_count
        FROM organizations org
-       JOIN users u ON u.id = org.coordinator_id
+       JOIN organization_members owner ON owner.organization_id = org.id AND owner.role = 'OWNER'
+       JOIN users u ON u.id = owner.user_id
       WHERE ($1::text IS NULL OR org.verification_status = $1)
         AND ($2::text IS NULL OR org.name ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')
       ORDER BY (org.verification_status = 'PENDING') DESC, org.created_at DESC
@@ -79,10 +83,11 @@ const reviewOrganization = async (orgId, { status, note }, adminId) => {
   await audit(adminId, `ORGANIZATION_${status}`, 'organization', orgId, { from: existing.verification_status, note });
 
   if (existing.verification_status !== status) {
-    const coordinator = await userRepository.findById(existing.coordinator_id);
-    if (coordinator) {
+    // The owner (NGO admin) hears about the review decision.
+    const owner = (await organizationMemberRepository.findMembers(orgId)).find((m) => m.role === 'OWNER');
+    if (owner) {
       await notificationService.notify({
-        user: coordinator,
+        user: owner,
         title: status === 'APPROVED' ? 'Organization verified' : `Organization ${status.toLowerCase()}`,
         message:
           status === 'APPROVED'
@@ -90,7 +95,7 @@ const reviewOrganization = async (orgId, { status, note }, adminId) => {
             : `${existing.name} was marked ${status.toLowerCase()}.${note ? ` Note: ${note}` : ''}`,
         type: 'ORG_REVIEW',
         reference_id: orgId,
-        email: templates.orgReviewed({ name: coordinator.full_name, orgName: existing.name, status, note }),
+        email: templates.orgReviewed({ name: owner.full_name, orgName: existing.name, status, note }),
         force: true,
       });
     }

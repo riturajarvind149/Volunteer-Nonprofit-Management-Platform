@@ -23,7 +23,7 @@ const OPP = {
   location: 'Marina',
   capacity: 2,
   status: 'PUBLISHED',
-  coordinator_id: COORDINATOR.id,
+  can_manage: true,
   check_in_code: 'K7Q2ZP',
 }
 

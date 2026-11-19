@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getMyOrganizationsApi, getManagedOpportunitiesApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, OrgInitials } from '../../components/ui'
 import { formatDate, isUpcoming } from '../../utils/format'
+import { memberRoleLabel } from '../../utils/ngo'
 import OrgEditForm from './OrgEditForm'
 import './OrgProfile.css'
 
 function OrgProfile() {
-  const { user, token } = useAuth()
+  const { token } = useAuth()
+  const location = useLocation()
   const [organizations, setOrganizations] = useState([])
   const [opportunities, setOpportunities] = useState([])
   const [loading, setLoading] = useState(true)
@@ -21,14 +23,14 @@ function OrgProfile() {
     setError('')
     try {
       const [orgsRes, oppsRes] = await Promise.all([getMyOrganizationsApi(token), getManagedOpportunitiesApi(token)])
-      setOrganizations((orgsRes?.data?.organizations || []).filter((org) => org.coordinator_id === user?.id))
+      setOrganizations(orgsRes?.data?.organizations || [])
       setOpportunities(oppsRes?.data?.opportunities || [])
     } catch (err) {
       setError(err.message || 'Your organizations could not be loaded.')
     } finally {
       setLoading(false)
     }
-  }, [token, user?.id])
+  }, [token])
 
   useEffect(() => { load() }, [load])
 
@@ -46,12 +48,10 @@ function OrgProfile() {
     <div className="page">
       <PageHeader
         title="My organizations"
-        description="The organizations you coordinate. Volunteers see each one’s name and description on its public page."
-        actions={organizations.length > 0 && (
-          <Link to="/organizations?new=1" className="btn btn-secondary"><Icon name="plus" size={15} />New organization</Link>
-        )}
+        description="The NGOs you belong to. Volunteers see each one’s name and description on its public page."
       />
 
+      {location.state?.message && <Alert tone="success">{location.state.message}</Alert>}
       {error && <Alert onRetry={load}>{error}</Alert>}
 
       {loading ? (
@@ -61,10 +61,10 @@ function OrgProfile() {
           <div className="panel">
             <EmptyState
               icon="building"
-              title="You don’t manage an organization yet"
-              action={<Link to="/organizations?new=1" className="btn btn-primary">Create an organization</Link>}
+              title="You’re not part of an NGO yet"
+              action={<Link to="/organizations/register" className="btn btn-primary">Register your NGO</Link>}
             >
-              Opportunities are always published under an organization, so start by creating one.
+              Ask your NGO admin to invite you, or register your NGO to become its NGO admin.
             </EmptyState>
           </div>
         )
@@ -75,14 +75,19 @@ function OrgProfile() {
               <OrgInitials name={org.name} />
               <div className="org-card-title">
                 <h2 id={`org-${org.id}`}>{org.name}</h2>
-                <p className="muted">Created {formatDate(org.created_at, { month: 'long' })}</p>
+                <p className="muted">
+                  <span className="badge badge-info">{memberRoleLabel(org.my_role)}</span> · Created {formatDate(org.created_at, { month: 'long' })}
+                </p>
               </div>
               <div className="org-card-actions">
-                {editingId !== org.id && (
+                {org.my_role === 'OWNER' && editingId !== org.id && (
                   <button type="button" className="btn btn-secondary" onClick={() => { setEditingId(org.id); setSavedId(null) }}>
                     <Icon name="edit" size={15} />Edit details
                   </button>
                 )}
+                <Link to={`/organizations/${org.id}/team`} className="btn btn-secondary">
+                  <Icon name="users" size={15} />Team
+                </Link>
                 <Link to={`/organizations/${org.id}`} className="btn btn-ghost">Public page</Link>
                 <Link to={`/opportunities/create?org=${org.id}`} className="btn btn-primary"><Icon name="plus" size={15} />New opportunity</Link>
               </div>

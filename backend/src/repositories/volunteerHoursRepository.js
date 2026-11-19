@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const pool = require('../config/db');
+const { memberOf } = require('./organizationMemberRepository');
 const AppError = require('../utils/AppError');
 
 /**
@@ -272,7 +273,7 @@ const findByCoordinatorId = async (coordinatorId) => {
     JOIN users u ON s.volunteer_id = u.id
     JOIN opportunities o ON s.opportunity_id = o.id
     JOIN organizations org ON o.organization_id = org.id
-    WHERE org.coordinator_id = $1
+    WHERE ${memberOf('org.id', '$1')}
     ORDER BY vh.created_at DESC
   `;
   const { rows } = await pool.query(query, [coordinatorId]);
@@ -280,11 +281,11 @@ const findByCoordinatorId = async (coordinatorId) => {
 };
 
 /**
- * Retrieve a volunteer_hours record along with the owning coordinator ID
+ * Retrieve a volunteer_hours record along with its organization ID
  * @param {string} id - Volunteer hours UUID
- * @returns {Promise<Object|null>} Record with coordinator_id or null if not found
+ * @returns {Promise<Object|null>} Record with organization_id or null if not found
  */
-const findByIdWithCoordinator = async (id) => {
+const findByIdWithOrganization = async (id) => {
   const query = `
     SELECT 
       vh.id,
@@ -294,7 +295,6 @@ const findByIdWithCoordinator = async (id) => {
       vh.recorded_by,
       vh.created_at,
       vh.updated_at,
-      org.coordinator_id,
       org.id AS organization_id,
       s.volunteer_id,
       o.title AS opportunity_title
@@ -371,7 +371,7 @@ const getSummaryByCoordinatorId = async (coordinatorId) => {
     JOIN signups s ON vh.signup_id = s.id
     JOIN opportunities o ON s.opportunity_id = o.id
     JOIN organizations org ON o.organization_id = org.id
-    WHERE org.coordinator_id = $1
+    WHERE ${memberOf('org.id', '$1')}
   `;
   const { rows } = await pool.query(query, [coordinatorId]);
   const row = rows[0] || {};
@@ -410,7 +410,7 @@ const getOpportunitySummaryByCoordinatorId = async (coordinatorId, { from_date, 
       ON vh.signup_id = s.id
       AND ($2::text IS NULL OR vh.created_at >= ($2 || ' 00:00:00Z')::timestamptz)
       AND ($3::text IS NULL OR vh.created_at < (($3 || ' 00:00:00Z')::timestamptz + INTERVAL '1 day'))
-    WHERE org.coordinator_id = $1
+    WHERE ${memberOf('org.id', '$1')}
     GROUP BY o.id, o.title, org.id, org.name, o.created_at
     ORDER BY o.created_at DESC, o.id DESC
   `;
@@ -489,7 +489,7 @@ module.exports = {
   findById,
   findByVolunteerId,
   findByCoordinatorId,
-  findByIdWithCoordinator,
+  findByIdWithOrganization,
   updateStatus,
   getSummaryByVolunteerId,
   getSummaryByCoordinatorId,

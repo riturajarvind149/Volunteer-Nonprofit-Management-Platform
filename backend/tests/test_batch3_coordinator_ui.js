@@ -1,5 +1,6 @@
 require('dotenv').config();
 const app = require('../src/app');
+const fetch = require('./helpers/testFetch');
 const pool = require('../src/config/db');
 const { cleanupTestUsers } = require('../scripts/test-cleanup');
 
@@ -342,15 +343,15 @@ const runTests = async () => {
       'Test 14: Coordinator A retrieves managed opportunities including newly created event (200 OK)'
     );
 
-    // Test 15: Response includes joined metadata: organization_name, coordinator_id, active_signups, spots_remaining
+    // Test 15: Response includes joined metadata: organization_name, can_manage, active_signups, spots_remaining
     const oppA = oppListA[0];
     assert(
       oppA &&
         oppA.organization_name === 'Alpha Community Builders' &&
-        oppA.coordinator_id !== undefined &&
+        oppA.can_manage === true &&
         oppA.active_signups === 0 &&
         oppA.spots_remaining === 15,
-      'Test 15: Opportunity record includes organization_name, coordinator_id, active_signups, and spots_remaining'
+      'Test 15: Opportunity record includes organization_name, can_manage, active_signups, and spots_remaining'
     );
 
     // Test 16: Coordinator B calling ?managed=true does NOT see Coordinator A's opportunity

@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { memberOf } = require('./organizationMemberRepository');
 
 /**
  * Data-access repository for platform analytics and dashboard aggregations.
@@ -184,25 +185,25 @@ const getCoordinatorAnalytics = async (coordinatorId) => {
        FROM signups s
        JOIN opportunities o ON s.opportunity_id = o.id
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1 AND s.status = 'REGISTERED'
+       WHERE ${memberOf('org.id', '$1')} AND s.status = 'REGISTERED'
       ) AS total_volunteers,
       (SELECT COUNT(DISTINCT s.volunteer_id)::int
        FROM signups s
        JOIN opportunities o ON s.opportunity_id = o.id
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1
+       WHERE ${memberOf('org.id', '$1')}
          AND s.status = 'REGISTERED'
          AND s.created_at >= DATE_TRUNC('month', CURRENT_DATE)
       ) AS volunteers_this_month,
       (SELECT COUNT(o.id)::int
        FROM opportunities o
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1 AND o.status = 'PUBLISHED'
+       WHERE ${memberOf('org.id', '$1')} AND o.status = 'PUBLISHED'
       ) AS active_opportunities,
       (SELECT COUNT(o.id)::int
        FROM opportunities o
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1
+       WHERE ${memberOf('org.id', '$1')}
          AND o.status = 'PUBLISHED'
          AND o.event_date >= CURRENT_DATE
       ) AS upcoming_events,
@@ -211,27 +212,27 @@ const getCoordinatorAnalytics = async (coordinatorId) => {
        JOIN signups s ON vh.signup_id = s.id
        JOIN opportunities o ON s.opportunity_id = o.id
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1
+       WHERE ${memberOf('org.id', '$1')}
       ) AS total_hours,
       (SELECT COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)
        FROM volunteer_hours vh
        JOIN signups s ON vh.signup_id = s.id
        JOIN opportunities o ON s.opportunity_id = o.id
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1
+       WHERE ${memberOf('org.id', '$1')}
          AND vh.created_at >= DATE_TRUNC('month', CURRENT_DATE)
       ) AS hours_this_month,
       (SELECT COUNT(o.id)::int
        FROM opportunities o
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1
+       WHERE ${memberOf('org.id', '$1')}
          AND (o.status = 'COMPLETED' OR o.event_date < CURRENT_DATE)
       ) AS completed_events,
       (SELECT COUNT(s.id)::int
        FROM signups s
        JOIN opportunities o ON s.opportunity_id = o.id
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1
+       WHERE ${memberOf('org.id', '$1')}
          AND s.status = 'REGISTERED'
          AND s.created_at >= DATE_TRUNC('month', CURRENT_DATE)
       ) AS registrations_this_month,
@@ -240,7 +241,7 @@ const getCoordinatorAnalytics = async (coordinatorId) => {
        JOIN signups s ON vh.signup_id = s.id
        JOIN opportunities o ON s.opportunity_id = o.id
        JOIN organizations org ON o.organization_id = org.id
-       WHERE org.coordinator_id = $1 AND vh.status = 'PENDING'
+       WHERE ${memberOf('org.id', '$1')} AND vh.status = 'PENDING'
       ) AS pending_hours_count
   `;
   const summaryRes = await pool.query(summaryQuery, [coordinatorId]);
@@ -255,7 +256,7 @@ const getCoordinatorAnalytics = async (coordinatorId) => {
       FROM opportunities o
       JOIN organizations org ON o.organization_id = org.id
       LEFT JOIN signups s ON o.id = s.opportunity_id AND s.status = 'REGISTERED'
-      WHERE org.coordinator_id = $1
+      WHERE ${memberOf('org.id', '$1')}
       GROUP BY o.id
     ) counts
   `;
@@ -276,7 +277,7 @@ const getCoordinatorAnalytics = async (coordinatorId) => {
       DATE_PART('year', m.month_date)::int AS year,
       COALESCE(SUM(vh.hours) FILTER (WHERE vh.status <> 'REJECTED'), 0)::numeric(6,2) AS hours
     FROM months m
-    LEFT JOIN organizations org ON org.coordinator_id = $1
+    LEFT JOIN organizations org ON ${memberOf('org.id', '$1')}
     LEFT JOIN opportunities o ON o.organization_id = org.id
     LEFT JOIN signups s ON s.opportunity_id = o.id
     LEFT JOIN volunteer_hours vh
@@ -301,7 +302,7 @@ const getCoordinatorAnalytics = async (coordinatorId) => {
       DATE_PART('year', m.month_date)::int AS year,
       COUNT(s.id)::int AS registrations
     FROM months m
-    LEFT JOIN organizations org ON org.coordinator_id = $1
+    LEFT JOIN organizations org ON ${memberOf('org.id', '$1')}
     LEFT JOIN opportunities o ON o.organization_id = org.id
     LEFT JOIN signups s
       ON s.opportunity_id = o.id
@@ -324,7 +325,7 @@ const getCoordinatorAnalytics = async (coordinatorId) => {
     FROM opportunities o
     JOIN organizations org ON o.organization_id = org.id
     LEFT JOIN signups s ON o.id = s.opportunity_id AND s.status = 'REGISTERED'
-    WHERE org.coordinator_id = $1
+    WHERE ${memberOf('org.id', '$1')}
     GROUP BY o.id, o.title, o.category, o.capacity
     ORDER BY registered_count DESC
     LIMIT 6
@@ -340,7 +341,7 @@ const getCoordinatorAnalytics = async (coordinatorId) => {
     FROM opportunities o
     JOIN organizations org ON o.organization_id = org.id
     LEFT JOIN signups s ON o.id = s.opportunity_id AND s.status = 'REGISTERED'
-    WHERE org.coordinator_id = $1
+    WHERE ${memberOf('org.id', '$1')}
     GROUP BY COALESCE(o.category, 'General')
     ORDER BY registration_count DESC
   `;
@@ -355,7 +356,7 @@ const getCoordinatorAnalytics = async (coordinatorId) => {
       COUNT(CASE WHEN o.status = 'CANCELLED' THEN 1 END)::int AS cancelled
     FROM opportunities o
     JOIN organizations org ON o.organization_id = org.id
-    WHERE org.coordinator_id = $1
+    WHERE ${memberOf('org.id', '$1')}
   `;
   const statusRes = await pool.query(statusQuery, [coordinatorId]);
   const eventStatus = statusRes.rows[0] || {};

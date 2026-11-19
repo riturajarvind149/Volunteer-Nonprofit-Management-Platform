@@ -129,7 +129,10 @@ function Login() {
         </form>
 
         <p className="auth-switch">
-          New to ServeHub? <Link to="/register">Create an account</Link>
+          New to ServeHub? <Link to="/register">Create a volunteer account</Link> or{' '}
+          <Link to="/register/ngo">register your NGO</Link>.
+          <br />
+          Coordinators join through an invitation from their NGO admin.
         </p>
       </div>
     </div>

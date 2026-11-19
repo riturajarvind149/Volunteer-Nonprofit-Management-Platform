@@ -16,7 +16,7 @@ const STATUS_TABS = [
 ]
 
 function ManageOpportunities() {
-  const { user, token } = useAuth()
+  const { token } = useAuth()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
   const [opportunities, setOpportunities] = useState([])
@@ -32,13 +32,13 @@ function ManageOpportunities() {
     try {
       const [oppsRes, orgsRes] = await Promise.all([getManagedOpportunitiesApi(token), getMyOrganizationsApi(token)])
       setOpportunities(oppsRes?.data?.opportunities || [])
-      setHasOrganization((orgsRes?.data?.organizations || []).some((org) => org.coordinator_id === user.id))
+      setHasOrganization((orgsRes?.data?.organizations || []).length > 0)
     } catch (err) {
       setError(err.message || 'Your opportunities could not be loaded.')
     } finally {
       setLoading(false)
     }
-  }, [token, user.id])
+  }, [token])
 
   useEffect(() => { load() }, [load])
 
@@ -65,7 +65,8 @@ function ManageOpportunities() {
       {location.state?.notice && <Alert tone="success">{location.state.notice}</Alert>}
       {!loading && !hasOrganization && (
         <Alert tone="info">
-          You need an organization before you can publish opportunities. <Link to="/organizations?new=1">Create one now</Link>.
+          You’re not part of an NGO yet, so there’s nothing to publish under. Ask your NGO admin to invite you, or{' '}
+          <Link to="/organizations/register">register your NGO</Link>.
         </Alert>
       )}
       {error && <Alert onRetry={load}>{error}</Alert>}

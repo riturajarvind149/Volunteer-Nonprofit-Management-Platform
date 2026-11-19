@@ -32,6 +32,7 @@ function PublicLayout({ theme, onToggleTheme, children }) {
               <Link to="/dashboard" className="btn btn-primary">Open dashboard</Link>
             ) : (
               <>
+                <Link to="/register/ngo" className="btn btn-ghost public-nav-browse">Register NGO</Link>
                 <Link to="/login" className="btn btn-ghost">Sign in</Link>
                 <Link to="/register" className="btn btn-primary">Create account</Link>
               </>
@@ -55,6 +56,7 @@ function PublicLayout({ theme, onToggleTheme, children }) {
             <Link to="/organizations">Organizations</Link>
             <Link to="/login">Sign in</Link>
             <Link to="/register">Create account</Link>
+            <Link to="/register/ngo">Register your NGO</Link>
             <Link to="/privacy">Privacy</Link>
             <Link to="/terms">Terms</Link>
           </nav>
