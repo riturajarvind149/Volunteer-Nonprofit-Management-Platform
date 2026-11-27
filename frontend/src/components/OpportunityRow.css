@@ -115,6 +115,6 @@
   align-items: center;
   gap: 0.35rem;
   margin: 0.35rem 0 0;
-  font-size: var(--text-sm, 0.85rem);
+  font-size: var(--text-sm);
   color: var(--success);
 }

@@ -189,6 +189,6 @@
   padding: 6px;
   background: #fff;
   border-radius: 8px;
-  border: 1px solid var(--border, #ddd);
+  border: 1px solid var(--line);
   flex-shrink: 0;
 }

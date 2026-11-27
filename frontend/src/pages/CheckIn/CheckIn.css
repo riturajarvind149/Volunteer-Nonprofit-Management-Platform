@@ -29,13 +29,13 @@
 }
 
 .checkin-result.is-ok .checkin-result-icon {
-  background: var(--success-soft, rgba(34, 139, 84, 0.12));
-  color: var(--success, #228b54);
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 .checkin-result.is-error .checkin-result-icon {
-  background: var(--danger-soft, rgba(200, 50, 50, 0.12));
-  color: var(--danger, #c83232);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .checkin-event {
