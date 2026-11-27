@@ -12,6 +12,7 @@ const app = require('../src/app');
 const pool = require('../src/config/db');
 const { migrate } = require('../src/db/migrate');
 const { seedDemo, removeDemo, DEMO_DOMAIN } = require('../src/scripts/seedDemo');
+const statsRoutes = require('../src/routes/statsRoutes');
 
 const c = { green: '\x1b[32m', red: '\x1b[31m', cyan: '\x1b[36m', bold: '\x1b[1m', reset: '\x1b[0m' };
 let passed = 0;
@@ -78,6 +79,14 @@ const run = async () => {
     [`%@${DEMO_DOMAIN}`, START]
   );
   assert(perDay.length === 8, 'There is a published event on each of the 8 demo days', JSON.stringify(perDay));
+
+  section('Public impact numbers');
+  statsRoutes.clearCache();
+  const impact = await api('GET', '/api/stats/impact');
+  const numbers = impact.data.data?.impact || {};
+  assert(impact.status === 200 && numbers.volunteers >= 10 && numbers.verified_hours > 50 && numbers.organizations >= 4 && numbers.events_completed >= 6,
+    'Home page impact numbers include the demo data', JSON.stringify(numbers));
+  assert(Object.keys(numbers).every((k) => typeof numbers[k] === 'number'), 'Impact only returns totals');
 
   section('Showcase flows work with the demo accounts');
   const priya = await login('priya');

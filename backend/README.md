@@ -176,6 +176,7 @@ Roles: **volunteer**, **coordinator** (a member of one or more NGOs — owner or
 | `POST /api/signups/:id/hours/self` `{hours, notes}` | volunteer | Log own hours for review |
 | `GET /api/hours/my/certificate` | volunteer | PDF certificate of verified hours |
 | `GET /api/hours/organization?status=&page=&limit=` | coordinator | Hours of my NGOs; `status` takes one or more (comma-separated), `page`/`limit` are optional and add `pagination` |
+| `GET /api/stats/impact` | public | Platform totals for the home page: volunteers, verified hours, NGOs, events (cached 60 s) |
 | `GET /api/organizations?q=&page=` | public | Directory of verified NGOs (`my_role` when signed in) |
 | `POST /api/organizations` `{name, registration_type, city, …}` | coordinator | Register an NGO (one per account) |
 | `GET /api/organizations/mine` | coordinator | NGOs I belong to, with `my_role` |
