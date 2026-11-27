@@ -179,6 +179,12 @@ const run = async () => {
 
   const verified = await api('GET', '/api/hours/organization?status=verified', { token: owner.token });
   assert(verified.data.data?.hours?.length === 1 && verified.data.data.hours[0].status === 'VERIFIED', 'status filter works (case-insensitive)');
+  const review = await api('GET', '/api/hours/organization?status=PENDING,RECORDED&page=1&limit=10', { token: owner.token });
+  assert(
+    review.data.data?.hours?.length === 2 && review.data.data.hours.every((h) => ['PENDING', 'RECORDED'].includes(h.status)) && review.data.data.pagination?.total === 2,
+    'A comma-separated status list matches any of them',
+    JSON.stringify(review.data.data?.pagination)
+  );
   const badStatus = await api('GET', '/api/hours/organization?status=nope', { token: owner.token });
   assert(badStatus.status === 400, 'Unknown status is rejected');
 

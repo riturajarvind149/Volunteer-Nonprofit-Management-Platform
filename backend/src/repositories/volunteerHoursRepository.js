@@ -248,12 +248,12 @@ const findByVolunteerId = async (volunteerId, { from_date, to_date } = {}) => {
  * @param {string} coordinatorId - Coordinator UUID
  * @returns {Promise<Array>} List of volunteer_hours records with joined details
  */
-const findByCoordinatorId = async (coordinatorId, { status, limit, offset } = {}) => {
+const findByCoordinatorId = async (coordinatorId, { statuses = [], limit, offset } = {}) => {
   const values = [coordinatorId];
   let statusFilter = '';
-  if (status) {
-    values.push(status);
-    statusFilter = `AND vh.status = $${values.length}`;
+  if (statuses.length) {
+    values.push(statuses);
+    statusFilter = `AND vh.status = ANY($${values.length})`;
   }
   let paging = '';
   if (limit !== undefined) {
@@ -293,19 +293,19 @@ const findByCoordinatorId = async (coordinatorId, { status, limit, offset } = {}
   return {
     hours: rows.map(({ total_count: _omit, ...row }) => row),
     // A page past the end has no rows to read the count from; count again in that rare case.
-    total: rows.length ? rows[0].total_count : limit !== undefined && offset ? await countByCoordinatorId(coordinatorId, status) : 0,
+    total: rows.length ? rows[0].total_count : limit !== undefined && offset ? await countByCoordinatorId(coordinatorId, statuses) : 0,
   };
 };
 
-const countByCoordinatorId = async (coordinatorId, status) => {
+const countByCoordinatorId = async (coordinatorId, statuses) => {
   const values = [coordinatorId];
-  if (status) values.push(status);
+  if (statuses.length) values.push(statuses);
   const { rows } = await pool.query(
     `SELECT COUNT(*)::int AS n
        FROM volunteer_hours vh
        JOIN signups s ON vh.signup_id = s.id
        JOIN opportunities o ON s.opportunity_id = o.id
-      WHERE ${memberOf('o.organization_id', '$1')} ${status ? 'AND vh.status = $2' : ''}`,
+      WHERE ${memberOf('o.organization_id', '$1')} ${statuses.length ? 'AND vh.status = ANY($2)' : ''}`,
     values
   );
   return rows[0].n;

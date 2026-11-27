@@ -97,16 +97,18 @@ const HOURS_STATUSES = ['PENDING', 'RECORDED', 'VERIFIED', 'REJECTED'];
 /**
  * @param {string} coordinatorId
  * @param {Object} [options]
- * @param {string} [options.status] - only records with this status
+ * @param {string} [options.status] - only records with this status; a comma-separated list
+ *   (e.g. "PENDING,RECORDED") matches any of them
  * @param {{page: number, limit: number, offset: number}} [options.paging] - omit for every record
  * @returns {Promise<{hours: Array, pagination?: Object}>}
  */
 const getOrganizationHours = async (coordinatorId, { status, paging } = {}) => {
-  if (status && !HOURS_STATUSES.includes(status)) {
-    throw new AppError(`status must be one of ${HOURS_STATUSES.join(', ')}`, 400);
+  const statuses = status ? [...new Set(status.split(',').map((s) => s.trim()).filter(Boolean))] : [];
+  if (statuses.some((s) => !HOURS_STATUSES.includes(s))) {
+    throw new AppError(`status must be one or more of ${HOURS_STATUSES.join(', ')}`, 400);
   }
   const { hours, total } = await volunteerHoursRepository.findByCoordinatorId(coordinatorId, {
-    status,
+    statuses,
     limit: paging?.limit,
     offset: paging?.offset,
   });
