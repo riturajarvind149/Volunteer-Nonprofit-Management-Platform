@@ -9,6 +9,7 @@ const { config } = require('./config/env');
 const logger = require('./utils/logger');
 const { apiLimiter } = require('./middleware/rateLimiters');
 const healthRoutes = require('./routes/healthRoutes');
+const statsRoutes = require('./routes/statsRoutes');
 const authRoutes = require('./routes/authRoutes');
 const organizationRoutes = require('./routes/organizationRoutes');
 const opportunityRoutes = require('./routes/opportunityRoutes');
@@ -112,6 +113,7 @@ app.get('/', (req, res) => {
 
 // Route registration
 app.use('/api/health', healthRoutes);
+app.use('/api/stats', statsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/organizations', organizationRoutes);

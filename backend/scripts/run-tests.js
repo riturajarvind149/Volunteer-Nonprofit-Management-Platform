@@ -41,6 +41,7 @@ const SUITES = [
   'test_ngo_registration.js',
   'test_team.js',
   'test_events_closure_hours.js',
+  'test_demo_seed.js',
 ];
 
 const filter = process.argv[2];

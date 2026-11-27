@@ -251,6 +251,13 @@ const run = async () => {
   const deleted = await api('DELETE', '/api/users/me', { token: owner.token, body: { password: PASSWORD } });
   assert(deleted.status === 200, 'The former owner can delete their account', JSON.stringify(deleted.data));
 
+  const { rows: keptHours } = await pool.query('SELECT recorded_by FROM volunteer_hours WHERE signup_id = ANY($1)', [signupIds]);
+  assert(
+    keptHours.length === 3 && keptHours.every((h) => h.recorded_by === null),
+    'Hours the deleted coordinator recorded stay with the volunteers (recorder cleared)',
+    JSON.stringify(keptHours)
+  );
+
   // Remove the closed NGO itself (no members point at it any more).
   await pool.query('DELETE FROM organizations WHERE id = $1', [org.id]);
 };

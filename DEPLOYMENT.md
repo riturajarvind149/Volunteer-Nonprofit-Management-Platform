@@ -111,6 +111,14 @@ Coordinators who never created an NGO can register one, or be invited by an NGO 
 Deploy the backend **before** the frontend, at a quiet time: while Render switches from the old server to the new
 one (about a minute), the old server can't read NGO data because migration 008 has removed the old column.
 
+### Migrations 009–010
+
+Both run automatically on the next start and need no manual steps:
+
+- **009** adds the `CLOSED` NGO status and `closed_at` (admins close an NGO with *Close NGO* in the admin console).
+- **010** keeps volunteer hours when the coordinator who recorded them deletes their account
+  (`recorded_by` becomes empty instead of the hours being deleted).
+
 ---
 
 ## Troubleshooting
