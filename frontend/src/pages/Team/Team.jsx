@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -12,6 +12,7 @@ import Icon from '../../components/Icon'
 import { Alert, EmptyState, LoadingState, PageHeader } from '../../components/ui'
 import { formatDate } from '../../utils/format'
 import { memberRoleLabel } from '../../utils/ngo'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Team.css'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -110,9 +111,7 @@ function Team() {
     }
   }, [id, token])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useAutoLoad(load)
 
   const run = async (action, successText, after) => {
     setBusy(true)

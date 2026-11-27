@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getMyOrganizationsApi, getManagedOpportunitiesApi } from '../../services/api'
@@ -7,6 +7,7 @@ import { PageHeader, LoadingState, EmptyState, Alert, OrgInitials } from '../../
 import { formatDate, isUpcoming } from '../../utils/format'
 import { memberRoleLabel } from '../../utils/ngo'
 import OrgEditForm from './OrgEditForm'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './OrgProfile.css'
 
 function OrgProfile() {
@@ -32,7 +33,7 @@ function OrgProfile() {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const statsFor = (orgId) => {
     const own = opportunities.filter((o) => o.organization_id === orgId)

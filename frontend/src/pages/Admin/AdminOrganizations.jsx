@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getAdminOrganizationsApi, reviewOrganizationApi } from '../../services/api'
@@ -8,6 +8,7 @@ import Pagination from '../../components/Pagination'
 import { PageHeader, LoadingState, Alert, EmptyState, OrgInitials, StatusBadge } from '../../components/ui'
 import { formatDate } from '../../utils/format'
 import { registrationTypeLabel } from '../../utils/ngo'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Admin.css'
 
 const STATUS_TABS = [
@@ -142,7 +143,7 @@ function AdminOrganizations() {
     }
   }, [token, status, debouncedQuery, page])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const changeTab = (key) => {
     setStatus(key)

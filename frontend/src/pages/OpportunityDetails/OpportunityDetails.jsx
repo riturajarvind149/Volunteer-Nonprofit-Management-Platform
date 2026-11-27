@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
@@ -9,6 +9,7 @@ import { missingDetails } from '../../utils/volunteerDetails'
 import { StatusBadge, LoadingState, EmptyState, Alert, CapacityMeter } from '../../components/ui'
 import { formatDate, formatTime, isUpcoming, spotsLabel } from '../../utils/format'
 import { opportunityPhoto } from '../../utils/photos'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './OpportunityDetails.css'
 
 function ShareAndCalendar({ opportunity }) {
@@ -281,7 +282,7 @@ function OpportunityDetails() {
     }
   }, [id, token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const backLink = user?.role === 'COORDINATOR'
     ? { to: '/manage-opportunities', label: 'Opportunities' }

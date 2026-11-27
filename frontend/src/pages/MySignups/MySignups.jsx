@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
@@ -7,6 +7,7 @@ import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, DateBlock, StatusBadge } from '../../components/ui'
 import { formatDate, formatTime, isUpcoming, isToday, compareByDate } from '../../utils/format'
 import { CheckInForm, LogHoursForm } from './SignupActions'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './MySignups.css'
 
 const TABS = [
@@ -57,7 +58,7 @@ function MySignups() {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const patchSignup = (id, patch) => setSignups((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
 

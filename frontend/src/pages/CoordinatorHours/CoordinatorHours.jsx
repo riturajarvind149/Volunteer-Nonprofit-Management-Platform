@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -9,6 +9,7 @@ import {
 } from '../../services/api'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge } from '../../components/ui'
 import { formatDate, formatHours, pluralize } from '../../utils/format'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './CoordinatorHours.css'
 
 const QUEUE_FILTERS = [
@@ -51,7 +52,7 @@ function CoordinatorHours() {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const updateStatus = async (record, status) => {
     setUpdatingId(record.id)

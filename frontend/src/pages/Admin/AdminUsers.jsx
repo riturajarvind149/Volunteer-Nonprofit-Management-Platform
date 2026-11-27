@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { getAdminUsersApi, setUserActiveApi } from '../../services/api'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
@@ -7,6 +7,7 @@ import Pagination from '../../components/Pagination'
 import { PageHeader, LoadingState, Alert, EmptyState, StatusBadge } from '../../components/ui'
 import { formatDate } from '../../utils/format'
 import VolunteerReviewPanel from './VolunteerReviewPanel'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Admin.css'
 
 const ROLE_FILTERS = [
@@ -71,7 +72,7 @@ function AdminUsers() {
     setNotice({ tone: 'success', text })
   }
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const setActive = async (target, isActive) => {
     setBusyId(target.id)

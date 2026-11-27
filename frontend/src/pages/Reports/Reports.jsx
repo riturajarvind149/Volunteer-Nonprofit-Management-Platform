@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import {
   getOrganizationOpportunitiesSummaryApi,
@@ -11,6 +11,7 @@ import DateRangeForm from '../../components/DateRangeForm'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge } from '../../components/ui'
 import { formatDate, formatHours, pluralize } from '../../utils/format'
 import { toCsv } from '../../utils/csv'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Reports.css'
 
 /**
@@ -128,7 +129,7 @@ function Reports() {
     }
   }, [token, type, range])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   // Clear the previous report's rows right away so they're never drawn with the new report's columns.
   const chooseReport = (key) => {

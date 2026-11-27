@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getManagedOpportunitiesApi, getMyOrganizationsApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge, CapacityMeter } from '../../components/ui'
 import { formatDate, formatTime, compareByDate } from '../../utils/format'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './ManageOpportunities.css'
 
 const STATUS_TABS = [
@@ -40,7 +41,7 @@ function ManageOpportunities() {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const counts = Object.fromEntries(
     STATUS_TABS.map((t) => [t.key, t.key ? opportunities.filter((o) => o.status === t.key).length : opportunities.length]),

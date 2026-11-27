@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getProfileApi } from '../../services/api'
@@ -9,6 +9,7 @@ import { formatDate, formatHours } from '../../utils/format'
 import { ProfileDetailsForm, NotificationPreference } from './ProfileDetailsForm'
 import SecuritySettings from './SecuritySettings'
 import PrivacySettings from './PrivacySettings'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Profile.css'
 
 const ROLE_LABELS = { ADMIN: 'Administrator', COORDINATOR: 'Coordinator' }
@@ -68,7 +69,7 @@ function Profile() {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   // The route guard normally waits for the session, but don't assume it: the user is null
   // while the session is being checked and for a moment after signing out.

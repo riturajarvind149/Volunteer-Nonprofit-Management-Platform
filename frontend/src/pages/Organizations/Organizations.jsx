@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getOrganizationsApi } from '../../services/api'
@@ -6,6 +6,7 @@ import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, OrgInitials } from '../../components/ui'
 import { formatDate, pluralize } from '../../utils/format'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Organizations.css'
 
 function Organizations() {
@@ -30,7 +31,7 @@ function Organizations() {
     }
   }, [token, debouncedQuery])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const filtered = organizations
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useNotifications } from '../../context/NotificationContext'
@@ -6,6 +6,7 @@ import { getNotificationsApi, markNotificationReadApi, markAllNotificationsReadA
 import Icon from '../../components/Icon'
 import { notificationLink } from '../../utils/notifications'
 import { Alert, EmptyState, LoadingState, PageHeader } from '../../components/ui'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Notifications.css'
 
 const TYPE_ICONS = {
@@ -62,9 +63,7 @@ function Notifications() {
     }
   }, [token, filter, setUnreadCount])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useAutoLoad(load)
 
   const applyRead = (id) => {
     setItems((prev) =>

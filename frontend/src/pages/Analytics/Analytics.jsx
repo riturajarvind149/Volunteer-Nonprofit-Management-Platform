@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -10,6 +10,7 @@ import {
 import MonthlyBars from '../../components/MonthlyBars'
 import { PageHeader, LoadingState, EmptyState, Alert } from '../../components/ui'
 import { formatHours, isUpcoming, pluralize } from '../../utils/format'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Analytics.css'
 
 const STATUS_ORDER = [
@@ -75,7 +76,7 @@ function Analytics() {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const live = opportunities.filter((o) => o.status === 'PUBLISHED' || o.status === 'COMPLETED')
   const seatsTaken = live.reduce((sum, o) => sum + Number(o.active_signups || 0), 0)

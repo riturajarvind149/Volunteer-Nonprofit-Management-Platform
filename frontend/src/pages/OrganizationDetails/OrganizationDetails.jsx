@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
@@ -7,6 +7,7 @@ import Icon from '../../components/Icon'
 import OpportunityRow from '../../components/OpportunityRow'
 import { LoadingState, EmptyState, OrgInitials, Alert } from '../../components/ui'
 import { formatDate, formatHours } from '../../utils/format'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './OrganizationDetails.css'
 
 const SOCIAL_BASE = {
@@ -114,7 +115,7 @@ function OrganizationDetails() {
     }
   }, [id, token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   if (loading) return <LoadingState label="Loading organization…" />
 
