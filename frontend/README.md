@@ -34,11 +34,20 @@ The backend must be running (see `../backend/README.md`).
 ```
 src/
   components/     shared UI (layout, icons, pagination, password input…)
-  context/        AuthContext (session, expiry handling), OpportunityContext
+  context/        contexts + hooks (useAuth, useOpportunities, useNotifications) and their providers
+  hooks/          useAutoLoad (page data loading), useDebouncedValue
   pages/          one folder per screen, each with its CSS and tests
   services/api.js every backend call, error handling and file downloads
   utils/          formatting, CSV export, password rules, skills parsing
   test/           test setup and helpers
 ```
+
+## Security headers
+
+`vercel.json` sends a Content-Security-Policy and other security headers with every page.
+The policy only lets the app call APIs on `https://*.onrender.com`. **If the backend moves to
+another host, add it to `connect-src` in `vercel.json`**, or every API call will be blocked.
+Scripts may only come from this site, so keep scripts out of `index.html` (the theme script lives
+in `public/theme-init.js`).
 
 Deployment: see [`../DEPLOYMENT.md`](../DEPLOYMENT.md).
