@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import Icon from '../../components/Icon'
 import TiltCard from '../../components/TiltCard'
 import { StatusBadge } from '../../components/ui'
+import ImpactStrip from './ImpactStrip'
 import './Home.css'
 
 const CommunityScene = lazy(() => import('./CommunityScene'))
@@ -310,6 +311,8 @@ function Home() {
           ))}
         </div>
       </section>
+
+      <ImpactStrip />
 
       <section className="home-section" aria-labelledby="roles-title">
         <h2 id="roles-title" className="home-section-heading" data-reveal>One account system, two jobs to do</h2>

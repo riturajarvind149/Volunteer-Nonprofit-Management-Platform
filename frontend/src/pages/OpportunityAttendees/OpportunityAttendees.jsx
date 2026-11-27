@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -99,7 +99,34 @@ function RosterPicker() {
   )
 }
 
-function CheckInCode({ code, eventDate }) {
+/** Link a volunteer's phone opens from the QR code: checks them in to this event. */
+const checkInLink = (opportunityId, code) =>
+  `${window.location.origin}/check-in?event=${encodeURIComponent(opportunityId)}&code=${encodeURIComponent(code)}`
+
+function CheckInQr({ link }) {
+  const [svg, setSvg] = useState('')
+  useEffect(() => {
+    let active = true
+    // Loaded on demand: only coordinators opening a roster need the QR encoder.
+    import('qrcode')
+      .then((QRCode) => QRCode.toString(link, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }))
+      .then((markup) => { if (active) setSvg(markup) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [link])
+  if (!svg) return null
+  return (
+    <img
+      className="checkin-qr"
+      src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
+      alt="QR code: volunteers scan it with their phone camera to check in"
+      width="168"
+      height="168"
+    />
+  )
+}
+
+function CheckInCode({ code, eventDate, opportunityId }) {
   const [copied, setCopied] = useState(false)
   if (!code) return null
   const copy = async () => {
@@ -117,9 +144,11 @@ function CheckInCode({ code, eventDate }) {
         <h2 id="checkin-code-title" className="checkin-code-title">Check-in code</h2>
         <p className="muted">
           Show or read this out at the venue{eventDate ? ` on ${formatDate(eventDate, { weekday: 'long', month: 'long' })}` : ''}.
-          Volunteers enter it under My registrations from 1 hour before the start until 3 hours after the end.
+          Volunteers scan the QR code with their phone camera, or enter the code under My registrations,
+          from 1 hour before the start until 3 hours after the end.
         </p>
       </div>
+      {opportunityId && <CheckInQr link={checkInLink(opportunityId, code)} />}
       <div className="checkin-code-value">
         <span className="checkin-code-text" aria-label={`Code ${code.split('').join(' ')}`}>{code}</span>
         <button type="button" className="btn btn-secondary btn-sm" onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
@@ -297,7 +326,7 @@ function Roster({ opportunityId }) {
         )}
       </div>
 
-      {showCode && <CheckInCode code={opportunity.check_in_code} eventDate={opportunity.event_date} />}
+      {showCode && <CheckInCode code={opportunity.check_in_code} eventDate={opportunity.event_date} opportunityId={opportunity.id} />}
 
       <div aria-live="polite">{notice && <Alert tone={notice.tone}>{notice.text}</Alert>}</div>
 

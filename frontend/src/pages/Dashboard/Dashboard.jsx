@@ -14,6 +14,7 @@ import OpportunityRow from '../../components/OpportunityRow'
 import { LoadingState, EmptyState, Alert, DateBlock, StatusBadge, CapacityMeter } from '../../components/ui'
 import { formatDate, formatTime, formatHours, isUpcoming, compareByDate, pluralize } from '../../utils/format'
 import { useAutoLoad } from '../../hooks/useAutoLoad'
+import { rankBySkills } from '../../utils/matching'
 import './Dashboard.css'
 
 function greeting() {
@@ -75,8 +76,8 @@ function VolunteerDashboard({ user, token }) {
 
   const suggestions = opportunities
     .filter((o) => o.status === 'PUBLISHED' && isUpcoming(o.event_date) && Number(o.spots_remaining) > 0 && !signupStatus(o.id))
-    .sort(compareByDate)
-    .slice(0, 4)
+  // Events that need the volunteer's skills come first, then the soonest.
+  const ranked = rankBySkills(suggestions, user?.skills, compareByDate).slice(0, 4)
 
   const awaiting = Number(hours?.recorded_hours || 0) + Number(hours?.pending_hours || 0)
 
@@ -142,9 +143,9 @@ function VolunteerDashboard({ user, token }) {
                 <h2 id="open-title" className="section-title">Open for registration</h2>
                 <Link to="/opportunities" className="dash-more">Browse all</Link>
               </div>
-              {suggestions.length > 0 ? (
+              {ranked.length > 0 ? (
                 <ul role="list" className="opp-list">
-                  {suggestions.map((o) => <li key={o.id}><OpportunityRow opportunity={o} /></li>)}
+                  {ranked.map((o) => <li key={o.id}><OpportunityRow opportunity={o} matchedSkills={o.matched_skills} /></li>)}
                 </ul>
               ) : (
                 <div className="panel">

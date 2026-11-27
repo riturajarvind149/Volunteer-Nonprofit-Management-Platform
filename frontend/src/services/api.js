@@ -178,6 +178,8 @@ export const previewInvitationApi = (invitationToken) => authFetch('/invitations
 export const acceptInvitationApi = (invitationToken, details = {}, token) =>
   authFetch('/invitations/accept', { method: 'POST', body: { token: invitationToken, ...details }, token })
 /** Public impact figures: volunteers, hours, events, fill rate. */
+/** Public platform totals for the home page. */
+export const getImpactApi = () => authFetch('/stats/impact')
 export const getOrganizationImpactApi = (id, token) => authFetch('/organizations/' + id + '/impact', { token })
 
 // ---- Opportunities (search/detail are public; token optional) ----

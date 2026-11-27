@@ -51,6 +51,12 @@ describe('Roster', () => {
     expect(screen.getByText('K7Q2ZP')).toBeInTheDocument()
   })
 
+  it('shows a QR code volunteers can scan to check in', async () => {
+    setup()
+    const qr = await screen.findByAltText(/volunteers scan it with their phone camera to check in/)
+    expect(qr.getAttribute('src')).toMatch(/^data:image\/svg\+xml/)
+  })
+
   it('marks attendance and shows who already checked in', async () => {
     setAttendanceApi.mockResolvedValue({ data: { signup: { attendance_status: 'PRESENT', checked_in_at: '2099-06-01T09:10:00Z' } } })
     setup()

@@ -1,0 +1,59 @@
+.checkin-page {
+  display: flex;
+  justify-content: center;
+}
+
+.checkin-result {
+  max-width: 34rem;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
+}
+
+.checkin-result h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.checkin-result-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 999px;
+}
+
+.checkin-result.is-ok .checkin-result-icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.checkin-result.is-error .checkin-result-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.checkin-event {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.checkin-result .alert {
+  text-align: left;
+  width: 100%;
+}
+
+.checkin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
