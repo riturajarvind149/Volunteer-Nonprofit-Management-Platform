@@ -28,6 +28,7 @@ import MySignups from './pages/MySignups/MySignups'
 import ManageOpportunities from './pages/ManageOpportunities/ManageOpportunities'
 import OpportunityForm from './pages/OpportunityForm/OpportunityForm'
 import VolunteerHours from './pages/VolunteerHours/VolunteerHours'
+import CheckIn from './pages/CheckIn/CheckIn'
 import CoordinatorHours from './pages/CoordinatorHours/CoordinatorHours'
 import OpportunityAttendees from './pages/OpportunityAttendees/OpportunityAttendees'
 import Analytics from './pages/Analytics/Analytics'
@@ -123,6 +124,7 @@ function AppRoutes() {
           <Route element={<RequireAuth roles={['VOLUNTEER']} />}>
             <Route path="/my-signups" element={<MySignups />} />
             <Route path="/my-hours" element={<VolunteerHours />} />
+            <Route path="/check-in" element={<CheckIn />} />
           </Route>
 
           <Route element={<RequireAuth roles={['ADMIN']} />}>

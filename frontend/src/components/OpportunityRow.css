@@ -109,3 +109,12 @@
     display: none;
   }
 }
+
+.opp-row-match {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.35rem 0 0;
+  font-size: var(--text-sm, 0.85rem);
+  color: var(--success);
+}

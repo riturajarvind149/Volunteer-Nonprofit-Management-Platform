@@ -5,7 +5,7 @@ import { formatTime, spotsLabel } from '../utils/format'
 import { opportunityPhoto } from '../utils/photos'
 import './OpportunityRow.css'
 
-function OpportunityRow({ opportunity, registered = false, showOrganization = true }) {
+function OpportunityRow({ opportunity, registered = false, showOrganization = true, matchedSkills = [] }) {
   const time = formatTime(opportunity.start_time, opportunity.end_time)
   const spots = spotsLabel(opportunity)
   const isFull = spots === 'Full'
@@ -35,6 +35,12 @@ function OpportunityRow({ opportunity, registered = false, showOrganization = tr
           {time && <span><Icon name="clock" size={14} />{time}</span>}
           {opportunity.location && <span><Icon name="map-pin" size={14} />{opportunity.location}</span>}
         </div>
+        {matchedSkills.length > 0 && (
+          <p className="opp-row-match">
+            <Icon name="check-circle" size={14} />
+            Matches your skills: {matchedSkills.join(', ')}
+          </p>
+        )}
       </div>
       <div className="opp-row-side">
         {registered ? (
