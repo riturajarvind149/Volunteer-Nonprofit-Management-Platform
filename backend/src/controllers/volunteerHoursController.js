@@ -1,4 +1,5 @@
 const volunteerHoursService = require('../services/volunteerHoursService');
+const { parsePagination } = require('../utils/validators');
 
 /**
  * Controller for volunteer hours management
@@ -76,7 +77,15 @@ const getMyHours = async (req, res, next) => {
 const getOrganizationHours = async (req, res, next) => {
   try {
     const coordinatorId = req.user.id;
-    const hours = await volunteerHoursService.getOrganizationHours(coordinatorId);
+    // Pagination is opt-in (?page= / ?limit=) so existing clients still get every record.
+    const wantsPaging = req.query.page !== undefined || req.query.limit !== undefined;
+    const status = typeof req.query.status === 'string' && req.query.status.trim()
+      ? req.query.status.trim().toUpperCase()
+      : undefined;
+    const { hours, pagination } = await volunteerHoursService.getOrganizationHours(coordinatorId, {
+      status,
+      paging: wantsPaging ? parsePagination(req.query) : undefined,
+    });
 
     res.status(200).json({
       status: 'success',
@@ -84,6 +93,7 @@ const getOrganizationHours = async (req, res, next) => {
       data: {
         volunteer_hours: hours,
         hours,
+        ...(pagination ? { pagination } : {}),
       },
     });
   } catch (error) {

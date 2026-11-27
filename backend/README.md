@@ -156,6 +156,7 @@ Roles: **volunteer**, **coordinator** (a member of one or more NGOs — owner or
 | `GET /api/users/me/export` | user | Download personal data (JSON) |
 | `DELETE /api/users/me` `{password}` | user | Permanently delete account (NGO admins hand over first) |
 | `GET /api/opportunities?q=&category=&location=&from_date=&to_date=&skills=&available=true&upcoming=true&sort=&page=&limit=` | public | Search published opportunities |
+| `POST /api/opportunities` · `PATCH /api/opportunities/:id` `{…, ends_next_day}` | coordinator | Create / edit an event; `ends_next_day: true` allows an end time after midnight (e.g. 22:00–02:00) |
 | `GET /api/opportunities/:id/calendar.ics` | public | Add to calendar |
 | `POST/DELETE /api/opportunities/:id/waitlist` | volunteer | Join / leave waitlist (auto-promoted when a spot opens) |
 | `POST /api/opportunities/:id/check-in` `{code}` | volunteer | Self check-in with the event code |
@@ -163,6 +164,7 @@ Roles: **volunteer**, **coordinator** (a member of one or more NGOs — owner or
 | `PATCH /api/signups/:id/attendance` `{attendance_status}` | coordinator | Mark PRESENT / ABSENT |
 | `POST /api/signups/:id/hours/self` `{hours, notes}` | volunteer | Log own hours for review |
 | `GET /api/hours/my/certificate` | volunteer | PDF certificate of verified hours |
+| `GET /api/hours/organization?status=&page=&limit=` | coordinator | Hours of my NGOs; `page`/`limit` are optional and add `pagination` |
 | `GET /api/organizations?q=&page=` | public | Directory of verified NGOs (`my_role` when signed in) |
 | `POST /api/organizations` `{name, registration_type, city, …}` | coordinator | Register an NGO (one per account) |
 | `GET /api/organizations/mine` | coordinator | NGOs I belong to, with `my_role` |
@@ -181,5 +183,6 @@ Roles: **volunteer**, **coordinator** (a member of one or more NGOs — owner or
 | `GET /api/admin/stats` | admin | Platform KPIs |
 | `GET /api/admin/organizations?status=PENDING` | admin | NGO review queue (with registration details) |
 | `PATCH /api/admin/organizations/:id/verification` `{status, note}` | admin | Approve / reject / suspend |
+| `POST /api/admin/organizations/:id/close` `{reason}` | admin | Close an NGO for good: cancels upcoming events, removes its team, keeps past hours |
 | `GET /api/admin/users?q=&role=` · `PATCH /api/admin/users/:id` `{is_active}` | admin | Manage users |
 | `GET /api/admin/audit-logs` | admin | Admin action history |

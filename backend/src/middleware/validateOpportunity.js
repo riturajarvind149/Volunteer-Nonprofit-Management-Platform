@@ -15,6 +15,32 @@ const normalizeTime = (timeStr) => {
 };
 
 /**
+ * Check a start/end time pair. An event may finish after midnight (e.g. 22:00–02:00)
+ * only when it is explicitly marked `ends_next_day`, so a typo such as 09:00–08:00
+ * isn't silently saved as a 23-hour event.
+ * @returns {string|null} error message, or null when the pair is valid
+ */
+const timeRangeError = (startTime, endTime, endsNextDay) => {
+  const start = normalizeTime(startTime);
+  const end = normalizeTime(endTime);
+  if (endsNextDay) {
+    return end < start
+      ? null
+      : 'For an event that ends the next day, the end time must be earlier than the start time';
+  }
+  return end < start
+    ? 'End time must not be earlier than start time. If the event finishes after midnight, mark it as ending the next day.'
+    : null;
+};
+
+/** Optional boolean flag; returns { error } for anything that isn't true/false. */
+const parseEndsNextDay = (raw) => {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'boolean') return { error: 'ends_next_day must be true or false' };
+  return { value: raw };
+};
+
+/**
  * Validates real calendar date including leap years
  * @param {string} dateStr YYYY-MM-DD
  * @returns {boolean}
@@ -126,9 +152,10 @@ const validateCreateOpportunity = (req, res, next) => {
   }
   const trimmedEndTime = end_time.trim();
 
-  if (normalizeTime(trimmedEndTime) < normalizeTime(trimmedStartTime)) {
-    return next(new AppError('End time must not be earlier than start time', 400));
-  }
+  const endsNextDay = parseEndsNextDay(req.body.ends_next_day);
+  if (endsNextDay.error) return next(new AppError(endsNextDay.error, 400));
+  const rangeError = timeRangeError(trimmedStartTime, trimmedEndTime, endsNextDay.value === true);
+  if (rangeError) return next(new AppError(rangeError, 400));
 
   // 8. Validate location (optional in body, defaults to 'Location TBD' for database NOT NULL column)
   let trimmedLocation = 'Location TBD';
@@ -253,6 +280,7 @@ const validateUpdateOpportunity = (req, res, next) => {
     'status',
     'skills_required',
     'cancellation_reason',
+    'ends_next_day',
   ];
 
   const hasAtLeastOneField = updateKeys.some((k) => req.body && req.body[k] !== undefined);
@@ -334,11 +362,15 @@ const validateUpdateOpportunity = (req, res, next) => {
     sanitized.end_time = end_time.trim();
   }
 
-  // If both start_time and end_time are provided in the update, cross-validate them here
+  const endsNextDay = parseEndsNextDay(req.body?.ends_next_day);
+  if (endsNextDay.error) return next(new AppError(endsNextDay.error, 400));
+  if (endsNextDay.value !== undefined) sanitized.ends_next_day = endsNextDay.value;
+
+  // If both times and the overnight flag are known here, cross-validate them now;
+  // otherwise the service checks them against the stored values.
   if (sanitized.start_time !== undefined && sanitized.end_time !== undefined) {
-    if (normalizeTime(sanitized.end_time) < normalizeTime(sanitized.start_time)) {
-      return next(new AppError('End time must not be earlier than start time', 400));
-    }
+    const rangeError = timeRangeError(sanitized.start_time, sanitized.end_time, sanitized.ends_next_day === true);
+    if (rangeError && sanitized.ends_next_day !== undefined) return next(new AppError(rangeError, 400));
   }
 
   // 7. Validate location if provided
@@ -435,6 +467,7 @@ const validateOpportunityId = (req, res, next) => {
 
 module.exports = {
   normalizeTime,
+  timeRangeError,
   isValidDateString,
   validateCreateOpportunity,
   validateUpdateOpportunity,

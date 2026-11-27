@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const userRepository = require('../repositories/userRepository');
 const organizationRepository = require('../repositories/organizationRepository');
+const opportunityRepository = require('../repositories/opportunityRepository');
 const organizationMemberRepository = require('../repositories/organizationMemberRepository');
 const notificationService = require('./notificationService');
 const templates = require('./emailTemplates');
@@ -8,7 +9,7 @@ const AppError = require('../utils/AppError');
 const { paginationMeta } = require('../utils/validators');
 const { missingVolunteerDetails } = require('../utils/volunteerDetails');
 
-const ORG_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'];
+const ORG_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED', 'CLOSED'];
 
 const audit = async (actorId, action, entityType, entityId, details) => {
   await pool.query(
@@ -41,13 +42,14 @@ const listOrganizations = async ({ status, q, page, limit, offset }) => {
     `SELECT org.id, org.name, org.description, org.email, org.phone, org.website, org.address,
             org.registration_type, org.registration_number, org.city,
             u.phone AS owner_phone,
-            org.verification_status, org.verification_note, org.verified_at, org.created_at,
+            org.verification_status, org.verification_note, org.verified_at, org.closed_at, org.created_at,
             u.id AS owner_id, u.full_name AS owner_name, u.email AS owner_email,
             (SELECT COUNT(*)::int FROM opportunities o WHERE o.organization_id = org.id) AS opportunity_count,
             COUNT(*) OVER()::int AS total_count
        FROM organizations org
-       JOIN organization_members owner ON owner.organization_id = org.id AND owner.role = 'OWNER'
-       JOIN users u ON u.id = owner.user_id
+       -- Closed NGOs no longer have members, so the owner is optional here.
+       LEFT JOIN organization_members owner ON owner.organization_id = org.id AND owner.role = 'OWNER'
+       LEFT JOIN users u ON u.id = owner.user_id
       WHERE ($1::text IS NULL OR org.verification_status = $1)
         AND ($2::text IS NULL OR org.name ILIKE '%' || $2 || '%' OR u.email ILIKE '%' || $2 || '%')
       ORDER BY (org.verification_status = 'PENDING') DESC, org.created_at DESC
@@ -74,6 +76,9 @@ const reviewOrganization = async (orgId, { status, note }, adminId) => {
 
   const existing = await organizationRepository.findById(orgId);
   if (!existing) throw new AppError('Organization not found', 404);
+  if (existing.verification_status === 'CLOSED') {
+    throw new AppError('This NGO is closed. Closed NGOs can’t be reviewed again.', 409, 'ORG_CLOSED');
+  }
 
   const organization = await organizationRepository.setVerification(orgId, {
     status,
@@ -102,6 +107,71 @@ const reviewOrganization = async (orgId, { status, note }, adminId) => {
   }
 
   return organization;
+};
+
+/**
+ * Close an NGO for good (admin). Upcoming events are cancelled and their volunteers
+ * notified; the team is removed and told why. Past events and hours are kept.
+ */
+const closeOrganization = async (orgId, { reason }, adminId) => {
+  if (typeof reason !== 'string' || !reason.trim()) {
+    throw new AppError('Please include a reason for closing this NGO', 400);
+  }
+  if (reason.trim().length > 1000) {
+    throw new AppError('reason must be at most 1000 characters', 400);
+  }
+  const note = reason.trim();
+
+  const existing = await organizationRepository.findById(orgId);
+  if (!existing) throw new AppError('Organization not found', 404);
+  if (existing.verification_status === 'CLOSED') {
+    throw new AppError('This NGO is already closed', 409, 'ORG_CLOSED');
+  }
+
+  const result = await organizationRepository.close(orgId, { reason: note, adminId });
+  if (!result) throw new AppError('This NGO is already closed', 409, 'ORG_CLOSED');
+  const { organization, members, cancelledOpportunityIds } = result;
+
+  const owner = members.find((m) => m.role === 'OWNER');
+  await audit(adminId, 'ORGANIZATION_CLOSED', 'organization', orgId, {
+    from: existing.verification_status,
+    note,
+    owner_email: owner?.email,
+    cancelled_events: cancelledOpportunityIds.length,
+  });
+
+  // Notifications must never undo the closure.
+  try {
+    for (const oppId of cancelledOpportunityIds) {
+      const opp = await opportunityRepository.findOpportunityById(oppId);
+      const volunteers = await opportunityRepository.findRegisteredVolunteers(oppId);
+      for (const volunteer of volunteers) {
+        await notificationService.notify({
+          user: volunteer,
+          title: 'Opportunity cancelled',
+          message: `${opp.title} on ${opp.event_date} has been cancelled because ${existing.name} has closed.`,
+          type: 'EVENT_CANCELLED',
+          reference_id: oppId,
+          email: templates.eventCancelled({ name: volunteer.full_name, opp, reason: opp.cancellation_reason }),
+          force: true,
+        });
+      }
+    }
+    for (const member of members) {
+      await notificationService.notify({
+        user: member,
+        title: 'NGO closed',
+        message: `${existing.name} was closed by the ServeHub team. Reason: ${note}`,
+        type: 'INFO',
+        email: templates.orgClosed({ name: member.full_name, orgName: existing.name, reason: note }),
+        force: true,
+      });
+    }
+  } catch {
+    // non-blocking
+  }
+
+  return { organization, cancelled_events: cancelledOpportunityIds.length };
 };
 
 const VOLUNTEER_STATUSES = ['UNVERIFIED', 'VERIFIED', 'FLAGGED'];
@@ -178,6 +248,7 @@ module.exports = {
   getStats,
   listOrganizations,
   reviewOrganization,
+  closeOrganization,
   listUsers,
   reviewVolunteer,
   setUserActive,

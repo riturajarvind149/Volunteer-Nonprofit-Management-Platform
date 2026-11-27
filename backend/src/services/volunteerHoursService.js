@@ -5,7 +5,7 @@ const organizationMemberRepository = require('../repositories/organizationMember
 const userRepository = require('../repositories/userRepository');
 const notificationService = require('./notificationService');
 const templates = require('./emailTemplates');
-const { isUuid } = require('../utils/validators');
+const { isUuid, paginationMeta } = require('../utils/validators');
 const AppError = require('../utils/AppError');
 
 /**
@@ -92,8 +92,25 @@ const getMyHours = async (volunteerId, filters = {}) => {
  * @param {string} coordinatorId - Coordinator UUID
  * @returns {Promise<Array>} List of organization volunteer hours with joined details
  */
-const getOrganizationHours = async (coordinatorId) => {
-  return await volunteerHoursRepository.findByCoordinatorId(coordinatorId);
+const HOURS_STATUSES = ['PENDING', 'RECORDED', 'VERIFIED', 'REJECTED'];
+
+/**
+ * @param {string} coordinatorId
+ * @param {Object} [options]
+ * @param {string} [options.status] - only records with this status
+ * @param {{page: number, limit: number, offset: number}} [options.paging] - omit for every record
+ * @returns {Promise<{hours: Array, pagination?: Object}>}
+ */
+const getOrganizationHours = async (coordinatorId, { status, paging } = {}) => {
+  if (status && !HOURS_STATUSES.includes(status)) {
+    throw new AppError(`status must be one of ${HOURS_STATUSES.join(', ')}`, 400);
+  }
+  const { hours, total } = await volunteerHoursRepository.findByCoordinatorId(coordinatorId, {
+    status,
+    limit: paging?.limit,
+    offset: paging?.offset,
+  });
+  return paging ? { hours, pagination: paginationMeta(paging, total) } : { hours };
 };
 
 /**
