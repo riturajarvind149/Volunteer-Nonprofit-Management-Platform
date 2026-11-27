@@ -6,7 +6,7 @@ const waitlistRepository = require('../repositories/waitlistRepository');
 const notificationService = require('./notificationService');
 const waitlistService = require('./waitlistService');
 const templates = require('./emailTemplates');
-const { normalizeTime } = require('../middleware/validateOpportunity');
+const { normalizeTime, timeRangeError } = require('../middleware/validateOpportunity');
 const { config } = require('../config/env');
 const { paginationMeta } = require('../utils/validators');
 const AppError = require('../utils/AppError');
@@ -27,7 +27,7 @@ const canManage = async (opp, user) => {
 const isPubliclyVisible = (opp) =>
   ['PUBLISHED', 'COMPLETED'].includes(opp.status) &&
   (opp.organization_verification_status === 'APPROVED' ||
-    (!config.requireOrgApproval && !['REJECTED', 'SUSPENDED'].includes(opp.organization_verification_status)));
+    (!config.requireOrgApproval && !['REJECTED', 'SUSPENDED', 'CLOSED'].includes(opp.organization_verification_status)));
 
 const stripPrivate = (opp, manageable) => {
   if (!opp) return opp;
@@ -174,8 +174,12 @@ const updateOpportunity = async (id, updateData, coordinatorId) => {
   const effectiveStartTime = updateData.start_time !== undefined ? updateData.start_time : opp.start_time;
   const effectiveEndTime = updateData.end_time !== undefined ? updateData.end_time : opp.end_time;
 
-  if (normalizeTime(effectiveEndTime) < normalizeTime(effectiveStartTime)) {
-    throw new AppError('End time must not be earlier than start time', 400);
+  // An event keeps ending the next day unless the update says otherwise.
+  const wasOvernight = normalizeTime(String(opp.end_time)) < normalizeTime(String(opp.start_time));
+  const endsNextDay = updateData.ends_next_day !== undefined ? updateData.ends_next_day : wasOvernight;
+  const rangeError = timeRangeError(String(effectiveStartTime), String(effectiveEndTime), endsNextDay);
+  if (rangeError) {
+    throw new AppError(rangeError, 400);
   }
 
   // 5. Capacity safety: capacity cannot be reduced below active (non-cancelled) signup count

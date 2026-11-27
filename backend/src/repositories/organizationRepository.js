@@ -4,7 +4,7 @@ const { memberOf } = require('./organizationMemberRepository');
 const ORG_COLUMNS =
   'id, name, description, phone, email, website, address, social_links, logo_url, ' +
   'registration_type, registration_number, city, ' +
-  'verification_status, verification_note, verified_at, created_at, updated_at';
+  'verification_status, verification_note, verified_at, closed_at, created_at, updated_at';
 
 /** `my_role` column: the viewer's role in each organization (OWNER / COORDINATOR / null). */
 const myRole = (userParam) =>
@@ -57,7 +57,7 @@ const create = async (
 /** An organization with this name (any letter case) that hasn't been rejected, or null. */
 const findActiveByName = async (name) => {
   const { rows } = await pool.query(
-    `SELECT id, name FROM organizations WHERE LOWER(name) = LOWER($1) AND verification_status <> 'REJECTED' LIMIT 1`,
+    `SELECT id, name FROM organizations WHERE LOWER(name) = LOWER($1) AND verification_status NOT IN ('REJECTED', 'CLOSED') LIMIT 1`,
     [name]
   );
   return rows[0] || null;
@@ -137,6 +137,68 @@ const setVerification = async (id, { status, note, adminId }) => {
     [id, status, note || null, adminId]
   );
   return rows[0] || null;
+};
+
+/**
+ * Close an organization in one transaction (admin):
+ *  - status CLOSED with the reason as its note,
+ *  - every upcoming DRAFT / PUBLISHED event is cancelled and its waitlist cleared,
+ *  - all team memberships are removed.
+ * Past events, signups and hours are kept.
+ * @returns {Promise<{organization: Object, members: Object[], cancelledOpportunityIds: string[]}|null>}
+ *   null when the organization doesn't exist or is already closed.
+ */
+const close = async (id, { reason, adminId }) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const locked = await client.query(
+      "SELECT id FROM organizations WHERE id = $1 AND verification_status <> 'CLOSED' FOR UPDATE",
+      [id]
+    );
+    if (!locked.rows.length) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const { rows: orgRows } = await client.query(
+      `UPDATE organizations
+          SET verification_status = 'CLOSED', verification_note = $2, verified_by = $3,
+              closed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+        RETURNING ${ORG_COLUMNS}`,
+      [id, reason, adminId]
+    );
+
+    const { rows: cancelled } = await client.query(
+      `UPDATE opportunities
+          SET status = 'CANCELLED', cancellation_reason = 'The organizing NGO has closed.',
+              updated_at = CURRENT_TIMESTAMP
+        WHERE organization_id = $1 AND status IN ('DRAFT', 'PUBLISHED') AND event_date >= CURRENT_DATE
+        RETURNING id`,
+      [id]
+    );
+    const cancelledOpportunityIds = cancelled.map((r) => r.id);
+    if (cancelledOpportunityIds.length) {
+      await client.query('DELETE FROM waitlist_entries WHERE opportunity_id = ANY($1)', [cancelledOpportunityIds]);
+    }
+
+    const { rows: members } = await client.query(
+      `DELETE FROM organization_members om
+        USING users u
+        WHERE om.organization_id = $1 AND u.id = om.user_id
+        RETURNING u.id, u.full_name, u.email, u.email_notifications, om.role`,
+      [id]
+    );
+
+    await client.query('COMMIT');
+    return { organization: orgRows[0], members, cancelledOpportunityIds };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 /**
@@ -279,5 +341,6 @@ module.exports = {
   search,
   findByMember,
   setVerification,
+  close,
 };
 

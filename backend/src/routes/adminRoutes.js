@@ -59,6 +59,16 @@ router.patch(
   })
 );
 
+/** POST /api/admin/organizations/:id/close { reason } — close an NGO for good */
+router.post(
+  '/organizations/:id/close',
+  requireUuid,
+  handle(async (req, res) => {
+    const data = await adminService.closeOrganization(req.params.id, { reason: req.body.reason }, req.user.id);
+    res.json({ status: 'success', message: 'Organization closed', data });
+  })
+);
+
 /** GET /api/admin/users?q=&role=&page= */
 router.get(
   '/users',

@@ -16,8 +16,12 @@ const formatDate = (value) => {
 
 const formatTime = (value) => (value ? String(value).slice(0, 5) : '');
 
+const endsNextDay = (opp) => String(opp.end_time || '') < String(opp.start_time || '');
+
 const eventLine = (opp) =>
-  `${formatDate(opp.event_date)}, ${formatTime(opp.start_time)}–${formatTime(opp.end_time)} at ${opp.location}`;
+  `${formatDate(opp.event_date)}, ${formatTime(opp.start_time)}–${formatTime(opp.end_time)}${
+    endsNextDay(opp) ? ' (next day)' : ''
+  } at ${opp.location}`;
 
 module.exports = {
   verifyEmail: ({ name, token, code }) => ({
@@ -155,6 +159,18 @@ module.exports = {
         : `"${orgName}" was marked as ${status.toLowerCase()}. Published opportunities are hidden until it is approved again.`,
       note ? `Note from the reviewer: ${note}` : '',
     ].filter(Boolean),
+    cta: { label: 'Go to dashboard', url: link('/dashboard') },
+  }),
+
+  orgClosed: ({ name, orgName, reason }) => ({
+    subject: `"${orgName}" has been closed on ${config.appName}`,
+    heading: 'Your NGO was closed',
+    paragraphs: [
+      `Hi ${name},`,
+      `The ${config.appName} team has closed "${orgName}". Its upcoming events were cancelled and volunteers were told.`,
+      `Reason: ${reason}`,
+      'Past events and verified volunteer hours are kept. You are no longer a member of this NGO, so you can register a new NGO or delete your account.',
+    ],
     cta: { label: 'Go to dashboard', url: link('/dashboard') },
   }),
 

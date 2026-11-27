@@ -248,7 +248,18 @@ const findByVolunteerId = async (volunteerId, { from_date, to_date } = {}) => {
  * @param {string} coordinatorId - Coordinator UUID
  * @returns {Promise<Array>} List of volunteer_hours records with joined details
  */
-const findByCoordinatorId = async (coordinatorId) => {
+const findByCoordinatorId = async (coordinatorId, { statuses = [], limit, offset } = {}) => {
+  const values = [coordinatorId];
+  let statusFilter = '';
+  if (statuses.length) {
+    values.push(statuses);
+    statusFilter = `AND vh.status = ANY($${values.length})`;
+  }
+  let paging = '';
+  if (limit !== undefined) {
+    values.push(limit, offset || 0);
+    paging = `LIMIT $${values.length - 1} OFFSET $${values.length}`;
+  }
   const query = `
     SELECT 
       vh.id,
@@ -267,17 +278,37 @@ const findByCoordinatorId = async (coordinatorId) => {
       vh.self_reported,
       o.event_date AS opportunity_event_date,
       vh.created_at,
-      vh.updated_at
+      vh.updated_at,
+      COUNT(*) OVER()::int AS total_count
     FROM volunteer_hours vh
     JOIN signups s ON vh.signup_id = s.id
     JOIN users u ON s.volunteer_id = u.id
     JOIN opportunities o ON s.opportunity_id = o.id
     JOIN organizations org ON o.organization_id = org.id
-    WHERE ${memberOf('org.id', '$1')}
-    ORDER BY vh.created_at DESC
+    WHERE ${memberOf('org.id', '$1')} ${statusFilter}
+    ORDER BY vh.created_at DESC, vh.id
+    ${paging}
   `;
-  const { rows } = await pool.query(query, [coordinatorId]);
-  return rows;
+  const { rows } = await pool.query(query, values);
+  return {
+    hours: rows.map(({ total_count: _omit, ...row }) => row),
+    // A page past the end has no rows to read the count from; count again in that rare case.
+    total: rows.length ? rows[0].total_count : limit !== undefined && offset ? await countByCoordinatorId(coordinatorId, statuses) : 0,
+  };
+};
+
+const countByCoordinatorId = async (coordinatorId, statuses) => {
+  const values = [coordinatorId];
+  if (statuses.length) values.push(statuses);
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS n
+       FROM volunteer_hours vh
+       JOIN signups s ON vh.signup_id = s.id
+       JOIN opportunities o ON s.opportunity_id = o.id
+      WHERE ${memberOf('o.organization_id', '$1')} ${statuses.length ? 'AND vh.status = ANY($2)' : ''}`,
+    values
+  );
+  return rows[0].n;
 };
 
 /**

@@ -45,7 +45,7 @@ const createOpportunity = async ({
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING id, organization_id, title, description, category, event_date,
-              start_time, end_time, location, address, capacity, status,
+              start_time, end_time, (end_time < start_time) AS ends_next_day, location, address, capacity, status,
               skills_required, check_in_code, cancellation_reason, created_at, updated_at
   `;
 
@@ -72,10 +72,16 @@ const createOpportunity = async ({
 const ACTIVE_COUNT_SQL =
   "(SELECT COUNT(*)::int FROM signups s WHERE s.opportunity_id = o.id AND s.status != 'CANCELLED')";
 
+/**
+ * An event whose end time is earlier than its start time finishes the next day
+ * (e.g. 22:00–02:00). Validation only allows that when the event is marked as such.
+ */
+const ENDS_NEXT_DAY_SQL = '(o.end_time < o.start_time)';
+
 /** Public opportunity columns (check_in_code deliberately excluded). */
 const OPP_SELECT = `
   o.id, o.organization_id, o.title, o.description, o.category, o.event_date,
-  o.start_time, o.end_time, o.location, o.address, o.capacity, o.status,
+  o.start_time, o.end_time, ${ENDS_NEXT_DAY_SQL} AS ends_next_day, o.location, o.address, o.capacity, o.status,
   o.skills_required, o.cancellation_reason, o.created_at, o.updated_at,
   org.name AS organization_name,
   org.logo_url AS organization_logo_url,
@@ -124,7 +130,7 @@ const searchOpportunities = async (f = {}) => {
   } else if (f.publicOnly) {
     const visible =
       f.requireApprovedOrg === false
-        ? "(o.status IN ('PUBLISHED','COMPLETED') AND org.verification_status NOT IN ('REJECTED','SUSPENDED'))"
+        ? "(o.status IN ('PUBLISHED','COMPLETED') AND org.verification_status NOT IN ('REJECTED','SUSPENDED','CLOSED'))"
         : "(o.status IN ('PUBLISHED','COMPLETED') AND org.verification_status = 'APPROVED')";
     where.push(f.includeMemberId ? `(${visible} OR ${memberOf('org.id', param(f.includeMemberId))})` : visible);
   }
@@ -288,7 +294,7 @@ const updateOpportunity = async (id, updateFields) => {
     SET ${setClauses.join(', ')}
     WHERE id = $${paramIndex}
     RETURNING id, organization_id, title, description, category, event_date,
-              start_time, end_time, location, address, capacity, status,
+              start_time, end_time, (end_time < start_time) AS ends_next_day, location, address, capacity, status,
               skills_required, check_in_code, cancellation_reason, created_at, updated_at
   `;
 
