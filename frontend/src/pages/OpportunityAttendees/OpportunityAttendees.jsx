@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -12,6 +12,7 @@ import {
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge, CapacityMeter } from '../../components/ui'
 import { formatDate, formatTime, formatHours, isUpcoming, compareByDate, pluralize } from '../../utils/format'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './OpportunityAttendees.css'
 
 function RosterPicker() {
@@ -32,7 +33,7 @@ function RosterPicker() {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const upcoming = opportunities.filter((o) => isUpcoming(o.event_date)).sort(compareByDate)
   const past = opportunities.filter((o) => !isUpcoming(o.event_date)).sort((a, b) => compareByDate(b, a))
@@ -181,7 +182,7 @@ function Roster({ opportunityId }) {
     }
   }, [opportunityId, token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const changeStatus = async (signup, status) => {
     setBusyId(signup.id)

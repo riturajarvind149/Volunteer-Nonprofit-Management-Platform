@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { getAuditLogsApi } from '../../services/api'
 import Pagination from '../../components/Pagination'
 import { PageHeader, LoadingState, Alert, EmptyState } from '../../components/ui'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Admin.css'
 
 const ACTION_LABELS = {
@@ -10,6 +11,7 @@ const ACTION_LABELS = {
   ORGANIZATION_REJECTED: 'Rejected organization',
   ORGANIZATION_SUSPENDED: 'Suspended organization',
   ORGANIZATION_PENDING: 'Reset organization to pending',
+  ORGANIZATION_CLOSED: 'Closed organization',
   USER_SUSPENDED: 'Suspended user',
   USER_REACTIVATED: 'Reactivated user',
 }
@@ -44,7 +46,7 @@ function AdminAuditLog() {
     }
   }, [token, page])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const { logs, pagination } = data
 

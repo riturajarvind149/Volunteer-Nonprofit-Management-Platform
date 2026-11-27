@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getAdminStatsApi, getAdminOrganizationsApi } from '../../services/api'
 import Icon from '../../components/Icon'
 import { PageHeader, LoadingState, Alert, EmptyState, OrgInitials } from '../../components/ui'
 import { formatDate, formatHours } from '../../utils/format'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Admin.css'
 
 const FIGURES = [
@@ -69,7 +70,7 @@ function AdminOverview() {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   if (loading) return <LoadingState label="Loading platform overview…" />
 

@@ -9,6 +9,7 @@ import OpportunityRow from '../../components/OpportunityRow'
 import { PageHeader, LoadingState, EmptyState, Alert } from '../../components/ui'
 import { parseDate, pluralize, formatDate } from '../../utils/format'
 import { CATEGORIES } from '../../utils/categories'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Opportunities.css'
 
 const PAGE_SIZE = 20
@@ -122,7 +123,9 @@ function Opportunities() {
     }
   }, [token, query, category, location, fromDate, toDate, showPast, openOnly])
 
-  useEffect(() => { fetchPage(1) }, [fetchPage])
+  // Any change to the filters starts again from the first page.
+  const loadFirstPage = useCallback(() => fetchPage(1), [fetchPage])
+  useAutoLoad(loadFirstPage)
 
   const total = pagination?.total ?? items.length
   const hasMore = pagination ? pagination.page < pagination.total_pages : false

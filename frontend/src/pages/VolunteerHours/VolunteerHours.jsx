@@ -8,6 +8,7 @@ import './VolunteerHours.css'
 import DateRangeForm from '../../components/DateRangeForm'
 import MonthlyBars from '../../components/MonthlyBars'
 import { formatDate, formatHours, pluralize } from '../../utils/format'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 
 const STATUS_FILTERS = [
   { key: '', label: 'All' },
@@ -114,7 +115,7 @@ function VolunteerHours() {
     }
   }, [token, range])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   // Impact figures don't depend on the date filter, so load them once.
   useEffect(() => {

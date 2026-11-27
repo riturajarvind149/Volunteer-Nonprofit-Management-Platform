@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { getAdminOrganizationsApi, reviewOrganizationApi } from '../../services/api'
+import { closeOrganizationApi, getAdminOrganizationsApi, reviewOrganizationApi } from '../../services/api'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import Icon from '../../components/Icon'
 import Pagination from '../../components/Pagination'
 import { PageHeader, LoadingState, Alert, EmptyState, OrgInitials, StatusBadge } from '../../components/ui'
 import { formatDate } from '../../utils/format'
 import { registrationTypeLabel } from '../../utils/ngo'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Admin.css'
 
 const STATUS_TABS = [
@@ -15,10 +16,11 @@ const STATUS_TABS = [
   { key: 'APPROVED', label: 'Approved' },
   { key: 'REJECTED', label: 'Rejected' },
   { key: 'SUSPENDED', label: 'Suspended' },
+  { key: 'CLOSED', label: 'Closed' },
   { key: '', label: 'All' },
 ]
 
-const VERIFICATION_LABELS = { PENDING: 'Pending review', APPROVED: 'Approved', REJECTED: 'Rejected', SUSPENDED: 'Suspended' }
+const VERIFICATION_LABELS = { PENDING: 'Pending review', APPROVED: 'Approved', REJECTED: 'Rejected', SUSPENDED: 'Suspended', CLOSED: 'Closed' }
 
 /** Which decisions make sense from each state. */
 const ACTIONS = {
@@ -31,20 +33,35 @@ const ACTIONS = {
   SUSPENDED: [{ status: 'APPROVED', label: 'Reinstate', tone: 'primary' }],
 }
 
+/** Closing is final, so it is offered separately and asks for confirmation. */
+const CLOSE_ACTION = { status: 'CLOSED', label: 'Close NGO', tone: 'danger', needsNote: true, close: true }
+
 function ReviewPanel({ org, onDone }) {
   const { token } = useAuth()
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
+  const [confirmingClose, setConfirmingClose] = useState(false)
+  const closed = org.verification_status === 'CLOSED'
 
   const decide = async (action) => {
     if (action.needsNote && !note.trim()) {
       setError(`Add a note explaining why — it’s emailed to the NGO admin.`)
       return
     }
+    if (action.close && !confirmingClose) {
+      setError('')
+      setConfirmingClose(true)
+      return
+    }
     setBusy(action.status)
     setError('')
     try {
+      if (action.close) {
+        const res = await closeOrganizationApi(org.id, note.trim(), token)
+        onDone(org, res?.data?.organization, action, res?.data?.cancelled_events ?? 0)
+        return
+      }
       const res = await reviewOrganizationApi(org.id, action.status, note.trim() || undefined, token)
       onDone(org, res?.data?.organization, action)
     } catch (err) {
@@ -61,8 +78,14 @@ function ReviewPanel({ org, onDone }) {
         <div>
           <dt>NGO admin</dt>
           <dd>
-            {org.owner_name} · <a href={`mailto:${org.owner_email}`}>{org.owner_email}</a>
-            {org.owner_phone && <> · <a href={`tel:${org.owner_phone.replace(/[^+\d]/g, '')}`}>{org.owner_phone}</a></>}
+            {org.owner_email ? (
+              <>
+                {org.owner_name} · <a href={`mailto:${org.owner_email}`}>{org.owner_email}</a>
+                {org.owner_phone && <> · <a href={`tel:${org.owner_phone.replace(/[^+\d]/g, '')}`}>{org.owner_phone}</a></>}
+              </>
+            ) : (
+              <span className="muted">None — the team was removed when the NGO closed</span>
+            )}
           </dd>
         </div>
         <div><dt>Type</dt><dd>{registrationTypeLabel(org.registration_type) || <span className="muted">Not given</span>}</dd></div>
@@ -72,6 +95,7 @@ function ReviewPanel({ org, onDone }) {
         </div>
         {org.city && <div><dt>City</dt><dd>{org.city}</dd></div>}
         <div><dt>Submitted</dt><dd>{formatDate(org.created_at, { month: 'long' })}</dd></div>
+        {org.closed_at && <div><dt>Closed</dt><dd>{formatDate(org.closed_at, { month: 'long' })}</dd></div>}
         <div><dt>Opportunities</dt><dd>{org.opportunity_count}</dd></div>
         {org.email && <div><dt>Contact email</dt><dd>{org.email}</dd></div>}
         {org.phone && <div><dt>Phone</dt><dd>{org.phone}</dd></div>}
@@ -80,24 +104,34 @@ function ReviewPanel({ org, onDone }) {
       </dl>
       <p className="admin-review-desc">{org.description || <span className="muted">No description provided.</span>}</p>
       {org.verification_note && (
-        <p className="admin-review-prev"><strong>Previous note:</strong> {org.verification_note}</p>
+        <p className="admin-review-prev"><strong>{closed ? 'Reason for closing:' : 'Previous note:'}</strong> {org.verification_note}</p>
       )}
 
-      <div className="field">
-        <label className="field-label" htmlFor={`note-${org.id}`}>
-          Note to the NGO admin <span className="opt">(required to reject or suspend)</span>
-        </label>
-        <textarea
-          id={`note-${org.id}`}
-          className="textarea"
-          rows={2}
-          maxLength={1000}
-          value={note}
-          onChange={(e) => { setNote(e.target.value); setError('') }}
-          disabled={Boolean(busy)}
-        />
-      </div>
+      {closed ? (
+        <p className="muted">This NGO is closed. Closed NGOs can’t be reviewed or reopened.</p>
+      ) : (
+        <div className="field">
+          <label className="field-label" htmlFor={`note-${org.id}`}>
+            Note to the NGO admin <span className="opt">(required to reject, suspend or close)</span>
+          </label>
+          <textarea
+            id={`note-${org.id}`}
+            className="textarea"
+            rows={2}
+            maxLength={1000}
+            value={note}
+            onChange={(e) => { setNote(e.target.value); setError('') }}
+            disabled={Boolean(busy)}
+          />
+        </div>
+      )}
       {error && <Alert>{error}</Alert>}
+      {confirmingClose && (
+        <Alert tone="warning">
+          Closing “{org.name}” cancels all its upcoming events (registered volunteers are emailed), clears their
+          waitlists and removes its NGO admin and coordinators. Past events and hours are kept. This can’t be undone.
+        </Alert>
+      )}
 
       <div className="admin-review-actions">
         {(ACTIONS[org.verification_status] || []).map((action) => (
@@ -111,7 +145,22 @@ function ReviewPanel({ org, onDone }) {
             {busy === action.status ? 'Saving…' : action.label}
           </button>
         ))}
-        <Link to={`/organizations/${org.id}`} className="btn btn-ghost btn-sm">View public page</Link>
+        {!closed && (
+          <button
+            type="button"
+            className="btn btn-sm btn-danger"
+            onClick={() => decide(CLOSE_ACTION)}
+            disabled={Boolean(busy)}
+          >
+            {busy === 'CLOSED' ? 'Closing…' : confirmingClose ? 'Yes, close this NGO' : CLOSE_ACTION.label}
+          </button>
+        )}
+        {confirmingClose && !busy && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmingClose(false)}>
+            Keep it open
+          </button>
+        )}
+        {!closed && <Link to={`/organizations/${org.id}`} className="btn btn-ghost btn-sm">View public page</Link>}
       </div>
     </div>
   )
@@ -142,7 +191,7 @@ function AdminOrganizations() {
     }
   }, [token, status, debouncedQuery, page])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const changeTab = (key) => {
     setStatus(key)
@@ -150,11 +199,14 @@ function AdminOrganizations() {
     setOpenId(null)
   }
 
-  const handleDone = (org, updated, action) => {
+  const handleDone = (org, updated, action, cancelledEvents = 0) => {
     setOpenId(null)
+    const cancelledText = cancelledEvents === 1 ? '1 upcoming event was' : `${cancelledEvents} upcoming events were`
     setNotice({
       tone: 'success',
-      text: `“${org.name}” is now ${VERIFICATION_LABELS[updated?.verification_status || action.status].toLowerCase()}. The NGO admin has been emailed.`,
+      text: action.close
+        ? `“${org.name}” was closed. ${cancelledText} cancelled and everyone affected has been emailed.`
+        : `“${org.name}” is now ${VERIFICATION_LABELS[updated?.verification_status || action.status].toLowerCase()}. The NGO admin has been emailed.`,
     })
     load()
   }
@@ -215,7 +267,7 @@ function AdminOrganizations() {
                     <OrgInitials name={org.name} />
                     <span className="admin-org-main">
                       <span className="cell-primary">{org.name}</span>
-                      <span className="cell-sub">{org.owner_name} · {org.owner_email}</span>
+                      <span className="cell-sub">{org.owner_email ? `${org.owner_name} · ${org.owner_email}` : 'No team'}</span>
                     </span>
                     <StatusBadge status={org.verification_status} label={VERIFICATION_LABELS[org.verification_status]} />
                     <span className="admin-org-date muted">{formatDate(org.created_at)}</span>

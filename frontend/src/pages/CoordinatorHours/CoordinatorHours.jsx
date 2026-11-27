@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -8,21 +8,29 @@ import {
   updateHoursStatusApi,
 } from '../../services/api'
 import { PageHeader, LoadingState, EmptyState, Alert, StatusBadge } from '../../components/ui'
+import Pagination from '../../components/Pagination'
 import { formatDate, formatHours, pluralize } from '../../utils/format'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './CoordinatorHours.css'
 
+// Each tab is one server-side query, so long histories load a page at a time.
 const QUEUE_FILTERS = [
-  { key: 'review', label: 'Needs review', match: (r) => r.status === 'PENDING' || r.status === 'RECORDED' },
-  { key: 'verified', label: 'Verified', match: (r) => r.status === 'VERIFIED' },
-  { key: 'rejected', label: 'Not approved', match: (r) => r.status === 'REJECTED' },
-  { key: 'all', label: 'All entries', match: () => true },
+  { key: 'review', label: 'Needs review', status: 'PENDING,RECORDED' },
+  { key: 'verified', label: 'Verified', status: 'VERIFIED' },
+  { key: 'rejected', label: 'Not approved', status: 'REJECTED' },
+  { key: 'all', label: 'All entries', status: '' },
 ]
+
+const PAGE_SIZE = 25
 
 const STATUS_WORDS = { VERIFIED: 'verified', REJECTED: 'not approved', RECORDED: 'recorded', PENDING: 'pending' }
 
 function CoordinatorHours() {
   const { token } = useAuth()
   const [records, setRecords] = useState([])
+  const [pagination, setPagination] = useState(null)
+  const [page, setPage] = useState(1)
+  const [counts, setCounts] = useState({})
   const [summary, setSummary] = useState(null)
   const [byOpportunity, setByOpportunity] = useState([])
   const [view, setView] = useState('entries')
@@ -33,15 +41,27 @@ function CoordinatorHours() {
   const [rejectingId, setRejectingId] = useState(null)
   const [notice, setNotice] = useState(null)
 
+  const activeFilter = QUEUE_FILTERS.find((f) => f.key === filter)
+
   const load = useCallback(async () => {
     setError('')
     try {
-      const [hoursRes, summaryRes, oppsRes] = await Promise.all([
-        getOrganizationHoursApi(token),
+      const [hoursRes, summaryRes, oppsRes, ...countRes] = await Promise.all([
+        getOrganizationHoursApi(token, { status: activeFilter.status, page, limit: PAGE_SIZE }),
         getOrganizationHoursSummaryApi(token),
         getOrganizationOpportunitiesSummaryApi(token),
+        // Tab counts: one tiny request per tab, reading only its total.
+        ...QUEUE_FILTERS.map((f) => getOrganizationHoursApi(token, { status: f.status, page: 1, limit: 1 })),
       ])
+      const nextPagination = hoursRes?.data?.pagination || null
+      // The last entry of the last page moved to another tab: show the page before it.
+      if (page > 1 && nextPagination && page > nextPagination.total_pages) {
+        setPage(nextPagination.total_pages)
+        return
+      }
       setRecords(hoursRes?.data?.volunteer_hours || [])
+      setPagination(nextPagination)
+      setCounts(Object.fromEntries(QUEUE_FILTERS.map((f, i) => [f.key, countRes[i]?.data?.pagination?.total ?? 0])))
       setSummary(summaryRes?.data?.summary || null)
       setByOpportunity(oppsRes?.data?.opportunities || [])
     } catch (err) {
@@ -49,28 +69,29 @@ function CoordinatorHours() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, activeFilter, page])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
+
+  const changeFilter = (key) => {
+    setFilter(key)
+    setPage(1)
+    setRejectingId(null)
+  }
 
   const updateStatus = async (record, status) => {
     setUpdatingId(record.id)
     setNotice(null)
     try {
       await updateHoursStatusApi(record.id, status, token)
-      setRecords((prev) => prev.map((r) => (r.id === record.id ? { ...r, status } : r)))
       setRejectingId(null)
       setNotice({
         tone: 'success',
         text: `${formatHours(record.hours)} hours for ${record.volunteer_name} marked as ${STATUS_WORDS[status] || status.toLowerCase()}.`
           + (status === 'VERIFIED' || status === 'REJECTED' ? ' The volunteer has been notified.' : ''),
       })
-      const [summaryRes, oppsRes] = await Promise.all([
-        getOrganizationHoursSummaryApi(token),
-        getOrganizationOpportunitiesSummaryApi(token),
-      ])
-      setSummary(summaryRes?.data?.summary || null)
-      setByOpportunity(oppsRes?.data?.opportunities || [])
+      // Refresh the page, tab counts and totals: the entry may have moved to another tab.
+      await load()
     } catch (err) {
       setNotice({ tone: 'error', text: err.message || 'The status could not be updated.' })
     } finally {
@@ -78,8 +99,8 @@ function CoordinatorHours() {
     }
   }
 
-  const activeFilter = QUEUE_FILTERS.find((f) => f.key === filter)
-  const visible = records.filter(activeFilter.match)
+  const visible = records
+  const noHoursYet = !counts.all
   const awaiting = Number(summary?.pending_hours || 0) + Number(summary?.recorded_hours || 0)
   const withHours = byOpportunity.filter((o) => Number(o.total_hours) > 0)
 
@@ -123,8 +144,8 @@ function CoordinatorHours() {
           {view === 'entries' && (
             <div className="segmented" role="group" aria-label="Filter entries">
               {QUEUE_FILTERS.map((f) => (
-                <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
-                  {f.label}<span className="count">{records.filter(f.match).length}</span>
+                <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => changeFilter(f.key)}>
+                  {f.label}<span className="count">{counts[f.key] ?? 0}</span>
                 </button>
               ))}
             </div>
@@ -137,10 +158,10 @@ function CoordinatorHours() {
           visible.length === 0 ? (
             <EmptyState
               icon="check-circle"
-              title={records.length === 0 ? 'No hours logged yet' : filter === 'review' ? 'Nothing left to review' : 'No entries here'}
-              action={records.length === 0 && <Link to="/volunteers" className="btn btn-secondary">Open a roster</Link>}
+              title={noHoursYet ? 'No hours logged yet' : filter === 'review' ? 'Nothing left to review' : 'No entries here'}
+              action={noHoursYet && <Link to="/volunteers" className="btn btn-secondary">Open a roster</Link>}
             >
-              {records.length === 0 ? 'Log hours for attendees from an event’s roster.' : filter === 'review' ? 'Every logged hour has been verified.' : 'Try another filter.'}
+              {noHoursYet ? 'Log hours for attendees from an event’s roster.' : filter === 'review' ? 'Every logged hour has been verified.' : 'Try another filter.'}
             </EmptyState>
           ) : (
             <div className="table-wrap">
@@ -209,6 +230,7 @@ function CoordinatorHours() {
                   })}
                 </tbody>
               </table>
+              <Pagination pagination={pagination} onPage={setPage} disabled={Boolean(updatingId)} noun="entries" />
             </div>
           )
         ) : withHours.length === 0 ? (

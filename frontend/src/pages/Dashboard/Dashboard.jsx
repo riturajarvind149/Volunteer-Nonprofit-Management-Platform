@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useOpportunities } from '../../context/OpportunityContext'
@@ -13,6 +13,7 @@ import Icon from '../../components/Icon'
 import OpportunityRow from '../../components/OpportunityRow'
 import { LoadingState, EmptyState, Alert, DateBlock, StatusBadge, CapacityMeter } from '../../components/ui'
 import { formatDate, formatTime, formatHours, isUpcoming, compareByDate, pluralize } from '../../utils/format'
+import { useAutoLoad } from '../../hooks/useAutoLoad'
 import './Dashboard.css'
 
 function greeting() {
@@ -65,7 +66,7 @@ function VolunteerDashboard({ user, token }) {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const active = signups.filter((s) => s.status !== 'CANCELLED')
   const upcoming = active.filter((s) => isUpcoming(s.event_date)).sort(compareByDate)
@@ -203,7 +204,7 @@ function CoordinatorDashboard({ user, token }) {
     }
   }, [token])
 
-  useEffect(() => { load() }, [load])
+  useAutoLoad(load)
 
   const upcoming = managed
     .filter((o) => isUpcoming(o.event_date) && o.status !== 'CANCELLED' && o.status !== 'COMPLETED')

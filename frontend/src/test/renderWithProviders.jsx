@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
-import { AuthProvider } from '../context/AuthContext'
-import { OpportunityProvider } from '../context/OpportunityContext'
+import { AuthProvider } from '../context/AuthProvider'
+import { OpportunityProvider } from '../context/OpportunityProvider'
 import LocationDisplay from './LocationDisplay'
 
 /**
