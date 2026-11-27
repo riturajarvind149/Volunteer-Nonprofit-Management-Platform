@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseDate, spotsLabel, pluralize, formatHours, isUpcoming, toInputDate, compareByDate } from './format'
+import { parseDate, spotsLabel, pluralize, formatHours, isUpcoming, toInputDate, compareByDate, formatTime } from './format'
 
 describe('parseDate', () => {
   it('parses a plain YYYY-MM-DD as a local date (no timezone shift)', () => {
@@ -58,5 +58,15 @@ describe('small formatters', () => {
   it('sorts by event date with missing dates last', () => {
     const items = [{ event_date: '2026-05-02' }, { event_date: null }, { event_date: '2026-01-15' }]
     expect(items.sort(compareByDate).map((i) => i.event_date)).toEqual(['2026-01-15', '2026-05-02', null])
+  })
+})
+
+describe('formatTime across midnight', () => {
+  it('marks an end time earlier than the start as the next day', () => {
+    expect(formatTime('22:00:00', '02:00:00')).toMatch(/\(next day\)$/)
+  })
+
+  it('leaves same-day ranges alone', () => {
+    expect(formatTime('09:00', '12:00')).not.toMatch(/next day/)
   })
 })

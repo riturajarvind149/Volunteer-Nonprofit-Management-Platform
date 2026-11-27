@@ -11,6 +11,7 @@ const ACTION_LABELS = {
   ORGANIZATION_REJECTED: 'Rejected organization',
   ORGANIZATION_SUSPENDED: 'Suspended organization',
   ORGANIZATION_PENDING: 'Reset organization to pending',
+  ORGANIZATION_CLOSED: 'Closed organization',
   USER_SUSPENDED: 'Suspended user',
   USER_REACTIVATED: 'Reactivated user',
 }

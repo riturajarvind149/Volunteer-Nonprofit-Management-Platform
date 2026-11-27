@@ -33,7 +33,10 @@ export function formatTime(startTime, endTime) {
     d.setHours(Number(h), Number(m))
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   }
-  return endTime ? `${fmt(startTime)} – ${fmt(endTime)}` : fmt(startTime)
+  if (!endTime) return fmt(startTime)
+  // An end earlier than the start means the event finishes after midnight.
+  const nextDay = endTime.slice(0, 5) < startTime.slice(0, 5)
+  return `${fmt(startTime)} – ${fmt(endTime)}${nextDay ? ' (next day)' : ''}`
 }
 
 function startOfToday() {

@@ -9,6 +9,7 @@ import {
   getOpportunitiesApi,
   getAdminOrganizationsApi,
   reviewOrganizationApi,
+  closeOrganizationApi,
   getAdminUsersApi,
   setUserActiveApi,
   reviewVolunteerApi,
@@ -74,6 +75,42 @@ describe('Organization review', () => {
     await userEvent.type(screen.getByLabelText(/Note to the NGO admin/), 'Could not verify registration')
     await userEvent.click(screen.getByRole('button', { name: 'Reject' }))
     expect(reviewOrganizationApi).toHaveBeenCalledWith('org-1', 'REJECTED', 'Could not verify registration', 'test-token')
+  })
+
+  it('closes an NGO only after a reason and a confirmation', async () => {
+    closeOrganizationApi.mockResolvedValue({
+      data: { organization: { ...PENDING_ORG, verification_status: 'CLOSED' }, cancelled_events: 2 },
+    })
+    renderWithProviders(<AdminOrganizations />, { route: '/admin/organizations', path: '/admin/organizations' })
+
+    await userEvent.click(await screen.findByRole('button', { name: /Coast Care Trust/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Close NGO' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Add a note explaining why')
+
+    await userEvent.type(screen.getByLabelText(/Note to the NGO admin/), 'The NGO asked to leave')
+    await userEvent.click(screen.getByRole('button', { name: 'Close NGO' }))
+    expect(screen.getByText(/This can’t be undone/)).toBeInTheDocument()
+    expect(closeOrganizationApi).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, close this NGO' }))
+    expect(closeOrganizationApi).toHaveBeenCalledWith('org-1', 'The NGO asked to leave', 'test-token')
+    expect(await screen.findByText(/was closed\. 2 upcoming events were cancelled/)).toBeInTheDocument()
+  })
+
+  it('shows closed NGOs without review actions', async () => {
+    getAdminOrganizationsApi.mockResolvedValue({
+      data: {
+        organizations: [{ ...PENDING_ORG, verification_status: 'CLOSED', owner_name: null, owner_email: null, verification_note: 'Asked to leave', closed_at: '2026-11-20' }],
+        pagination: { page: 1, limit: 20, total: 1, total_pages: 1 },
+      },
+    })
+    renderWithProviders(<AdminOrganizations />, { route: '/admin/organizations', path: '/admin/organizations' })
+
+    await userEvent.click(await screen.findByRole('button', { name: /Coast Care Trust/ }))
+    expect(screen.getByText(/Closed NGOs can’t be reviewed or reopened/)).toBeInTheDocument()
+    expect(screen.getByText('Asked to leave')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Close NGO' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
   })
 })
 

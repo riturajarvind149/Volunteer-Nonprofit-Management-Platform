@@ -213,11 +213,14 @@ export const deleteAccountApi = (password, token) => authFetch('/users/me', { me
 
 // ---- Admin console (ADMIN role only) ----
 export const getAdminStatsApi = (token) => authFetch('/admin/stats', { token })
-/** params: status (PENDING|APPROVED|REJECTED|SUSPENDED), q, page, limit */
+/** params: status (PENDING|APPROVED|REJECTED|SUSPENDED|CLOSED), q, page, limit */
 export const getAdminOrganizationsApi = (token, params = {}) => authFetch('/admin/organizations' + toQuery(params), { token })
 /** status: APPROVED | REJECTED | SUSPENDED | PENDING; note required for REJECTED/SUSPENDED */
 export const reviewOrganizationApi = (id, status, note, token) =>
   authFetch('/admin/organizations/' + id + '/verification', { method: 'PATCH', body: { status, note }, token })
+/** Close an NGO for good: cancels its upcoming events and removes its team. Returns { organization, cancelled_events }. */
+export const closeOrganizationApi = (id, reason, token) =>
+  authFetch('/admin/organizations/' + id + '/close', { method: 'POST', body: { reason }, token })
 /** params: q, role, page, limit */
 export const getAdminUsersApi = (token, params = {}) => authFetch('/admin/users' + toQuery(params), { token })
 export const setUserActiveApi = (id, isActive, token) =>
@@ -257,7 +260,8 @@ export const getMyHoursApi = (token, params = {}) => {
   return authFetch('/hours/my' + (qs ? '?' + qs : ''), { token })
 }
 export const getMyHoursSummaryApi = (token) => authFetch('/hours/my/summary', { token })
-export const getOrganizationHoursApi = (token) => authFetch('/hours/organization', { token })
+/** params: status (one or more of PENDING,RECORDED,VERIFIED,REJECTED, comma-separated), page, limit */
+export const getOrganizationHoursApi = (token, params = {}) => authFetch('/hours/organization' + toQuery(params), { token })
 export const getOrganizationHoursSummaryApi = (token) => authFetch('/hours/organization/summary', { token })
 export const getOrganizationOpportunitiesSummaryApi = (token, params = {}) => {
   const query = new URLSearchParams()

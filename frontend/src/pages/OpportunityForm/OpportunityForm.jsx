@@ -18,6 +18,7 @@ const BLANK = {
   event_date: '',
   start_time: '09:00',
   end_time: '12:00',
+  ends_next_day: false,
   location: '',
   address: '',
   capacity: '10',
@@ -35,6 +36,7 @@ function fromOpportunity(o) {
     event_date: toInputDate(o.event_date),
     start_time: (o.start_time || '').slice(0, 5),
     end_time: (o.end_time || '').slice(0, 5),
+    ends_next_day: Boolean(o.ends_next_day),
     location: o.location === 'Location TBD' ? '' : o.location || '',
     address: o.address || '',
     capacity: String(o.capacity ?? ''),
@@ -51,7 +53,11 @@ function validate(form, { isEdit, activeSignups }) {
   if (!form.event_date) errors.event_date = 'Choose the date of the event.'
   if (!form.start_time) errors.start_time = 'Enter a start time.'
   if (!form.end_time) errors.end_time = 'Enter an end time.'
-  else if (form.start_time && form.end_time < form.start_time) errors.end_time = 'The end time can’t be earlier than the start time.'
+  else if (form.start_time && form.ends_next_day && form.end_time >= form.start_time) {
+    errors.end_time = 'For an event that ends the next day, the end time must be earlier than the start time.'
+  } else if (form.start_time && !form.ends_next_day && form.end_time < form.start_time) {
+    errors.end_time = 'The end time can’t be earlier than the start time. If it finishes after midnight, tick “Ends the next day”.'
+  }
   const capacity = Number(form.capacity)
   if (!Number.isInteger(capacity) || capacity < 1) errors.capacity = 'Enter a whole number of 1 or more.'
   else if (isEdit && capacity < activeSignups) errors.capacity = `${activeSignups} volunteers are already registered, so capacity can’t go below that.`
@@ -180,6 +186,7 @@ function OpportunityForm() {
     form.event_date !== toInputDate(original.event_date)
     || form.start_time !== (original.start_time || '').slice(0, 5)
     || form.end_time !== (original.end_time || '').slice(0, 5)
+    || form.ends_next_day !== Boolean(original.ends_next_day)
     || form.location.trim() !== fromOpportunity(original).location
   )
 
@@ -224,6 +231,7 @@ function OpportunityForm() {
       event_date: form.event_date,
       start_time: form.start_time,
       end_time: form.end_time,
+      ends_next_day: form.ends_next_day,
       location: form.location.trim() || 'Location TBD',
       address: form.address.trim() || null,
       capacity: Number(form.capacity),
@@ -317,6 +325,20 @@ function OpportunityForm() {
                 <input type="time" className="input" {...inputProps('end_time')} />
               </Field>
             </div>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                id="ends_next_day"
+                checked={form.ends_next_day}
+                disabled={saving}
+                onChange={(e) => {
+                  const checked = e.target.checked
+                  setForm((prev) => ({ ...prev, ends_next_day: checked }))
+                  if (errors.end_time) setErrors((prev) => ({ ...prev, end_time: '' }))
+                }}
+              />
+              Ends the next day (finishes after midnight, e.g. 22:00 – 02:00)
+            </label>
             <Field id="location" label="Location name" optional hint="Leave blank to show “Location TBD”.">
               <input className="input" maxLength={255} {...inputProps('location')} />
             </Field>
