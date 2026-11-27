@@ -278,7 +278,7 @@ const seedDemo = async ({ password, start: startInput } = {}) => {
         });
         // Recent events: some hours still wait for review (self-reported or just recorded).
         const status = e.review ? (i % 2 === 0 ? 'PENDING' : 'RECORDED') : 'VERIFIED';
-        const selfReported = e.review && i % 2 === 0;
+        const selfReported = Boolean(e.review) && i % 2 === 0;
         await client.query(
           `INSERT INTO volunteer_hours (signup_id, hours, status, recorded_by, notes, self_reported, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
