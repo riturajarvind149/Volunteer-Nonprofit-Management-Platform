@@ -292,17 +292,16 @@ const searchUsers = async ({ q, role, verification, page = 1, limit = 20 }) => {
 
 /**
  * Permanently remove a user and their personal data.
- * volunteer_hours.recorded_by uses ON DELETE RESTRICT, so the volunteer's own
- * hour records are removed first inside the same transaction.
+ * The user's own hour records (from their signups) are removed with them.
+ * Hours they recorded for other volunteers are kept: recorded_by becomes NULL
+ * (ON DELETE SET NULL), so volunteers don't lose verified hours.
  */
 const deleteUserCascade = async (id) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await client.query(
-      `DELETE FROM volunteer_hours
-        WHERE signup_id IN (SELECT id FROM signups WHERE volunteer_id = $1)
-           OR recorded_by = $1`,
+      'DELETE FROM volunteer_hours WHERE signup_id IN (SELECT id FROM signups WHERE volunteer_id = $1)',
       [id]
     );
     const result = await client.query('DELETE FROM users WHERE id = $1', [id]);
