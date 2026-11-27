@@ -59,6 +59,17 @@ Admins approve organizations and can suspend users. Admin accounts cannot be cre
 ADMIN_EMAIL=admin@yourdomain.org ADMIN_PASSWORD='Str0ngPassword' npm run create-admin
 ```
 
+### 4c. Demo data (for showcases)
+Bengaluru NGOs, coordinators, volunteers and events, with one event on each day of the demo window
+(default 30 Nov – 7 Dec 2026, change with `DEMO_START=YYYY-MM-DD`) and completed events with verified hours before it.
+Demo accounts use `@demo.servehub.test` addresses and the password you choose:
+```bash
+DEMO_PASSWORD='Choose-a-pass1' npm run seed:demo        # add or refresh (prints the sign-ins)
+npm run seed:demo:remove                                 # delete all demo data afterwards
+```
+On a production database add `-- --yes` (e.g. `npm run seed:demo -- --yes`). Use your own admin account
+to show the admin console; one demo NGO is waiting for review.
+
 ### 5. Start the Backend
 Install dependencies (if not already installed) and run the development server:
 ```bash
